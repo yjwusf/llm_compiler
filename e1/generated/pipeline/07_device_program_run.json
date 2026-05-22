@@ -1,0 +1,20 @@
+{
+  "compile_command": [
+    "/usr/bin/c++",
+    "-std=c++17",
+    "-DE1_DEVICE_HOST_MODEL",
+    "-I",
+    "e1/code/program",
+    "e1/code/program/e1_tinyllama_program.cpp",
+    "e1/code/program/e1_tinyllama_program_host_smoke.cpp",
+    "-o",
+    "<temp-exe>"
+  ],
+  "host_smoke": "e1/code/program/e1_tinyllama_program_host_smoke.cpp",
+  "program": "first_attention_tile",
+  "schema": "e1-device-program-smoke-v0",
+  "source": "e1/code/program/e1_tinyllama_program.cpp",
+  "status": "pass",
+  "status_reads": 2,
+  "writes": 7
+}

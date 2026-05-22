@@ -27,7 +27,8 @@ hardware and device code.
      architecture-owned pipeline depths.
 7. `e1_plan_device_program`
    - Input: operation binding and memory plan.
-   - Output: legible device program under `e1/code/program/`.
+   - Output: legible device program under `e1/code/program/` and host MMIO
+     smoke report for the first tile command.
 8. `e1_generate_chip_model`
    - Input: architecture config, pass metadata, and module docs.
    - Output: C++ generated chip model under `e1/code/chip_model/`.

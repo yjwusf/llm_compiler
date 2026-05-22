@@ -648,6 +648,21 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(export["stablehlo_out"], "e1/generated/pipeline/02_stablehlo.mlir")
         self.assertEqual(export["fixture"], "e1/fixtures/stablehlo/tinyllama_block.mlir")
 
+        device_plan = json.loads((E1_PIPELINE_OUT / "07_device_program_plan.json").read_text(encoding="utf-8"))
+        self.assertEqual(device_plan["program"], "e1/code/program/e1_tinyllama_program.cpp")
+        self.assertEqual(device_plan["host_smoke"], "e1/code/program/e1_tinyllama_program_host_smoke.cpp")
+        self.assertEqual(device_plan["run_report"], "e1/generated/pipeline/07_device_program_run.json")
+        self.assertEqual(device_plan["run_status"], "pass")
+
+        device_run = json.loads((E1_PIPELINE_OUT / "07_device_program_run.json").read_text(encoding="utf-8"))
+        self.assertEqual(device_run["schema"], "e1-device-program-smoke-v0")
+        self.assertEqual(device_run["source"], "e1/code/program/e1_tinyllama_program.cpp")
+        self.assertEqual(device_run["host_smoke"], "e1/code/program/e1_tinyllama_program_host_smoke.cpp")
+        self.assertEqual(device_run["status"], "pass")
+        self.assertEqual(device_run["program"], "first_attention_tile")
+        self.assertEqual(device_run["writes"], 7)
+        self.assertEqual(device_run["status_reads"], 2)
+
         chip_model_plan = json.loads((E1_PIPELINE_OUT / "08_chip_model_plan.json").read_text(encoding="utf-8"))
         self.assertIn("e1/code/chip_model/e1_chip_smoke.cpp", chip_model_plan["chip_model"])
         self.assertEqual(
@@ -897,22 +912,27 @@ class E1H1Tests(unittest.TestCase):
             )
             run([str(exe)])
 
-    def test_device_program_compiles(self) -> None:
+    def test_device_program_compiles_and_runs_host_smoke(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            obj = Path(tmp) / "e1_tinyllama_program.o"
+            exe = Path(tmp) / "e1_tinyllama_program_host_smoke"
             run(
                 [
                     "c++",
                     "-std=c++17",
+                    "-DE1_DEVICE_HOST_MODEL",
                     "-I",
                     "e1/code/program",
-                    "-c",
                     "e1/code/program/e1_tinyllama_program.cpp",
+                    "e1/code/program/e1_tinyllama_program_host_smoke.cpp",
                     "-o",
-                    str(obj),
+                    str(exe),
                 ]
             )
-            self.assertTrue(obj.exists())
+            result = run([str(exe)])
+            report = json.loads(result.stdout)
+            self.assertEqual(report["status"], "pass")
+            self.assertEqual(report["writes"], 7)
+            self.assertEqual(report["status_reads"], 2)
 
 
 if __name__ == "__main__":

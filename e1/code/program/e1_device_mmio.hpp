@@ -19,6 +19,10 @@ constexpr std::uintptr_t kArrayStatus = kArrayBase + 0x1cu;
 constexpr std::uint32_t kArrayStatusBusy = 1u << 0;
 constexpr std::uint32_t kArrayStartRun = 1u;
 
+#ifdef E1_DEVICE_HOST_MODEL
+void write32(std::uintptr_t addr, std::uint32_t value);
+std::uint32_t read32(std::uintptr_t addr);
+#else
 inline void write32(std::uintptr_t addr, std::uint32_t value) {
   *reinterpret_cast<volatile std::uint32_t*>(addr) = value;
 }
@@ -26,6 +30,7 @@ inline void write32(std::uintptr_t addr, std::uint32_t value) {
 inline std::uint32_t read32(std::uintptr_t addr) {
   return *reinterpret_cast<volatile const std::uint32_t*>(addr);
 }
+#endif
 
 inline void wait_for_array_idle() {
   while ((read32(kArrayStatus) & kArrayStatusBusy) != 0u) {

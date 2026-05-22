@@ -15,6 +15,8 @@ Initial files:
 
 - `e1_device_mmio.hpp`: named MMIO addresses and small helpers.
 - `e1_tinyllama_program.cpp`: first readable program skeleton.
+- `e1_tinyllama_program_host_smoke.cpp`: host-side MMIO model used to execute
+  and check the device program in tests.
 
 ## Style
 
@@ -31,3 +33,10 @@ The device code programs a systolic array through a stable accelerator command
 interface. The array implementation may change, including replacement with a
 Gemmini-inspired implementation, but the command interface must remain stable
 or the E1-H1 docs and tests must be updated.
+
+## Host Smoke
+
+The host smoke builds the device program with `E1_DEVICE_HOST_MODEL`, replaces
+raw MMIO loads/stores with a small C++ register model, runs `e1_main`, and
+checks the exact write sequence for the first attention tile. The E1 pipeline
+writes the result to `e1/generated/pipeline/07_device_program_run.json`.

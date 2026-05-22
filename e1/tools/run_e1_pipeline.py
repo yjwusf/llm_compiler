@@ -311,6 +311,53 @@ def run_chip_model_smoke(output_dir: Path) -> dict[str, Any]:
         return report
 
 
+def run_device_program_smoke(output_dir: Path) -> dict[str, Any]:
+    compiler = shutil.which("c++")
+    if compiler is None:
+        return {
+            "schema": "e1-device-program-smoke-v0",
+            "status": "missing_cxx",
+            "compile_command": [],
+            "program": "first_attention_tile",
+        }
+
+    with tempfile.TemporaryDirectory(prefix="e1_device_program_") as tmp:
+        exe = Path(tmp) / "e1_device_program_smoke"
+        compile_command = [
+            compiler,
+            "-std=c++17",
+            "-DE1_DEVICE_HOST_MODEL",
+            "-I",
+            "e1/code/program",
+            "e1/code/program/e1_tinyllama_program.cpp",
+            "e1/code/program/e1_tinyllama_program_host_smoke.cpp",
+            "-o",
+            str(exe),
+        ]
+        subprocess.run(
+            compile_command,
+            cwd=REPO_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=True,
+        )
+        result = subprocess.run(
+            [str(exe)],
+            cwd=REPO_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=True,
+        )
+        report = json.loads(result.stdout)
+        report["compile_command"] = compile_command[:-1] + ["<temp-exe>"]
+        report["source"] = "e1/code/program/e1_tinyllama_program.cpp"
+        report["host_smoke"] = "e1/code/program/e1_tinyllama_program_host_smoke.cpp"
+        write_json(output_dir / "07_device_program_run.json", report)
+        return report
+
+
 def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path) -> dict[str, Any]:
     manifest = load_json(manifest_path)
     architecture = load_json(architecture_path)
@@ -413,12 +460,16 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
     passes.append({"pass": "e1_plan_memory", "artifact": repo_rel(memory_out)})
 
     device_out = output_dir / "07_device_program_plan.json"
+    device_program_run = run_device_program_smoke(output_dir)
     write_json(
         device_out,
         {
             "program": "e1/code/program/e1_tinyllama_program.cpp",
             "mmio": "e1/code/program/e1_device_mmio.hpp",
+            "host_smoke": "e1/code/program/e1_tinyllama_program_host_smoke.cpp",
             "legibility_rule": "named MMIO constants and explicit tile commands",
+            "run_report": "e1/generated/pipeline/07_device_program_run.json",
+            "run_status": device_program_run["status"],
         },
     )
     passes.append({"pass": "e1_plan_device_program", "artifact": repo_rel(device_out)})
