@@ -1,0 +1,28 @@
+#!/bin/sh
+set -eu
+
+sgt_now=$(TZ=Asia/Singapore date '+%Y-%m-%d %H:%M:%S %Z')
+sgt_weekday=$(TZ=Asia/Singapore date '+%u')
+sgt_hour=$(TZ=Asia/Singapore date '+%H')
+sgt_hour=${sgt_hour#0}
+
+case "$sgt_weekday" in
+  6|7)
+    exit 0
+    ;;
+esac
+
+if [ "$sgt_hour" -ge 20 ]; then
+  exit 0
+fi
+
+cat >&2 <<EOF
+Commit blocked by repository precheck.
+
+Commits are allowed anytime on Saturday/Sunday Singapore time, and only
+from 20:00 onward Monday-Friday Singapore time.
+
+Current Singapore time: $sgt_now
+EOF
+
+exit 1
