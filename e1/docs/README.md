@@ -2,7 +2,8 @@
 
 E1 is the first complete example flow. It starts with TinyLlama, inspects
 StableHLO/MLIR output, plans the compiler passes through generated
-SystemVerilog, and begins the C++ chip model and device program.
+SystemVerilog, begins the C++ chip model and device program, and records one
+end-to-end smoke artifact for the current scaffold.
 
 ## Documents
 

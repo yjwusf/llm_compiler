@@ -395,25 +395,23 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
     inspection_out = output_dir / "03_stablehlo_inspection.json"
     systolic_ops = {"dot_general"}
     cpu_ops = set(ops) - systolic_ops
-    write_json(
-        inspection_out,
-        {
-            "operation_counts": dict(sorted(ops.items())),
-            "total_operations": sum(ops.values()),
-            "systolic_array_ops": sorted(systolic_ops & set(ops)),
-            "cpu_or_stream_ops": sorted(cpu_ops),
-            "tensor_types": tensor_types,
-            "unsupported_ops": [],
-            "answers": {
-                "dominant_operations": ["dot_general"],
-                "systolic_array_mapping": "stablehlo.dot_general maps to the E1-H1 systolic array command interface.",
-                "cpu_mapping": "gather, add, multiply, tanh, and control sequencing remain CPU/C++ model responsibilities in this scaffold.",
-                "sram_staging": "weights, activations, and accumulator tiles stage through configurable on-chip SRAM.",
-                "external_data_source": "Ethernet/RGMII ingress feeds on-chip SRAM; off-chip DRAM is not a source.",
-                "fallbacks": "No unsupported fixture operations require fallback.",
-            },
+    inspection = {
+        "operation_counts": dict(sorted(ops.items())),
+        "total_operations": sum(ops.values()),
+        "systolic_array_ops": sorted(systolic_ops & set(ops)),
+        "cpu_or_stream_ops": sorted(cpu_ops),
+        "tensor_types": tensor_types,
+        "unsupported_ops": [],
+        "answers": {
+            "dominant_operations": ["dot_general"],
+            "systolic_array_mapping": "stablehlo.dot_general maps to the E1-H1 systolic array command interface.",
+            "cpu_mapping": "gather, add, multiply, tanh, and control sequencing remain CPU/C++ model responsibilities in this scaffold.",
+            "sram_staging": "weights, activations, and accumulator tiles stage through configurable on-chip SRAM.",
+            "external_data_source": "Ethernet/RGMII ingress feeds on-chip SRAM; off-chip DRAM is not a source.",
+            "fallbacks": "No unsupported fixture operations require fallback.",
         },
-    )
+    }
+    write_json(inspection_out, inspection)
     passes.append({"pass": "e1_inspect_stablehlo", "artifact": repo_rel(inspection_out)})
 
     normalized_out = output_dir / "04_normalized_stablehlo.mlir"
@@ -567,6 +565,73 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
     )
     passes.append({"pass": "e1_package_targets", "artifact": repo_rel(target_out)})
 
+    e2e_out = output_dir / "13_end_to_end_smoke.json"
+    target_manifest_path = "e1/e1-h1/generated/targets/manifest.json"
+    generated_soc_top_exists = all(
+        (REPO_ROOT / path).exists()
+        for path in [
+            soc_top_artifacts["top"],
+            soc_top_artifacts["composition_manifest"],
+            soc_top_artifacts["interface_contracts"],
+        ]
+    )
+    target_package_exists = all(
+        (REPO_ROOT / path).exists()
+        for path in [
+            target_manifest_path,
+            target_manifest["fpga"]["filelist"],
+            target_manifest["fpga"]["constraints"],
+            target_manifest["fpga"]["script"],
+            target_manifest["openroad"]["filelist"],
+            target_manifest["openroad"]["constraints"],
+            target_manifest["openroad"]["config"],
+        ]
+    )
+    e2e_checks = [
+        {"name": "stablehlo_supported", "status": "pass" if not inspection["unsupported_ops"] else "fail"},
+        {"name": "e1_h1_binding", "status": "pass" if (REPO_ROOT / repo_rel(binding_out)).exists() else "fail"},
+        {"name": "device_program_run", "status": device_program_run["status"]},
+        {"name": "chip_model_run", "status": chip_model_run["status"]},
+        {"name": "generated_soc_top", "status": "pass" if generated_soc_top_exists else "fail"},
+        {"name": "target_package", "status": "pass" if target_package_exists else "fail"},
+    ]
+    e2e = {
+        "schema": "e1-end-to-end-smoke-v0",
+        "status": "pass" if all(check["status"] == "pass" for check in e2e_checks) else "fail",
+        "model_id": manifest["model_id"],
+        "architecture_id": architecture["architecture_id"],
+        "stablehlo": {
+            "source": repo_rel(stablehlo_out),
+            "export_report": repo_rel(stablehlo_report_out),
+            "inspection_report": repo_rel(inspection_out),
+            "normalized": repo_rel(normalized_out),
+            "unsupported_ops": inspection["unsupported_ops"],
+        },
+        "binding": repo_rel(binding_out),
+        "memory_plan": repo_rel(memory_out),
+        "device_program": {
+            "plan": repo_rel(device_out),
+            "run": repo_rel(output_dir / "07_device_program_run.json"),
+            "status": device_program_run["status"],
+            "program": "e1/code/program/e1_tinyllama_program.cpp",
+        },
+        "chip_model": {
+            "plan": repo_rel(chip_model_out),
+            "run": repo_rel(output_dir / "08_chip_model_run.json"),
+            "status": chip_model_run["status"],
+            "model": "e1/code/chip_model/e1_chip_model.hpp",
+        },
+        "l1_5_harness_plan": repo_rel(harness_out),
+        "hardware_graph": repo_rel(graph_out),
+        "systemverilog_plan": repo_rel(sv_out),
+        "generated_soc_top": soc_top_artifacts,
+        "target_package_plan": repo_rel(target_out),
+        "target_package": target_manifest_path,
+        "checks": e2e_checks,
+    }
+    write_json(e2e_out, e2e)
+    passes.append({"pass": "e1_end_to_end_smoke", "artifact": repo_rel(e2e_out)})
+
     summary_out = output_dir / "summary.json"
     summary = {
         "schema": "e1-pipeline-summary-v0",
@@ -578,6 +643,8 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
         "operation_counts": dict(sorted(ops.items())),
         "all_current_modules_have_l1_5_harnesses": all("l1_5_harness" in ip for ip in ip_manifests),
         "generated_top": "e1/e1-h1/generated/e1_h1_soc_top.sv",
+        "end_to_end_smoke": repo_rel(e2e_out),
+        "end_to_end_status": e2e["status"],
         "pipeline": architecture["pipeline"],
     }
     write_json(summary_out, summary)

@@ -1,6 +1,8 @@
 {
   "all_current_modules_have_l1_5_harnesses": true,
   "architecture_id": "e1-h1",
+  "end_to_end_smoke": "e1/generated/pipeline/13_end_to_end_smoke.json",
+  "end_to_end_status": "pass",
   "generated_top": "e1/e1-h1/generated/e1_h1_soc_top.sv",
   "model_id": "tinyllama-1.1b-chat-v1.0",
   "operation_counts": {
@@ -11,7 +13,7 @@
     "multiply": 2,
     "tanh": 1
   },
-  "pass_count": 12,
+  "pass_count": 13,
   "passes": [
     {
       "artifact": "e1/generated/pipeline/01_fetch_model.json",
@@ -60,6 +62,10 @@
     {
       "artifact": "e1/generated/pipeline/12_target_package_plan.json",
       "pass": "e1_package_targets"
+    },
+    {
+      "artifact": "e1/generated/pipeline/13_end_to_end_smoke.json",
+      "pass": "e1_end_to_end_smoke"
     }
   ],
   "pipeline": {

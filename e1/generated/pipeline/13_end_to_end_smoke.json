@@ -1,0 +1,63 @@
+{
+  "architecture_id": "e1-h1",
+  "binding": "e1/generated/pipeline/05_e1_h1_binding.json",
+  "checks": [
+    {
+      "name": "stablehlo_supported",
+      "status": "pass"
+    },
+    {
+      "name": "e1_h1_binding",
+      "status": "pass"
+    },
+    {
+      "name": "device_program_run",
+      "status": "pass"
+    },
+    {
+      "name": "chip_model_run",
+      "status": "pass"
+    },
+    {
+      "name": "generated_soc_top",
+      "status": "pass"
+    },
+    {
+      "name": "target_package",
+      "status": "pass"
+    }
+  ],
+  "chip_model": {
+    "model": "e1/code/chip_model/e1_chip_model.hpp",
+    "plan": "e1/generated/pipeline/08_chip_model_plan.json",
+    "run": "e1/generated/pipeline/08_chip_model_run.json",
+    "status": "pass"
+  },
+  "device_program": {
+    "plan": "e1/generated/pipeline/07_device_program_plan.json",
+    "program": "e1/code/program/e1_tinyllama_program.cpp",
+    "run": "e1/generated/pipeline/07_device_program_run.json",
+    "status": "pass"
+  },
+  "generated_soc_top": {
+    "composition_manifest": "e1/e1-h1/generated/e1_h1_soc_top_manifest.json",
+    "interface_contracts": "e1/e1-h1/generated/e1_h1_interface_contracts.json",
+    "top": "e1/e1-h1/generated/e1_h1_soc_top.sv"
+  },
+  "hardware_graph": "e1/generated/pipeline/10_hardware_graph.json",
+  "l1_5_harness_plan": "e1/generated/pipeline/09_l1_5_harness_plan.json",
+  "memory_plan": "e1/generated/pipeline/06_memory_plan.json",
+  "model_id": "tinyllama-1.1b-chat-v1.0",
+  "schema": "e1-end-to-end-smoke-v0",
+  "stablehlo": {
+    "export_report": "e1/generated/pipeline/02_stablehlo_export.json",
+    "inspection_report": "e1/generated/pipeline/03_stablehlo_inspection.json",
+    "normalized": "e1/generated/pipeline/04_normalized_stablehlo.mlir",
+    "source": "e1/generated/pipeline/02_stablehlo.mlir",
+    "unsupported_ops": []
+  },
+  "status": "pass",
+  "systemverilog_plan": "e1/generated/pipeline/11_systemverilog_plan.json",
+  "target_package": "e1/e1-h1/generated/targets/manifest.json",
+  "target_package_plan": "e1/generated/pipeline/12_target_package_plan.json"
+}

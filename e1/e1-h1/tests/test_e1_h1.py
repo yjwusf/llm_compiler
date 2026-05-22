@@ -568,16 +568,18 @@ class E1H1Tests(unittest.TestCase):
 
     def test_e1_pipeline_generates_e1_h1_artifacts(self) -> None:
         result = run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])
-        self.assertIn("PASS e1_pipeline 12 passes", result.stdout)
+        self.assertIn("PASS e1_pipeline 13 passes", result.stdout)
 
         summary = json.loads((E1_PIPELINE_OUT / "summary.json").read_text(encoding="utf-8"))
         self.assertEqual(summary["schema"], "e1-pipeline-summary-v0")
         self.assertEqual(summary["model_id"], "tinyllama-1.1b-chat-v1.0")
         self.assertEqual(summary["architecture_id"], "e1-h1")
-        self.assertEqual(summary["pass_count"], 12)
+        self.assertEqual(summary["pass_count"], 13)
         self.assertEqual(summary["operation_counts"]["dot_general"], 6)
         self.assertTrue(summary["all_current_modules_have_l1_5_harnesses"])
         self.assertEqual(summary["generated_top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
+        self.assertEqual(summary["end_to_end_smoke"], "e1/generated/pipeline/13_end_to_end_smoke.json")
+        self.assertEqual(summary["end_to_end_status"], "pass")
         self.assertEqual(summary["pipeline"]["cpu_to_accelerator_depth"], 1)
         self.assertEqual(summary["pipeline"]["array_input_depth"], 2)
         self.assertEqual(summary["pipeline"]["array_output_depth"], 2)
@@ -595,6 +597,7 @@ class E1H1Tests(unittest.TestCase):
             "e1_lower_to_hardware_graph",
             "e1_emit_systemverilog",
             "e1_package_targets",
+            "e1_end_to_end_smoke",
         ]
         self.assertEqual([entry["pass"] for entry in summary["passes"]], expected_passes)
 
@@ -703,6 +706,52 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(sv_plan["generated_interface_contracts"], "e1/e1-h1/generated/e1_h1_interface_contracts.json")
         self.assertEqual(sv_plan["pipeline_source"], "e1/e1-h1/config/architecture.json")
         self.assertEqual(sv_plan["pipeline"], summary["pipeline"])
+
+        e2e = json.loads((E1_PIPELINE_OUT / "13_end_to_end_smoke.json").read_text(encoding="utf-8"))
+        self.assertEqual(e2e["schema"], "e1-end-to-end-smoke-v0")
+        self.assertEqual(e2e["status"], "pass")
+        self.assertEqual(e2e["model_id"], summary["model_id"])
+        self.assertEqual(e2e["architecture_id"], summary["architecture_id"])
+        self.assertEqual(e2e["stablehlo"]["source"], "e1/generated/pipeline/02_stablehlo.mlir")
+        self.assertEqual(e2e["stablehlo"]["normalized"], "e1/generated/pipeline/04_normalized_stablehlo.mlir")
+        self.assertEqual(e2e["stablehlo"]["unsupported_ops"], [])
+        self.assertEqual(e2e["binding"], "e1/generated/pipeline/05_e1_h1_binding.json")
+        self.assertEqual(e2e["device_program"]["status"], "pass")
+        self.assertEqual(e2e["device_program"]["run"], "e1/generated/pipeline/07_device_program_run.json")
+        self.assertEqual(e2e["chip_model"]["status"], "pass")
+        self.assertEqual(e2e["chip_model"]["run"], "e1/generated/pipeline/08_chip_model_run.json")
+        self.assertEqual(e2e["generated_soc_top"]["top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
+        self.assertEqual(e2e["target_package"], "e1/e1-h1/generated/targets/manifest.json")
+        self.assertEqual({check["status"] for check in e2e["checks"]}, {"pass"})
+        self.assertEqual(
+            {check["name"] for check in e2e["checks"]},
+            {
+                "stablehlo_supported",
+                "e1_h1_binding",
+                "device_program_run",
+                "chip_model_run",
+                "generated_soc_top",
+                "target_package",
+            },
+        )
+        for artifact in [
+            e2e["stablehlo"]["source"],
+            e2e["stablehlo"]["export_report"],
+            e2e["stablehlo"]["inspection_report"],
+            e2e["stablehlo"]["normalized"],
+            e2e["binding"],
+            e2e["memory_plan"],
+            e2e["device_program"]["plan"],
+            e2e["device_program"]["run"],
+            e2e["chip_model"]["plan"],
+            e2e["chip_model"]["run"],
+            e2e["l1_5_harness_plan"],
+            e2e["hardware_graph"],
+            e2e["systemverilog_plan"],
+            e2e["target_package_plan"],
+            e2e["target_package"],
+        ]:
+            self.assertTrue((REPO_ROOT / artifact).exists(), artifact)
 
     def test_tinyllama_fetch_and_export_tools_have_offline_reports(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

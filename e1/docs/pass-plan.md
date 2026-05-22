@@ -46,6 +46,10 @@ hardware and device code.
 12. `e1_package_targets`
     - Input: SystemVerilog, C++ models, tests, and target config.
     - Output: FPGA package and ASIC/OpenROAD package.
+13. `e1_end_to_end_smoke`
+    - Input: all prior pass artifacts.
+    - Output: one evidence report tying StableHLO, E1-H1 binding, device code,
+      C++ chip model, generated SystemVerilog top, and target packages together.
 
 ## End State
 
@@ -58,6 +62,7 @@ E1 is complete when TinyLlama-derived reduced workloads can run through:
 - L1.5 hybrid runs for every module.
 - Module-local VIP manifests that target exactly one SystemVerilog module.
 - Generated SystemVerilog mocks.
+- End-to-end smoke evidence that references the exact artifacts used.
 - Verilator module tests.
 - FPGA and ASIC/OpenROAD packaging smoke tests.
 
