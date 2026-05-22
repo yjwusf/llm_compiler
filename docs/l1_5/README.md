@@ -48,6 +48,7 @@ Each module's L1.5 harness must document:
 
 - The SystemVerilog module under test.
 - Which C++ models replace its neighbors.
+- The module-local VIP manifest that targets only that module.
 - How clocks and resets are generated.
 - How input stimuli are produced.
 - How outputs are checked.
@@ -57,6 +58,10 @@ Each module's L1.5 harness must document:
 The harness must not depend on another SystemVerilog module being present. If a
 neighbor is needed for context, use the neighbor's C++ model or an explicit C++
 mock.
+
+Each VIP manifest must be module-local. Its `allowed_systemverilog_modules`
+list must contain exactly the DUT module, and all other behavior must be
+provided by the C++ environment named by the harness.
 
 ## Relationship To Other Docs
 

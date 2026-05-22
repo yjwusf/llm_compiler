@@ -446,6 +446,10 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
             "harnesses": {
                 ip["name"]: ip["l1_5_harness"]
                 for ip in ip_manifests
+            },
+            "module_vips": {
+                ip["name"]: ip["module_vip"]
+                for ip in ip_manifests
             }
         },
     )
@@ -468,6 +472,7 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
                     "subsystem": ip["subsystem"],
                     "rtl": ip["rtl"],
                     "spec": ip["spec"],
+                    "module_vip": ip["module_vip"],
                     "replaceable": ip["replaceable"],
                 }
                 for ip in ip_manifests

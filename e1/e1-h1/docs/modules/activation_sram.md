@@ -14,6 +14,8 @@ L1.5 hybrid run: `e1_h1_activation_sram_hybrid`
 
 L1.5 harness: `e1/e1-h1/l1_5/activation_sram.json`
 
+Module VIP: `e1/e1-h1/vip/activation_sram.json`
+
 ## Purpose
 
 Activation SRAM configuration placeholder. It preserves the replaceable SRAM
@@ -63,6 +65,12 @@ introduced.
 Only this RTL instance is instantiated through
 `e1/e1-h1/l1_5/activation_sram.json`. C++ provides reset, clocking, memory
 stimulus expectations, and counters.
+
+## Module VIP
+
+The module-local VIP is `e1/e1-h1/vip/activation_sram.json`. It allows only
+`e1_h1_config_sram` as the SystemVerilog DUT for this activation instance; reset
+and future activation memory behavior are C++ environment roles.
 
 ## C++ Performance Counters
 

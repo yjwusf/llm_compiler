@@ -87,6 +87,7 @@ def minimal_ip(name: str, order: int, ports: list[dict[str, object]]) -> dict[st
         "cpp_model": "e1/code/chip_model/e1_chip_model.*",
         "l1_5_hybrid": f"test_{name}_hybrid",
         "l1_5_harness": "e1/e1-h1/l1_5/control_cpu.json",
+        "module_vip": "e1/e1-h1/vip/control_cpu.json",
         "perf_counters": ["cycles"],
         "ports": ports,
     }
@@ -140,8 +141,10 @@ class E1H1Tests(unittest.TestCase):
             self.assertIn("cpp_model", data, path)
             self.assertIn("l1_5_hybrid", data, path)
             self.assertIn("l1_5_harness", data, path)
+            self.assertIn("module_vip", data, path)
             self.assertIn("perf_counters", data, path)
             self.assertTrue((REPO_ROOT / data["rtl"]).exists(), data["rtl"])
+            self.assertTrue((REPO_ROOT / data["module_vip"]).exists(), data["module_vip"])
             self.assertGreater(len(data["perf_counters"]), 0, path)
             self.assertGreater(len(data["ports"]), 0, path)
             for port in data["ports"]:
@@ -160,6 +163,7 @@ class E1H1Tests(unittest.TestCase):
             "## Mock Behavior",
             "## C++ Model Contract",
             "## L1.5 Hybrid Execution",
+            "## Module VIP",
             "## C++ Performance Counters",
             "## Tests",
         ]
@@ -173,6 +177,7 @@ class E1H1Tests(unittest.TestCase):
             self.assertIn(data["cpp_model"], text, spec_path)
             self.assertIn(data["l1_5_hybrid"], text, spec_path)
             self.assertIn(data["l1_5_harness"], text, spec_path)
+            self.assertIn(data["module_vip"], text, spec_path)
             for section in required_sections:
                 self.assertIn(section, text, spec_path)
             for port in data["ports"]:
@@ -190,10 +195,30 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual(harness["ip_manifest"], str(manifest.relative_to(REPO_ROOT)))
             self.assertEqual(harness["top_module"], ip["module"])
             self.assertEqual(harness["rtl"], ip["rtl"])
+            self.assertEqual(harness["module_vip"], ip["module_vip"])
             self.assertTrue((REPO_ROOT / ip["rtl"]).exists(), harness)
             self.assertTrue((REPO_ROOT / harness["cpp_testbench"]).exists(), harness)
+            self.assertTrue((REPO_ROOT / harness["module_vip"]).exists(), harness)
             self.assertGreater(len(harness["cpp_environment"]), 0, harness)
             self.assertEqual(harness["perf_counters"], ip["perf_counters"])
+
+    def test_module_vips_are_single_dut_contracts(self) -> None:
+        for manifest in sorted(IP_DIR.glob("*.json")):
+            ip = json.loads(manifest.read_text(encoding="utf-8"))
+            harness = json.loads((REPO_ROOT / ip["l1_5_harness"]).read_text(encoding="utf-8"))
+            vip_path = REPO_ROOT / ip["module_vip"]
+            vip = json.loads(vip_path.read_text(encoding="utf-8"))
+            self.assertEqual(vip["schema"], "e1-h1-module-vip-v0", vip_path)
+            self.assertEqual(vip["name"], ip["name"], vip_path)
+            self.assertEqual(vip["ip_manifest"], str(manifest.relative_to(REPO_ROOT)), vip_path)
+            self.assertEqual(vip["top_module"], ip["module"], vip_path)
+            self.assertEqual(vip["rtl"], ip["rtl"], vip_path)
+            self.assertEqual(vip["cpp_testbench"], harness["cpp_testbench"], vip_path)
+            self.assertEqual(vip["cpp_environment"], harness["cpp_environment"], vip_path)
+            self.assertEqual(vip["perf_counters"], ip["perf_counters"], vip_path)
+            self.assertEqual(vip["scope"]["kind"], "module_only", vip_path)
+            self.assertEqual(vip["scope"]["allowed_systemverilog_modules"], [ip["module"]], vip_path)
+            self.assertEqual(vip["scope"]["neighbors"], "cpp_environment", vip_path)
 
     def test_l1_5_hybrid_runs_each_ip_individually(self) -> None:
         harnesses = sorted(L1_5_DIR.glob("*.json"))
@@ -278,6 +303,7 @@ class E1H1Tests(unittest.TestCase):
             self.assertRegex(interface["signature_sha256"], r"^[0-9a-f]{64}$")
             self.assertTrue((REPO_ROOT / interface["spec"]).exists())
             self.assertTrue((REPO_ROOT / interface["l1_5_harness"]).exists())
+            self.assertTrue((REPO_ROOT / interface["module_vip"]).exists())
             self.assertEqual(interface["rtl_validation"]["status"], "pass")
             self.assertNotIn("implementation_module", interface_signature_payload(interface))
 
@@ -469,6 +495,15 @@ class E1H1Tests(unittest.TestCase):
         self.assertIn("accelerator_subsystem", {ip["subsystem"] for ip in hardware_graph["ips"]})
         for ip in hardware_graph["ips"]:
             self.assertTrue((REPO_ROOT / ip["rtl"]).exists(), ip)
+            self.assertTrue((REPO_ROOT / ip["module_vip"]).exists(), ip)
+
+        harness_plan = json.loads((E1_PIPELINE_OUT / "09_l1_5_harness_plan.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            set(harness_plan["module_vips"]),
+            {path.stem for path in IP_DIR.glob("*.json")},
+        )
+        for path in harness_plan["module_vips"].values():
+            self.assertTrue((REPO_ROOT / path).exists(), path)
 
         fetch = json.loads((E1_PIPELINE_OUT / "01_fetch_model.json").read_text(encoding="utf-8"))
         self.assertEqual(fetch["schema"], "e1-fetch-model-report-v0")

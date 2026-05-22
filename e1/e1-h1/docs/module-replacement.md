@@ -20,6 +20,11 @@ module name is recorded for build generation but is not part of the interface
 signature, so a replacement implementation can use a different module name when
 the manifest is updated without changing the stable interface.
 
+Each IP also points at a module-local VIP manifest under `e1/e1-h1/vip/`.
+The VIP manifest is not a multi-module integration test: it must allow exactly
+one SystemVerilog DUT, and all neighbors must be supplied by the C++ L1.5
+environment.
+
 ## Required Per-Module Interface Definition
 
 Each E1-H1 module must document:
@@ -27,6 +32,7 @@ Each E1-H1 module must document:
 - Input and output signals.
 - C++ model entry points.
 - L1.5 hybrid run command.
+- Module-local VIP manifest.
 - C++ performance counters.
 - Device-visible programming interface when applicable.
 - JSON fields that parameterize it.

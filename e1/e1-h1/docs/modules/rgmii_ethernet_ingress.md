@@ -14,6 +14,8 @@ L1.5 hybrid run: `e1_h1_rgmii_ethernet_ingress_hybrid`
 
 L1.5 harness: `e1/e1-h1/l1_5/rgmii_ethernet_ingress.json`
 
+Module VIP: `e1/e1-h1/vip/rgmii_ethernet_ingress.json`
+
 ## Purpose
 
 Digital-only Ethernet ingress boundary. It receives RGMII-side nibbles from an
@@ -67,6 +69,12 @@ backpressure, and error reporting.
 Only this RTL module is instantiated through
 `e1/e1-h1/l1_5/rgmii_ethernet_ingress.json`. C++ supplies RGMII stimulus,
 downstream consumer behavior, scoreboarding, and counters.
+
+## Module VIP
+
+The module-local VIP is `e1/e1-h1/vip/rgmii_ethernet_ingress.json`. It allows
+only `e1_h1_rgmii_ethernet_ingress` as the SystemVerilog DUT; external PHY
+stimulus and downstream stream consumption are C++ environment roles.
 
 ## C++ Performance Counters
 

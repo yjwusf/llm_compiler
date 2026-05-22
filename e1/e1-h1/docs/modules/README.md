@@ -15,5 +15,6 @@ Required sections:
 - Mock Behavior
 - C++ Model Contract
 - L1.5 Hybrid Execution
+- Module VIP
 - C++ Performance Counters
 - Tests

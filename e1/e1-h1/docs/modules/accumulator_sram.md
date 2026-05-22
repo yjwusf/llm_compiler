@@ -14,6 +14,8 @@ L1.5 hybrid run: `e1_h1_accumulator_sram_hybrid`
 
 L1.5 harness: `e1/e1-h1/l1_5/accumulator_sram.json`
 
+Module VIP: `e1/e1-h1/vip/accumulator_sram.json`
+
 ## Purpose
 
 Accumulator SRAM configuration placeholder. It preserves the replaceable SRAM
@@ -62,6 +64,12 @@ are introduced.
 Only this RTL instance is instantiated through
 `e1/e1-h1/l1_5/accumulator_sram.json`. C++ provides reset, clocking, memory
 stimulus expectations, and counters.
+
+## Module VIP
+
+The module-local VIP is `e1/e1-h1/vip/accumulator_sram.json`. It allows only
+`e1_h1_config_sram` as the SystemVerilog DUT for this accumulator instance;
+reset and future accumulator memory behavior are C++ environment roles.
 
 ## C++ Performance Counters
 

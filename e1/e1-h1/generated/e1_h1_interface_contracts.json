@@ -90,6 +90,7 @@
     {
       "implementation_module": "e1_h1_control_cpu",
       "l1_5_harness": "e1/e1-h1/l1_5/control_cpu.json",
+      "module_vip": "e1/e1-h1/vip/control_cpu.json",
       "name": "control_cpu",
       "parameters": [],
       "perf_counters": [
@@ -195,6 +196,7 @@
     {
       "implementation_module": "e1_h1_rgmii_ethernet_ingress",
       "l1_5_harness": "e1/e1-h1/l1_5/rgmii_ethernet_ingress.json",
+      "module_vip": "e1/e1-h1/vip/rgmii_ethernet_ingress.json",
       "name": "rgmii_ethernet_ingress",
       "parameters": [],
       "perf_counters": [
@@ -284,6 +286,7 @@
     {
       "implementation_module": "e1_h1_stream_sram",
       "l1_5_harness": "e1/e1-h1/l1_5/ingress_sram.json",
+      "module_vip": "e1/e1-h1/vip/ingress_sram.json",
       "name": "ingress_sram",
       "parameters": [
         {
@@ -384,6 +387,7 @@
     {
       "implementation_module": "e1_h1_config_sram",
       "l1_5_harness": "e1/e1-h1/l1_5/activation_sram.json",
+      "module_vip": "e1/e1-h1/vip/activation_sram.json",
       "name": "activation_sram",
       "parameters": [
         {
@@ -436,6 +440,7 @@
     {
       "implementation_module": "e1_h1_config_sram",
       "l1_5_harness": "e1/e1-h1/l1_5/accumulator_sram.json",
+      "module_vip": "e1/e1-h1/vip/accumulator_sram.json",
       "name": "accumulator_sram",
       "parameters": [
         {
@@ -488,6 +493,7 @@
     {
       "implementation_module": "e1_h1_systolic_array",
       "l1_5_harness": "e1/e1-h1/l1_5/systolic_array.json",
+      "module_vip": "e1/e1-h1/vip/systolic_array.json",
       "name": "systolic_array",
       "parameters": [
         {

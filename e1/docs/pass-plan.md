@@ -33,7 +33,7 @@ hardware and device code.
 9. `e1_generate_l1_5_harnesses`
    - Input: module specs and C++ chip model.
    - Output: one hybrid run per SystemVerilog module, with all other behavior
-     supplied by C++.
+     supplied by C++, plus a module-local VIP manifest for each DUT.
 10. `e1_lower_to_hardware_graph`
     - Input: architecture-bound MLIR and memory plan.
     - Output: hardware graph with stable module interfaces.
@@ -53,6 +53,7 @@ E1 is complete when TinyLlama-derived reduced workloads can run through:
 - C++ chip model execution.
 - Legible device program execution.
 - L1.5 hybrid runs for every module.
+- Module-local VIP manifests that target exactly one SystemVerilog module.
 - Generated SystemVerilog mocks.
 - Verilator module tests.
 - FPGA and ASIC/OpenROAD packaging smoke tests.

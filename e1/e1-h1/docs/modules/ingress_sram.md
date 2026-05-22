@@ -14,6 +14,8 @@ L1.5 hybrid run: `e1_h1_ingress_sram_hybrid`
 
 L1.5 harness: `e1/e1-h1/l1_5/ingress_sram.json`
 
+Module VIP: `e1/e1-h1/vip/ingress_sram.json`
+
 ## Purpose
 
 Ingress SRAM staging mock. It accepts Ethernet-ingested stream data and presents
@@ -71,6 +73,12 @@ ingress and array consumption.
 Only this RTL module is instantiated through
 `e1/e1-h1/l1_5/ingress_sram.json`. C++ supplies ingress stream producer, array
 stream consumer, memory expectations, and counters.
+
+## Module VIP
+
+The module-local VIP is `e1/e1-h1/vip/ingress_sram.json`. It allows only
+`e1_h1_stream_sram` as the SystemVerilog DUT; Ethernet producer and array
+consumer behavior are supplied by C++ environment models.
 
 ## C++ Performance Counters
 

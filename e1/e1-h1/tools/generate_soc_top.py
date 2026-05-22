@@ -33,6 +33,7 @@ class Ip:
     rtl: str
     spec: str
     l1_5_harness: str
+    module_vip: str
     perf_counters: list[str]
     parameters: dict[str, int]
     ports: list[Port]
@@ -87,6 +88,7 @@ def load_ips(ip_dir: Path) -> list[Ip]:
                 rtl=data["rtl"],
                 spec=data["spec"],
                 l1_5_harness=data["l1_5_harness"],
+                module_vip=data["module_vip"],
                 perf_counters=list(data["perf_counters"]),
                 parameters={k: int(v) for k, v in data.get("parameters", {}).items()},
                 ports=ports,
@@ -572,6 +574,7 @@ def generate_interface_contracts(architecture_path: Path, ip_dir: Path) -> dict[
                 "replaceable": ip.replaceable,
                 "spec": ip.spec,
                 "l1_5_harness": ip.l1_5_harness,
+                "module_vip": ip.module_vip,
                 "signature_sha256": interface_signature(ip),
             }
             for ip in ips

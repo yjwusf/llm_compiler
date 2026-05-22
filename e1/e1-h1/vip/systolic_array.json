@@ -1,16 +1,16 @@
 {
-  "schema": "e1-h1-l1_5-harness-v0",
+  "schema": "e1-h1-module-vip-v0",
   "name": "systolic_array",
   "ip_manifest": "e1/e1-h1/ip/systolic_array.json",
   "top_module": "e1_h1_systolic_array",
   "rtl": "e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv",
   "cpp_testbench": "e1/e1-h1/l1_5/systolic_array_tb.cpp",
-  "module_vip": "e1/e1-h1/vip/systolic_array.json",
-  "parameters": {
-    "ROWS": 16,
-    "COLS": 16,
-    "DATA_WIDTH": 16,
-    "ACCUMULATOR_WIDTH": 32
+  "scope": {
+    "kind": "module_only",
+    "allowed_systemverilog_modules": [
+      "e1_h1_systolic_array"
+    ],
+    "neighbors": "cpp_environment"
   },
   "cpp_environment": [
     "cpu_command_producer",

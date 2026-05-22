@@ -5,6 +5,7 @@
   "top_module": "e1_h1_config_sram",
   "rtl": "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv",
   "cpp_testbench": "e1/e1-h1/l1_5/config_sram_tb.cpp",
+  "module_vip": "e1/e1-h1/vip/accumulator_sram.json",
   "parameters": {
     "SIZE_BYTES": 524288,
     "DATA_WIDTH": 256,

@@ -14,6 +14,8 @@ L1.5 hybrid run: `e1_h1_systolic_array_hybrid`
 
 L1.5 harness: `e1/e1-h1/l1_5/systolic_array.json`
 
+Module VIP: `e1/e1-h1/vip/systolic_array.json`
+
 ## Purpose
 
 Gemmini-inspired systolic-array placeholder behind the E1-H1 stable command and
@@ -80,6 +82,12 @@ behavioral reference for command acceptance and completion counters.
 Only this RTL module is instantiated through
 `e1/e1-h1/l1_5/systolic_array.json`. C++ supplies command producer, input
 stream producer, completion checker, memory context, and counters.
+
+## Module VIP
+
+The module-local VIP is `e1/e1-h1/vip/systolic_array.json`. It allows only
+`e1_h1_systolic_array` as the SystemVerilog DUT; CPU command, input stream, and
+completion scoreboarding behavior are supplied by C++ environment models.
 
 ## C++ Performance Counters
 

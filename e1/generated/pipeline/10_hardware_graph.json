@@ -5,6 +5,7 @@
   "ips": [
     {
       "module": "e1_h1_control_cpu",
+      "module_vip": "e1/e1-h1/vip/control_cpu.json",
       "name": "control_cpu",
       "replaceable": true,
       "rtl": "e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv",
@@ -13,6 +14,7 @@
     },
     {
       "module": "e1_h1_rgmii_ethernet_ingress",
+      "module_vip": "e1/e1-h1/vip/rgmii_ethernet_ingress.json",
       "name": "rgmii_ethernet_ingress",
       "replaceable": true,
       "rtl": "e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv",
@@ -21,6 +23,7 @@
     },
     {
       "module": "e1_h1_stream_sram",
+      "module_vip": "e1/e1-h1/vip/ingress_sram.json",
       "name": "ingress_sram",
       "replaceable": true,
       "rtl": "e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv",
@@ -29,6 +32,7 @@
     },
     {
       "module": "e1_h1_config_sram",
+      "module_vip": "e1/e1-h1/vip/activation_sram.json",
       "name": "activation_sram",
       "replaceable": true,
       "rtl": "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv",
@@ -37,6 +41,7 @@
     },
     {
       "module": "e1_h1_config_sram",
+      "module_vip": "e1/e1-h1/vip/accumulator_sram.json",
       "name": "accumulator_sram",
       "replaceable": true,
       "rtl": "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv",
@@ -45,6 +50,7 @@
     },
     {
       "module": "e1_h1_systolic_array",
+      "module_vip": "e1/e1-h1/vip/systolic_array.json",
       "name": "systolic_array",
       "replaceable": true,
       "rtl": "e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv",

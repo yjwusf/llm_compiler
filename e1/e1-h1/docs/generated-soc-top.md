@@ -109,6 +109,8 @@ compatibility:
 - `ports` and `parameters` define the stable generated wiring boundary.
 - `architecture_validation` records architecture-owned SRAM and accelerator
   parameters that the manifests are required to mirror.
+- `module_vip` names the module-local VIP manifest that targets only that IP's
+  SystemVerilog module.
 - `perf_counters` define the required C++/L1.5 observation boundary.
 - `signature_sha256` changes when the stable interface payload changes.
 

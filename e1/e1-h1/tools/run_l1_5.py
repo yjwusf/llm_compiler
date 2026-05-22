@@ -85,6 +85,34 @@ def build_and_run(harness: dict[str, Any]) -> None:
         run([str(obj_dir / f"V{top_module}")])
 
 
+def validate_vip(harness: dict[str, Any]) -> None:
+    vip_path = repo_path(harness["module_vip"])
+    if not vip_path.exists():
+        raise FileNotFoundError(vip_path)
+    vip = load_json(vip_path)
+    if vip.get("schema") != "e1-h1-module-vip-v0":
+        raise ValueError(f"{vip_path}: unsupported VIP schema {vip.get('schema')!r}")
+
+    for key in ["name", "ip_manifest", "top_module", "rtl", "cpp_testbench"]:
+        if vip.get(key) != harness.get(key):
+            raise ValueError(
+                f"{vip_path}: VIP {key} {vip.get(key)!r} does not match harness {harness.get(key)!r}"
+            )
+    if vip.get("cpp_environment") != harness.get("cpp_environment"):
+        raise ValueError(f"{vip_path}: VIP C++ environment does not match harness")
+    if vip.get("perf_counters") != harness.get("perf_counters"):
+        raise ValueError(f"{vip_path}: VIP performance counters do not match harness")
+
+    scope = vip.get("scope", {})
+    if scope.get("kind") != "module_only":
+        raise ValueError(f"{vip_path}: VIP scope must be module_only")
+    allowed = scope.get("allowed_systemverilog_modules")
+    if allowed != [harness["top_module"]]:
+        raise ValueError(f"{vip_path}: VIP must allow exactly the harness top module")
+    if scope.get("neighbors") != "cpp_environment":
+        raise ValueError(f"{vip_path}: VIP neighbors must be supplied by cpp_environment")
+
+
 def validate_harness(harness: dict[str, Any]) -> None:
     required = [
         "schema",
@@ -93,6 +121,7 @@ def validate_harness(harness: dict[str, Any]) -> None:
         "top_module",
         "rtl",
         "cpp_testbench",
+        "module_vip",
         "cpp_environment",
         "perf_counters",
     ]
@@ -103,6 +132,7 @@ def validate_harness(harness: dict[str, Any]) -> None:
         raise ValueError(f"unsupported harness schema: {harness['schema']!r}")
     if len(harness["perf_counters"]) == 0:
         raise ValueError("perf_counters must not be empty")
+    validate_vip(harness)
 
 
 def main() -> int:
