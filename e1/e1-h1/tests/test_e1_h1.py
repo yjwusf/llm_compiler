@@ -255,6 +255,10 @@ class E1H1Tests(unittest.TestCase):
         self.assertIn("u_ingress_sram", actual)
         self.assertIn("u_systolic_array", actual)
         self.assertIn("Source of composition: e1/e1-h1/ip/*.json", actual)
+        self.assertIn("Pipeline source: e1/e1-h1/config/architecture.json", actual)
+        self.assertIn("cpu_to_accelerator_valid_q_0", actual)
+        self.assertIn("array_input_valid_q_1", actual)
+        self.assertIn("array_output_array_done_q_1", actual)
         self.assertEqual(actual_manifest["schema"], "e1-h1-soc-top-composition-v0")
         self.assertEqual(actual_manifest["style_reference"]["name"], "wujian100_open")
         self.assertEqual(
@@ -269,6 +273,23 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(
             {entry["name"] for entry in actual_manifest["architecture_validation"]["checks"]},
             {"ingress_sram", "activation_sram", "accumulator_sram", "systolic_array"},
+        )
+        self.assertEqual(actual_manifest["pipeline_validation"]["schema"], "e1-h1-pipeline-validation-v0")
+        pipeline_depths = {
+            entry["name"]: entry["depth"]
+            for entry in actual_manifest["pipeline_validation"]["checks"]
+        }
+        self.assertEqual(
+            pipeline_depths,
+            {
+                "cpu_to_accelerator": 1,
+                "array_input": 2,
+                "array_output": 2,
+            },
+        )
+        self.assertEqual(
+            {entry["status"] for entry in actual_manifest["pipeline_validation"]["checks"]},
+            {"pass"},
         )
         self.assertEqual(
             [subsystem["name"] for subsystem in actual_manifest["subsystems"]],
@@ -293,6 +314,7 @@ class E1H1Tests(unittest.TestCase):
             self.assertTrue(net["validation"]["has_load"], net["name"])
         self.assertEqual(actual_interfaces["schema"], "e1-h1-interface-contracts-v0")
         self.assertEqual(actual_interfaces["architecture_validation"], actual_manifest["architecture_validation"])
+        self.assertEqual(actual_interfaces["pipeline_validation"], actual_manifest["pipeline_validation"])
         self.assertEqual(actual_interfaces["source"], "e1/e1-h1/ip/*.json")
         self.assertEqual(
             {item["name"] for item in actual_interfaces["interfaces"]},
@@ -338,6 +360,82 @@ class E1H1Tests(unittest.TestCase):
                 json.loads(interfaces_out.read_text(encoding="utf-8")),
                 generator.generate_interface_contracts(ARCH, IP_DIR),
             )
+
+    def test_soc_top_generator_pipeline_depth_variants_lint(self) -> None:
+        verilator = shutil.which("verilator")
+        self.assertIsNotNone(verilator, "verilator is required for E1-H1 pipeline variant lint")
+        generator = load_generator()
+        ip_rtl = []
+        for manifest in sorted(IP_DIR.glob("*.json")):
+            ip = json.loads(manifest.read_text(encoding="utf-8"))
+            if ip["rtl"] not in ip_rtl:
+                ip_rtl.append(ip["rtl"])
+
+        variants = {
+            "shallow": {
+                "cpu_to_accelerator_depth": 0,
+                "array_input_depth": 0,
+                "array_output_depth": 0,
+            },
+            "deep": {
+                "cpu_to_accelerator_depth": 2,
+                "array_input_depth": 3,
+                "array_output_depth": 4,
+            },
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            for name, pipeline in variants.items():
+                arch = json.loads(ARCH.read_text(encoding="utf-8"))
+                arch["pipeline"].update(pipeline)
+                arch_handle = tempfile.NamedTemporaryFile(
+                    "w",
+                    encoding="utf-8",
+                    dir=ARCH.parent,
+                    prefix=f".{name}_",
+                    suffix=".json",
+                    delete=False,
+                )
+                arch_path = Path(arch_handle.name)
+                try:
+                    json.dump(arch, arch_handle, indent=2)
+                    arch_handle.write("\n")
+                    arch_handle.close()
+                    top_text = generator.generate(arch_path, IP_DIR)
+                    manifest = generator.generate_composition_manifest(arch_path, IP_DIR)
+                finally:
+                    if not arch_handle.closed:
+                        arch_handle.close()
+                    arch_path.unlink(missing_ok=True)
+
+                depths = {entry["name"]: entry["depth"] for entry in manifest["pipeline_validation"]["checks"]}
+                if name == "shallow":
+                    self.assertEqual(depths, {"cpu_to_accelerator": 0, "array_input": 0, "array_output": 0})
+                    self.assertIn(".cmd_valid_i(accel_cmd_valid)", top_text)
+                    self.assertNotIn("_valid_q_0", top_text)
+                else:
+                    self.assertEqual(depths, {"cpu_to_accelerator": 2, "array_input": 3, "array_output": 4})
+                    self.assertIn("cpu_to_accelerator_valid_q_1", top_text)
+                    self.assertIn("array_input_valid_q_2", top_text)
+                    self.assertIn("array_output_array_done_q_3", top_text)
+
+                top_out = tmp_path / f"{name}_e1_h1_soc_top.sv"
+                top_out.write_text(top_text, encoding="utf-8")
+                run([
+                    verilator,
+                    "--lint-only",
+                    "--sv",
+                    "-Wall",
+                    "-Wno-DECLFILENAME",
+                    "-Wno-UNUSEDSIGNAL",
+                    "-Wno-UNUSEDPARAM",
+                    "-Wno-MULTITOP",
+                    "--top-module",
+                    "e1_h1_soc_top",
+                    str(top_out),
+                    *ip_rtl,
+                ])
 
     def test_soc_top_generator_rejects_bad_net_roles(self) -> None:
         generator = load_generator()
@@ -456,6 +554,9 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(summary["operation_counts"]["dot_general"], 6)
         self.assertTrue(summary["all_current_modules_have_l1_5_harnesses"])
         self.assertEqual(summary["generated_top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
+        self.assertEqual(summary["pipeline"]["cpu_to_accelerator_depth"], 1)
+        self.assertEqual(summary["pipeline"]["array_input_depth"], 2)
+        self.assertEqual(summary["pipeline"]["array_output_depth"], 2)
 
         expected_passes = [
             "e1_fetch_model",
@@ -482,11 +583,15 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(binding["bindings"]["stablehlo.dot_general"], "systolic_array")
         self.assertEqual(binding["bindings"]["external_data"], "rgmii_ethernet_ingress")
 
+        memory_plan = json.loads((E1_PIPELINE_OUT / "06_memory_plan.json").read_text(encoding="utf-8"))
+        self.assertEqual(memory_plan["pipeline"], summary["pipeline"])
+
         hardware_graph = json.loads((E1_PIPELINE_OUT / "10_hardware_graph.json").read_text(encoding="utf-8"))
         self.assertEqual(hardware_graph["top"], "e1_h1_soc_top")
         self.assertEqual(hardware_graph["generator"], "e1/e1-h1/tools/generate_soc_top.py")
         self.assertEqual(hardware_graph["composition_manifest"], "e1/e1-h1/generated/e1_h1_soc_top_manifest.json")
         self.assertEqual(hardware_graph["interface_contracts"], "e1/e1-h1/generated/e1_h1_interface_contracts.json")
+        self.assertEqual(hardware_graph["pipeline"], summary["pipeline"])
         self.assertEqual(
             hardware_graph["subsystems"],
             ["cpu_subsystem", "io_subsystem", "memory_subsystem", "accelerator_subsystem"],
@@ -548,6 +653,8 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(sv_plan["generated_top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
         self.assertEqual(sv_plan["generated_composition_manifest"], "e1/e1-h1/generated/e1_h1_soc_top_manifest.json")
         self.assertEqual(sv_plan["generated_interface_contracts"], "e1/e1-h1/generated/e1_h1_interface_contracts.json")
+        self.assertEqual(sv_plan["pipeline_source"], "e1/e1-h1/config/architecture.json")
+        self.assertEqual(sv_plan["pipeline"], summary["pipeline"])
 
     def test_tinyllama_fetch_and_export_tools_have_offline_reports(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

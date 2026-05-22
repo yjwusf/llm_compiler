@@ -401,6 +401,7 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
         memory_out,
         {
             "sram": architecture["memory"]["sram"],
+            "pipeline": architecture["pipeline"],
             "tile_plan": {
                 "attention_qkv": {"rows": 16, "cols": 16, "depth": 16},
                 "mlp_up": {"rows": 16, "cols": 64, "depth": 16},
@@ -465,6 +466,7 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
             "composition_manifest": soc_top_artifacts["composition_manifest"],
             "interface_contracts": soc_top_artifacts["interface_contracts"],
             "subsystems": [item["name"] for item in architecture["soc_top"]["subsystems"]],
+            "pipeline": architecture["pipeline"],
             "ips": [
                 {
                     "name": ip["name"],
@@ -490,6 +492,8 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
             "generated_interface_contracts": soc_top_artifacts["interface_contracts"],
             "mock_rtl": sorted(repo_rel(path) for path in (e1_h1_dir / "rtl" / "ip").glob("*.sv")),
             "composition_source": "e1/e1-h1/ip/*.json",
+            "pipeline_source": "e1/e1-h1/config/architecture.json",
+            "pipeline": architecture["pipeline"],
         },
     )
     passes.append({"pass": "e1_emit_systemverilog", "artifact": repo_rel(sv_out)})
@@ -518,6 +522,7 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
         "operation_counts": dict(sorted(ops.items())),
         "all_current_modules_have_l1_5_harnesses": all("l1_5_harness" in ip for ip in ip_manifests),
         "generated_top": "e1/e1-h1/generated/e1_h1_soc_top.sv",
+        "pipeline": architecture["pipeline"],
     }
     write_json(summary_out, summary)
     return summary

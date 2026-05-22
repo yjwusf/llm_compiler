@@ -633,6 +633,79 @@
       "subsystem": "accelerator_subsystem"
     }
   ],
+  "pipeline_validation": {
+    "checks": [
+      {
+        "depth": 1,
+        "description": "Control CPU command path into the systolic array.",
+        "kind": "valid_ready_payload",
+        "name": "cpu_to_accelerator",
+        "payload": [
+          {
+            "name": "accel_cmd_input_addr",
+            "width": 32
+          },
+          {
+            "name": "accel_cmd_weight_addr",
+            "width": 32
+          },
+          {
+            "name": "accel_cmd_output_addr",
+            "width": 32
+          },
+          {
+            "name": "accel_cmd_rows",
+            "width": 16
+          },
+          {
+            "name": "accel_cmd_cols",
+            "width": 16
+          },
+          {
+            "name": "accel_cmd_depth",
+            "width": 16
+          }
+        ],
+        "ready": "accel_cmd_ready",
+        "status": "pass",
+        "valid": "accel_cmd_valid"
+      },
+      {
+        "depth": 2,
+        "description": "Ingress SRAM stream path into the systolic array.",
+        "kind": "valid_ready_payload",
+        "name": "array_input",
+        "payload": [
+          {
+            "name": "array_input_data",
+            "width": 64
+          }
+        ],
+        "ready": "array_input_ready",
+        "status": "pass",
+        "valid": "array_input_valid"
+      },
+      {
+        "depth": 2,
+        "description": "Systolic-array completion and error path back to the control CPU.",
+        "kind": "registered_signal_delay",
+        "name": "array_output",
+        "signals": [
+          {
+            "name": "array_done",
+            "width": 1
+          },
+          {
+            "name": "array_error",
+            "width": 1
+          }
+        ],
+        "status": "pass"
+      }
+    ],
+    "schema": "e1-h1-pipeline-validation-v0",
+    "source": "e1/e1-h1/config/architecture.json"
+  },
   "rule": "implementation modules are replaceable only when the interface signature stays constant",
   "schema": "e1-h1-interface-contracts-v0",
   "source": "e1/e1-h1/ip/*.json"

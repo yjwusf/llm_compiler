@@ -8,6 +8,12 @@
     "phy_boundary": "external",
     "stream_data_width": 64
   },
+  "pipeline": {
+    "array_input_depth": 2,
+    "array_output_depth": 2,
+    "cpu_to_accelerator_depth": 1,
+    "default_depth": 2
+  },
   "sram": [
     {
       "banks": 4,

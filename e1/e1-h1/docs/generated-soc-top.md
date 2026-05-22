@@ -39,10 +39,10 @@ The generator also emits:
 That JSON manifest records the same generated composition in reviewable data:
 top ports, internal nets, net endpoints, top/internal driver and load roles,
 RTL interface validation, architecture-to-IP parameter validation, subsystem
-grouping, and the Wujian100 style reference that the top is following. The
-interface contracts file records the stable replacement boundary for each IP and
-hashes the ports, parameters, connections, and performance counters that must
-remain compatible.
+grouping, architecture-driven pipeline validation, and the Wujian100 style
+reference that the top is following. The interface contracts file records the
+stable replacement boundary for each IP and hashes the ports, parameters,
+connections, and performance counters that must remain compatible.
 
 ## IP Manifests
 
@@ -82,6 +82,21 @@ source of truth. The generator validates that the SRAM manifests mirror
 `DATA_WIDTH`, and `ACCUMULATOR_WIDTH`. Any drift is a generator error rather
 than a review-time convention.
 
+The same architecture file owns generated pipeline depths. The top generator
+keeps logical IP manifest connections stable, then rewrites the physical top
+wiring to insert pipeline registers for:
+
+- `cpu_to_accelerator_depth`: valid/ready command and payload signals from the
+  control CPU to the systolic array.
+- `array_input_depth`: valid/ready input stream and data from ingress SRAM to
+  the systolic array.
+- `array_output_depth`: completion and error signals from the systolic array
+  back to the control CPU.
+
+Depth `0` emits direct logical wiring. Positive depths emit concrete
+SystemVerilog registers inside the generated top, so target packages and
+Verilator lint see the configured pipeline.
+
 ## Current Generated Top
 
 The current generated top is:
@@ -109,6 +124,8 @@ compatibility:
 - `ports` and `parameters` define the stable generated wiring boundary.
 - `architecture_validation` records architecture-owned SRAM and accelerator
   parameters that the manifests are required to mirror.
+- `pipeline_validation` records the architecture-owned pipeline depths and
+  logical nets that the generated top uses.
 - `module_vip` names the module-local VIP manifest that targets only that IP's
   SystemVerilog module.
 - `perf_counters` define the required C++/L1.5 observation boundary.

@@ -4,6 +4,7 @@
 // SoC top style: wujian100_open
 // SoC top reference: https://github.com/XUANTIE-RV/wujian100_open
 // Source of composition: e1/e1-h1/ip/*.json
+// Pipeline source: e1/e1-h1/config/architecture.json
 `default_nettype none
 
 module e1_h1_soc_top (
@@ -16,24 +17,123 @@ module e1_h1_soc_top (
   input logic rst_ni
 );
 
-  logic [15:0] accel_cmd_cols;
-  logic [15:0] accel_cmd_depth;
-  logic [31:0] accel_cmd_input_addr;
-  logic [31:0] accel_cmd_output_addr;
-  logic accel_cmd_ready;
-  logic [15:0] accel_cmd_rows;
-  logic accel_cmd_valid;
-  logic [31:0] accel_cmd_weight_addr;
-  logic array_done;
-  logic array_error;
-  logic [63:0] array_input_data;
-  logic array_input_ready;
-  logic array_input_valid;
+  logic [15:0] accel_cmd_cols_src;
+  logic [15:0] accel_cmd_cols_dst;
+  logic [15:0] accel_cmd_depth_src;
+  logic [15:0] accel_cmd_depth_dst;
+  logic [31:0] accel_cmd_input_addr_src;
+  logic [31:0] accel_cmd_input_addr_dst;
+  logic [31:0] accel_cmd_output_addr_src;
+  logic [31:0] accel_cmd_output_addr_dst;
+  logic accel_cmd_ready_src;
+  logic accel_cmd_ready_dst;
+  logic [15:0] accel_cmd_rows_src;
+  logic [15:0] accel_cmd_rows_dst;
+  logic accel_cmd_valid_src;
+  logic accel_cmd_valid_dst;
+  logic [31:0] accel_cmd_weight_addr_src;
+  logic [31:0] accel_cmd_weight_addr_dst;
+  logic array_done_src;
+  logic array_done_dst;
+  logic array_error_src;
+  logic array_error_dst;
+  logic [63:0] array_input_data_src;
+  logic [63:0] array_input_data_dst;
+  logic array_input_ready_src;
+  logic array_input_ready_dst;
+  logic array_input_valid_src;
+  logic array_input_valid_dst;
   logic [63:0] ingress_stream_data;
   logic ingress_stream_error;
   logic ingress_stream_last;
   logic ingress_stream_ready;
   logic ingress_stream_valid;
+
+  // Pipeline: cpu_to_accelerator, depth 1 from architecture.json.
+  logic [143:0] cpu_to_accelerator_payload_src;
+  logic [143:0] cpu_to_accelerator_payload_dst;
+  assign cpu_to_accelerator_payload_src = {accel_cmd_input_addr_src, accel_cmd_weight_addr_src, accel_cmd_output_addr_src, accel_cmd_rows_src, accel_cmd_cols_src, accel_cmd_depth_src};
+  assign {accel_cmd_input_addr_dst, accel_cmd_weight_addr_dst, accel_cmd_output_addr_dst, accel_cmd_rows_dst, accel_cmd_cols_dst, accel_cmd_depth_dst} = cpu_to_accelerator_payload_dst;
+  logic cpu_to_accelerator_valid_q_0;
+  logic [143:0] cpu_to_accelerator_payload_q_0;
+  logic cpu_to_accelerator_ready_stage_0;
+  logic cpu_to_accelerator_ready_stage_1;
+  assign cpu_to_accelerator_ready_stage_1 = accel_cmd_ready_dst;
+  assign cpu_to_accelerator_ready_stage_0 = !cpu_to_accelerator_valid_q_0 || cpu_to_accelerator_ready_stage_1;
+  assign accel_cmd_ready_src = cpu_to_accelerator_ready_stage_0;
+  assign accel_cmd_valid_dst = cpu_to_accelerator_valid_q_0;
+  assign cpu_to_accelerator_payload_dst = cpu_to_accelerator_payload_q_0;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      cpu_to_accelerator_valid_q_0 <= 1'b0;
+      cpu_to_accelerator_payload_q_0 <= '0;
+    end else begin
+      if (cpu_to_accelerator_ready_stage_0) begin
+        cpu_to_accelerator_valid_q_0 <= accel_cmd_valid_src;
+        cpu_to_accelerator_payload_q_0 <= cpu_to_accelerator_payload_src;
+      end
+    end
+  end
+
+  // Pipeline: array_input, depth 2 from architecture.json.
+  logic [63:0] array_input_payload_src;
+  logic [63:0] array_input_payload_dst;
+  assign array_input_payload_src = array_input_data_src;
+  assign array_input_data_dst = array_input_payload_dst;
+  logic array_input_valid_q_0;
+  logic [63:0] array_input_payload_q_0;
+  logic array_input_valid_q_1;
+  logic [63:0] array_input_payload_q_1;
+  logic array_input_ready_stage_0;
+  logic array_input_ready_stage_1;
+  logic array_input_ready_stage_2;
+  assign array_input_ready_stage_2 = array_input_ready_dst;
+  assign array_input_ready_stage_0 = !array_input_valid_q_0 || array_input_ready_stage_1;
+  assign array_input_ready_stage_1 = !array_input_valid_q_1 || array_input_ready_stage_2;
+  assign array_input_ready_src = array_input_ready_stage_0;
+  assign array_input_valid_dst = array_input_valid_q_1;
+  assign array_input_payload_dst = array_input_payload_q_1;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      array_input_valid_q_0 <= 1'b0;
+      array_input_payload_q_0 <= '0;
+      array_input_valid_q_1 <= 1'b0;
+      array_input_payload_q_1 <= '0;
+    end else begin
+      if (array_input_ready_stage_0) begin
+        array_input_valid_q_0 <= array_input_valid_src;
+        array_input_payload_q_0 <= array_input_payload_src;
+      end
+      if (array_input_ready_stage_1) begin
+        array_input_valid_q_1 <= array_input_valid_q_0;
+        array_input_payload_q_1 <= array_input_payload_q_0;
+      end
+    end
+  end
+
+  // Pipeline: array_output, depth 2 from architecture.json.
+  logic array_output_array_done_q_0;
+  logic array_output_array_done_q_1;
+  logic array_output_array_error_q_0;
+  logic array_output_array_error_q_1;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      array_output_array_done_q_0 <= '0;
+      array_output_array_done_q_1 <= '0;
+      array_output_array_error_q_0 <= '0;
+      array_output_array_error_q_1 <= '0;
+    end else begin
+      array_output_array_done_q_0 <= array_done_src;
+      array_output_array_done_q_1 <= array_output_array_done_q_0;
+      array_output_array_error_q_0 <= array_error_src;
+      array_output_array_error_q_1 <= array_output_array_error_q_0;
+    end
+  end
+  assign array_done_dst = array_output_array_done_q_1;
+  assign array_error_dst = array_output_array_error_q_1;
 
   // Subsystem: cpu_subsystem
   // Bare-metal control island that owns command issue and accelerator status handling.
@@ -42,16 +142,16 @@ module e1_h1_soc_top (
   e1_h1_control_cpu u_control_cpu (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
-    .cmd_valid_o(accel_cmd_valid),
-    .cmd_ready_i(accel_cmd_ready),
-    .cmd_input_addr_o(accel_cmd_input_addr),
-    .cmd_weight_addr_o(accel_cmd_weight_addr),
-    .cmd_output_addr_o(accel_cmd_output_addr),
-    .cmd_rows_o(accel_cmd_rows),
-    .cmd_cols_o(accel_cmd_cols),
-    .cmd_depth_o(accel_cmd_depth),
-    .array_done_i(array_done),
-    .array_error_i(array_error),
+    .cmd_valid_o(accel_cmd_valid_src),
+    .cmd_ready_i(accel_cmd_ready_src),
+    .cmd_input_addr_o(accel_cmd_input_addr_src),
+    .cmd_weight_addr_o(accel_cmd_weight_addr_src),
+    .cmd_output_addr_o(accel_cmd_output_addr_src),
+    .cmd_rows_o(accel_cmd_rows_src),
+    .cmd_cols_o(accel_cmd_cols_src),
+    .cmd_depth_o(accel_cmd_depth_src),
+    .array_done_i(array_done_dst),
+    .array_error_i(array_error_dst),
     .debug_halted_o(debug_halted_o)
   );
 
@@ -88,9 +188,9 @@ module e1_h1_soc_top (
     .stream_data_i(ingress_stream_data),
     .stream_last_i(ingress_stream_last),
     .stream_error_i(ingress_stream_error),
-    .array_valid_o(array_input_valid),
-    .array_ready_i(array_input_ready),
-    .array_data_o(array_input_data)
+    .array_valid_o(array_input_valid_src),
+    .array_ready_i(array_input_ready_src),
+    .array_data_o(array_input_data_src)
   );
 
   // Configurable on-chip SRAM for activation tiles.
@@ -125,19 +225,19 @@ module e1_h1_soc_top (
   ) u_systolic_array (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
-    .cmd_valid_i(accel_cmd_valid),
-    .cmd_ready_o(accel_cmd_ready),
-    .cmd_input_addr_i(accel_cmd_input_addr),
-    .cmd_weight_addr_i(accel_cmd_weight_addr),
-    .cmd_output_addr_i(accel_cmd_output_addr),
-    .cmd_rows_i(accel_cmd_rows),
-    .cmd_cols_i(accel_cmd_cols),
-    .cmd_depth_i(accel_cmd_depth),
-    .input_valid_i(array_input_valid),
-    .input_ready_o(array_input_ready),
-    .input_data_i(array_input_data),
-    .done_o(array_done),
-    .error_o(array_error),
+    .cmd_valid_i(accel_cmd_valid_dst),
+    .cmd_ready_o(accel_cmd_ready_dst),
+    .cmd_input_addr_i(accel_cmd_input_addr_dst),
+    .cmd_weight_addr_i(accel_cmd_weight_addr_dst),
+    .cmd_output_addr_i(accel_cmd_output_addr_dst),
+    .cmd_rows_i(accel_cmd_rows_dst),
+    .cmd_cols_i(accel_cmd_cols_dst),
+    .cmd_depth_i(accel_cmd_depth_dst),
+    .input_valid_i(array_input_valid_dst),
+    .input_ready_o(array_input_ready_dst),
+    .input_data_i(array_input_data_dst),
+    .done_o(array_done_src),
+    .error_o(array_error_src),
     .debug_busy_o(debug_array_busy_o)
   );
 

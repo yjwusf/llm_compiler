@@ -62,6 +62,12 @@
       "pass": "e1_package_targets"
     }
   ],
+  "pipeline": {
+    "array_input_depth": 2,
+    "array_output_depth": 2,
+    "cpu_to_accelerator_depth": 1,
+    "default_depth": 2
+  },
   "schema": "e1-pipeline-summary-v0",
   "stablehlo_fixture": "e1/fixtures/stablehlo/tinyllama_block.mlir"
 }

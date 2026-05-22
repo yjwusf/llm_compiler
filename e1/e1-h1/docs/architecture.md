@@ -89,6 +89,12 @@ the configured SRAM `size_bytes`, `data_width`, and `banks`, and that the
 width, and accumulator width. Reviews should change the architecture JSON first,
 then regenerate and review the IP manifests and generated artifacts together.
 
+Pipeline depths are also owned by the architecture JSON. The generated top
+inserts architecture-driven pipeline registers on the CPU-to-accelerator command
+path, the ingress-SRAM-to-array input stream, and the array completion/error
+path. Tests generate and lint shallow, default, and deep pipeline settings so
+pipeline length remains configurable without changing IP interfaces.
+
 ## Target Packages
 
 E1-H1 emits initial FPGA and ASIC/OpenROAD smoke packages from the same

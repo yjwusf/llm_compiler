@@ -23,7 +23,8 @@ hardware and device code.
      systolic-array resources.
 6. `e1_plan_memory`
    - Input: bound operations and E1-H1 SRAM configuration.
-   - Output: on-chip SRAM allocation, tile plan, and movement schedule.
+   - Output: on-chip SRAM allocation, tile plan, movement schedule, and
+     architecture-owned pipeline depths.
 7. `e1_plan_device_program`
    - Input: operation binding and memory plan.
    - Output: legible device program under `e1/code/program/`.
@@ -39,7 +40,8 @@ hardware and device code.
     - Output: hardware graph with stable module interfaces.
 11. `e1_emit_systemverilog`
     - Input: hardware graph.
-    - Output: mocked or real SystemVerilog modules.
+    - Output: mocked or real SystemVerilog modules and generated top-level
+      pipeline registers from the architecture JSON.
 12. `e1_package_targets`
     - Input: SystemVerilog, C++ models, tests, and target config.
     - Output: FPGA package and ASIC/OpenROAD package.

@@ -9,5 +9,12 @@
     "e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv",
     "e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv",
     "e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv"
-  ]
+  ],
+  "pipeline": {
+    "array_input_depth": 2,
+    "array_output_depth": 2,
+    "cpu_to_accelerator_depth": 1,
+    "default_depth": 2
+  },
+  "pipeline_source": "e1/e1-h1/config/architecture.json"
 }

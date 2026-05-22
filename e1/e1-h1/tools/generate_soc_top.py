@@ -53,6 +53,47 @@ class RtlModule:
     ports: dict[str, RtlPort]
 
 
+VALID_READY_PIPELINES: tuple[dict[str, Any], ...] = (
+    {
+        "name": "cpu_to_accelerator",
+        "depth_key": "cpu_to_accelerator_depth",
+        "description": "Control CPU command path into the systolic array.",
+        "valid": "accel_cmd_valid",
+        "ready": "accel_cmd_ready",
+        "payload": (
+            ("accel_cmd_input_addr", 32),
+            ("accel_cmd_weight_addr", 32),
+            ("accel_cmd_output_addr", 32),
+            ("accel_cmd_rows", 16),
+            ("accel_cmd_cols", 16),
+            ("accel_cmd_depth", 16),
+        ),
+    },
+    {
+        "name": "array_input",
+        "depth_key": "array_input_depth",
+        "description": "Ingress SRAM stream path into the systolic array.",
+        "valid": "array_input_valid",
+        "ready": "array_input_ready",
+        "payload": (
+            ("array_input_data", 64),
+        ),
+    },
+)
+
+SIMPLE_SIGNAL_PIPELINES: tuple[dict[str, Any], ...] = (
+    {
+        "name": "array_output",
+        "depth_key": "array_output_depth",
+        "description": "Systolic-array completion and error path back to the control CPU.",
+        "signals": (
+            ("array_done", 1),
+            ("array_error", 1),
+        ),
+    },
+)
+
+
 def load_json(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
@@ -333,6 +374,94 @@ def validate_architecture_bindings(arch: dict[str, Any], ips: list[Ip]) -> dict[
     }
 
 
+def pipeline_depths(arch: dict[str, Any]) -> dict[str, int]:
+    pipeline = arch.get("pipeline", {})
+    default_depth = int(pipeline.get("default_depth", 0))
+    if default_depth < 0:
+        raise ValueError("architecture pipeline default_depth must be non-negative")
+
+    depths: dict[str, int] = {}
+    for item in [*VALID_READY_PIPELINES, *SIMPLE_SIGNAL_PIPELINES]:
+        key = item["depth_key"]
+        depth = int(pipeline.get(key, default_depth))
+        if depth < 0:
+            raise ValueError(f"architecture pipeline {key} must be non-negative")
+        depths[item["name"]] = depth
+    return depths
+
+
+def validate_pipeline_bindings(arch: dict[str, Any], ips: list[Ip]) -> dict[str, Any]:
+    depths = pipeline_depths(arch)
+    nets = collect_nets(ips)
+    checks: list[dict[str, Any]] = []
+
+    for item in VALID_READY_PIPELINES:
+        expected = {
+            item["valid"]: 1,
+            item["ready"]: 1,
+            **{name: width for name, width in item["payload"]},
+        }
+        missing = sorted(name for name in expected if name not in nets)
+        mismatched = {
+            name: {"architecture": width, "manifest": nets.get(name)}
+            for name, width in expected.items()
+            if name in nets and nets[name] != width
+        }
+        if missing or mismatched:
+            details: dict[str, Any] = {}
+            if missing:
+                details["missing"] = missing
+            if mismatched:
+                details["mismatched"] = mismatched
+            raise ValueError(f"{item['name']}: architecture pipeline nets mismatch {details}")
+
+        checks.append(
+            {
+                "name": item["name"],
+                "kind": "valid_ready_payload",
+                "depth": depths[item["name"]],
+                "description": item["description"],
+                "valid": item["valid"],
+                "ready": item["ready"],
+                "payload": [{"name": name, "width": width} for name, width in item["payload"]],
+                "status": "pass",
+            }
+        )
+
+    for item in SIMPLE_SIGNAL_PIPELINES:
+        expected = {name: width for name, width in item["signals"]}
+        missing = sorted(name for name in expected if name not in nets)
+        mismatched = {
+            name: {"architecture": width, "manifest": nets.get(name)}
+            for name, width in expected.items()
+            if name in nets and nets[name] != width
+        }
+        if missing or mismatched:
+            details = {}
+            if missing:
+                details["missing"] = missing
+            if mismatched:
+                details["mismatched"] = mismatched
+            raise ValueError(f"{item['name']}: architecture pipeline nets mismatch {details}")
+
+        checks.append(
+            {
+                "name": item["name"],
+                "kind": "registered_signal_delay",
+                "depth": depths[item["name"]],
+                "description": item["description"],
+                "signals": [{"name": name, "width": width} for name, width in item["signals"]],
+                "status": "pass",
+            }
+        )
+
+    return {
+        "schema": "e1-h1-pipeline-validation-v0",
+        "source": "e1/e1-h1/config/architecture.json",
+        "checks": checks,
+    }
+
+
 def collect_top_ports(ips: list[Ip]) -> dict[str, tuple[str, int]]:
     top_ports: dict[str, tuple[str, int]] = {}
     for ip in ips:
@@ -427,7 +556,146 @@ def subsystem_descriptions(arch: dict[str, Any]) -> dict[str, str]:
     }
 
 
-def emit_instance(ip: Ip) -> list[str]:
+def pipeline_active_for_net(name: str, depths: dict[str, int]) -> bool:
+    for item in VALID_READY_PIPELINES:
+        if depths[item["name"]] == 0:
+            continue
+        if name in {item["valid"], item["ready"]} or name in {payload[0] for payload in item["payload"]}:
+            return True
+    for item in SIMPLE_SIGNAL_PIPELINES:
+        if depths[item["name"]] == 0:
+            continue
+        if name in {signal[0] for signal in item["signals"]}:
+            return True
+    return False
+
+
+def physical_signal_name(port: Port, depths: dict[str, int]) -> str:
+    if port.connect.startswith("top."):
+        return signal_name(port.connect)
+    logical = signal_name(port.connect)
+
+    for item in VALID_READY_PIPELINES:
+        if depths[item["name"]] == 0:
+            continue
+        payload_nets = {name for name, _width in item["payload"]}
+        if logical == item["valid"] or logical in payload_nets:
+            return f"{logical}_src" if port.direction == "output" else f"{logical}_dst"
+        if logical == item["ready"]:
+            return f"{logical}_dst" if port.direction == "output" else f"{logical}_src"
+
+    for item in SIMPLE_SIGNAL_PIPELINES:
+        if depths[item["name"]] == 0:
+            continue
+        if logical in {name for name, _width in item["signals"]}:
+            return f"{logical}_src" if port.direction == "output" else f"{logical}_dst"
+
+    return logical
+
+
+def emit_net_declarations(nets: dict[str, int], depths: dict[str, int]) -> list[str]:
+    lines: list[str] = []
+    for name, width in sorted(nets.items()):
+        if pipeline_active_for_net(name, depths):
+            lines.append(f"  logic {sv_width(width)}{name}_src;")
+            lines.append(f"  logic {sv_width(width)}{name}_dst;")
+        else:
+            lines.append(f"  logic {sv_width(width)}{name};")
+    return lines
+
+
+def emit_valid_ready_pipeline(item: dict[str, Any], depth: int) -> list[str]:
+    name = item["name"]
+    valid = item["valid"]
+    ready = item["ready"]
+    payload = list(item["payload"])
+    payload_width = sum(width for _net, width in payload)
+    payload_names = ", ".join(f"{net}_src" for net, _width in payload)
+    payload_dst_names = ", ".join(f"{net}_dst" for net, _width in payload)
+    payload_src_expr = f"{{{payload_names}}}" if len(payload) > 1 else f"{payload[0][0]}_src"
+    payload_dst_expr = f"{{{payload_dst_names}}}" if len(payload) > 1 else f"{payload[0][0]}_dst"
+
+    lines = [
+        f"  // Pipeline: {name}, depth {depth} from architecture.json.",
+        f"  logic {sv_width(payload_width)}{name}_payload_src;",
+        f"  logic {sv_width(payload_width)}{name}_payload_dst;",
+        f"  assign {name}_payload_src = {payload_src_expr};",
+        f"  assign {payload_dst_expr} = {name}_payload_dst;",
+    ]
+    for index in range(depth):
+        lines.append(f"  logic {name}_valid_q_{index};")
+        lines.append(f"  logic {sv_width(payload_width)}{name}_payload_q_{index};")
+    for index in range(depth + 1):
+        lines.append(f"  logic {name}_ready_stage_{index};")
+
+    lines.append(f"  assign {name}_ready_stage_{depth} = {ready}_dst;")
+    for index in range(depth):
+        lines.append(
+            f"  assign {name}_ready_stage_{index} = !{name}_valid_q_{index} || {name}_ready_stage_{index + 1};"
+        )
+    lines.append(f"  assign {ready}_src = {name}_ready_stage_0;")
+    lines.append(f"  assign {valid}_dst = {name}_valid_q_{depth - 1};")
+    lines.append(f"  assign {name}_payload_dst = {name}_payload_q_{depth - 1};")
+    lines.append("")
+    lines.append("  always_ff @(posedge clk_i or negedge rst_ni) begin")
+    lines.append("    if (!rst_ni) begin")
+    for index in range(depth):
+        lines.append(f"      {name}_valid_q_{index} <= 1'b0;")
+        lines.append(f"      {name}_payload_q_{index} <= '0;")
+    lines.append("    end else begin")
+    for index in range(depth):
+        input_valid = f"{valid}_src" if index == 0 else f"{name}_valid_q_{index - 1}"
+        input_payload = f"{name}_payload_src" if index == 0 else f"{name}_payload_q_{index - 1}"
+        lines.append(f"      if ({name}_ready_stage_{index}) begin")
+        lines.append(f"        {name}_valid_q_{index} <= {input_valid};")
+        lines.append(f"        {name}_payload_q_{index} <= {input_payload};")
+        lines.append("      end")
+    lines.append("    end")
+    lines.append("  end")
+    lines.append("")
+    return lines
+
+
+def emit_simple_signal_pipeline(item: dict[str, Any], depth: int) -> list[str]:
+    name = item["name"]
+    signals = list(item["signals"])
+    lines = [f"  // Pipeline: {name}, depth {depth} from architecture.json."]
+    for signal, width in signals:
+        for index in range(depth):
+            lines.append(f"  logic {sv_width(width)}{name}_{signal}_q_{index};")
+    lines.append("")
+    lines.append("  always_ff @(posedge clk_i or negedge rst_ni) begin")
+    lines.append("    if (!rst_ni) begin")
+    for signal, _width in signals:
+        for index in range(depth):
+            lines.append(f"      {name}_{signal}_q_{index} <= '0;")
+    lines.append("    end else begin")
+    for signal, _width in signals:
+        for index in range(depth):
+            input_signal = f"{signal}_src" if index == 0 else f"{name}_{signal}_q_{index - 1}"
+            lines.append(f"      {name}_{signal}_q_{index} <= {input_signal};")
+    lines.append("    end")
+    lines.append("  end")
+    for signal, _width in signals:
+        lines.append(f"  assign {signal}_dst = {name}_{signal}_q_{depth - 1};")
+    lines.append("")
+    return lines
+
+
+def emit_pipeline_logic(depths: dict[str, int]) -> list[str]:
+    lines: list[str] = []
+    for item in VALID_READY_PIPELINES:
+        depth = depths[item["name"]]
+        if depth > 0:
+            lines.extend(emit_valid_ready_pipeline(item, depth))
+    for item in SIMPLE_SIGNAL_PIPELINES:
+        depth = depths[item["name"]]
+        if depth > 0:
+            lines.extend(emit_simple_signal_pipeline(item, depth))
+    return lines
+
+
+def emit_instance(ip: Ip, depths: dict[str, int]) -> list[str]:
     lines: list[str] = []
     if ip.description:
         lines.append(f"  // {ip.description}")
@@ -442,7 +710,7 @@ def emit_instance(ip: Ip) -> list[str]:
         lines.append(f"  {ip.module} u_{ip.name} (")
     for index, port in enumerate(ip.ports):
         comma = "," if index < len(ip.ports) - 1 else ""
-        lines.append(f"    .{port.name}({signal_name(port.connect)}){comma}")
+        lines.append(f"    .{port.name}({physical_signal_name(port, depths)}){comma}")
     lines.append("  );")
     lines.append("")
     return lines
@@ -453,10 +721,12 @@ def generate(architecture_path: Path, ip_dir: Path) -> str:
     ips = load_ips(ip_dir)
     top_ports = collect_top_ports(ips)
     nets = collect_nets(ips)
+    depths = pipeline_depths(arch)
     validate_top_port_connectivity(ips)
     validate_net_connectivity(ips)
     validate_rtl_interfaces(repo_root_from_architecture(architecture_path), ips)
     validate_architecture_bindings(arch, ips)
+    validate_pipeline_bindings(arch, ips)
     subsystems = subsystem_descriptions(arch)
     style_reference = arch.get("soc_top", {}).get("style_reference", {})
 
@@ -467,6 +737,7 @@ def generate(architecture_path: Path, ip_dir: Path) -> str:
         f"// SoC top style: {style_reference.get('name', 'manifest_driven')}",
         f"// SoC top reference: {style_reference.get('url', 'local')}",
         "// Source of composition: e1/e1-h1/ip/*.json",
+        "// Pipeline source: e1/e1-h1/config/architecture.json",
         "`default_nettype none",
         "",
         f"module {module_name(arch)} (",
@@ -479,9 +750,9 @@ def generate(architecture_path: Path, ip_dir: Path) -> str:
     lines.append(");")
     lines.append("")
 
-    for name, width in sorted(nets.items()):
-        lines.append(f"  logic {sv_width(width)}{name};")
+    lines.extend(emit_net_declarations(nets, depths))
     lines.append("")
+    lines.extend(emit_pipeline_logic(depths))
 
     current_subsystem = None
     for ip in ips:
@@ -490,7 +761,7 @@ def generate(architecture_path: Path, ip_dir: Path) -> str:
             lines.append(f"  // Subsystem: {ip.subsystem}")
             lines.append(f"  // {subsystems.get(ip.subsystem, 'Manifest-defined subsystem.')}")
             lines.append("")
-        lines.extend(emit_instance(ip))
+        lines.extend(emit_instance(ip, depths))
 
     lines.append("endmodule")
     lines.append("")
@@ -559,10 +830,12 @@ def generate_interface_contracts(architecture_path: Path, ip_dir: Path) -> dict[
     validate_net_connectivity(ips)
     rtl_validation = validate_rtl_interfaces(repo_root_from_architecture(architecture_path), ips)
     architecture_validation = validate_architecture_bindings(arch, ips)
+    pipeline_validation = validate_pipeline_bindings(arch, ips)
     return {
         "schema": "e1-h1-interface-contracts-v0",
         "architecture_id": arch["architecture_id"],
         "architecture_validation": architecture_validation,
+        "pipeline_validation": pipeline_validation,
         "source": "e1/e1-h1/ip/*.json",
         "rule": "implementation modules are replaceable only when the interface signature stays constant",
         "interfaces": [
@@ -591,6 +864,7 @@ def generate_composition_manifest(architecture_path: Path, ip_dir: Path) -> dict
     validate_net_connectivity(ips)
     rtl_validation = validate_rtl_interfaces(repo_root_from_architecture(architecture_path), ips)
     architecture_validation = validate_architecture_bindings(arch, ips)
+    pipeline_validation = validate_pipeline_bindings(arch, ips)
     descriptions = subsystem_descriptions(arch)
     declared_subsystems = [
         item["name"]
@@ -618,6 +892,7 @@ def generate_composition_manifest(architecture_path: Path, ip_dir: Path) -> dict
         "style_reference": arch.get("soc_top", {}).get("style_reference", {}),
         "generation": arch.get("soc_top", {}).get("generation", {}),
         "architecture_validation": architecture_validation,
+        "pipeline_validation": pipeline_validation,
         "rtl_validation": [
             {
                 "name": name,

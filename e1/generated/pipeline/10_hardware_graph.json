@@ -58,6 +58,12 @@
       "subsystem": "accelerator_subsystem"
     }
   ],
+  "pipeline": {
+    "array_input_depth": 2,
+    "array_output_depth": 2,
+    "cpu_to_accelerator_depth": 1,
+    "default_depth": 2
+  },
   "subsystems": [
     "cpu_subsystem",
     "io_subsystem",
