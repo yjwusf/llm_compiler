@@ -1,0 +1,25 @@
+{
+  "schema": "e1-h1-ip-v0",
+  "name": "control_cpu",
+  "module": "e1_h1_control_cpu",
+  "layer": "l1",
+  "order": 10,
+  "description": "Barebones 3-wide control CPU placeholder that programs the systolic array through a stable command interface.",
+  "reference": "https://github.com/openhwgroup/core-et",
+  "replaceable": true,
+  "ports": [
+    {"name": "clk_i", "direction": "input", "width": 1, "connect": "top.clk_i"},
+    {"name": "rst_ni", "direction": "input", "width": 1, "connect": "top.rst_ni"},
+    {"name": "cmd_valid_o", "direction": "output", "width": 1, "connect": "net.accel_cmd_valid"},
+    {"name": "cmd_ready_i", "direction": "input", "width": 1, "connect": "net.accel_cmd_ready"},
+    {"name": "cmd_input_addr_o", "direction": "output", "width": 32, "connect": "net.accel_cmd_input_addr"},
+    {"name": "cmd_weight_addr_o", "direction": "output", "width": 32, "connect": "net.accel_cmd_weight_addr"},
+    {"name": "cmd_output_addr_o", "direction": "output", "width": 32, "connect": "net.accel_cmd_output_addr"},
+    {"name": "cmd_rows_o", "direction": "output", "width": 16, "connect": "net.accel_cmd_rows"},
+    {"name": "cmd_cols_o", "direction": "output", "width": 16, "connect": "net.accel_cmd_cols"},
+    {"name": "cmd_depth_o", "direction": "output", "width": 16, "connect": "net.accel_cmd_depth"},
+    {"name": "array_done_i", "direction": "input", "width": 1, "connect": "net.array_done"},
+    {"name": "array_error_i", "direction": "input", "width": 1, "connect": "net.array_error"},
+    {"name": "debug_halted_o", "direction": "output", "width": 1, "connect": "top.debug_halted_o"}
+  ]
+}

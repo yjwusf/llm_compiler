@@ -55,3 +55,14 @@ The interface, not the first implementation, is the contract.
 | On-chip SRAM | Project JSON config | SRAM request/response interfaces |
 | Ethernet ingress | Root peripheral contract | RGMII pins and internal stream interface |
 | Chip model | E1 C++ generated model | L1.5 module interfaces |
+
+## Generated SoC Top
+
+E1-H1 uses a generated SoC top assembled from individual IP manifests under
+`e1/e1-h1/ip/`. The generator emits
+`e1/e1-h1/generated/e1_h1_soc_top.sv` and the tests check that the checked-in
+top matches the manifest-driven output.
+
+This follows the Wujian100-style idea of a visible SoC top that connects IP
+blocks, while avoiding a hand-maintained monolithic top. See
+[generated-soc-top.md](generated-soc-top.md).

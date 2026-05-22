@@ -12,6 +12,7 @@ SystemVerilog, and begins the C++ chip model and device program.
 - [Device code](device-code.md)
 - [Upstream notes](upstream-notes.md)
 - [E1-H1 architecture](../e1-h1/docs/architecture.md)
+- [E1-H1 generated SoC top](../e1-h1/docs/generated-soc-top.md)
 - [E1-H1 module replacement](../e1-h1/docs/module-replacement.md)
 
 ## Rules

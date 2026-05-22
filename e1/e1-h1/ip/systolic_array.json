@@ -1,0 +1,34 @@
+{
+  "schema": "e1-h1-ip-v0",
+  "name": "systolic_array",
+  "module": "e1_h1_systolic_array",
+  "layer": "l2",
+  "order": 60,
+  "description": "Gemmini-inspired systolic-array placeholder behind the E1-H1 stable command interface.",
+  "reference": "https://github.com/ucb-bar/gemmini",
+  "replaceable": true,
+  "parameters": {
+    "ROWS": 16,
+    "COLS": 16,
+    "DATA_WIDTH": 16,
+    "ACCUMULATOR_WIDTH": 32
+  },
+  "ports": [
+    {"name": "clk_i", "direction": "input", "width": 1, "connect": "top.clk_i"},
+    {"name": "rst_ni", "direction": "input", "width": 1, "connect": "top.rst_ni"},
+    {"name": "cmd_valid_i", "direction": "input", "width": 1, "connect": "net.accel_cmd_valid"},
+    {"name": "cmd_ready_o", "direction": "output", "width": 1, "connect": "net.accel_cmd_ready"},
+    {"name": "cmd_input_addr_i", "direction": "input", "width": 32, "connect": "net.accel_cmd_input_addr"},
+    {"name": "cmd_weight_addr_i", "direction": "input", "width": 32, "connect": "net.accel_cmd_weight_addr"},
+    {"name": "cmd_output_addr_i", "direction": "input", "width": 32, "connect": "net.accel_cmd_output_addr"},
+    {"name": "cmd_rows_i", "direction": "input", "width": 16, "connect": "net.accel_cmd_rows"},
+    {"name": "cmd_cols_i", "direction": "input", "width": 16, "connect": "net.accel_cmd_cols"},
+    {"name": "cmd_depth_i", "direction": "input", "width": 16, "connect": "net.accel_cmd_depth"},
+    {"name": "input_valid_i", "direction": "input", "width": 1, "connect": "net.array_input_valid"},
+    {"name": "input_ready_o", "direction": "output", "width": 1, "connect": "net.array_input_ready"},
+    {"name": "input_data_i", "direction": "input", "width": 64, "connect": "net.array_input_data"},
+    {"name": "done_o", "direction": "output", "width": 1, "connect": "net.array_done"},
+    {"name": "error_o", "direction": "output", "width": 1, "connect": "net.array_error"},
+    {"name": "debug_busy_o", "direction": "output", "width": 1, "connect": "top.debug_array_busy_o"}
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "schema": "e1-h1-ip-v0",
+  "name": "ingress_sram",
+  "module": "e1_h1_stream_sram",
+  "layer": "l2",
+  "order": 30,
+  "description": "Configurable on-chip SRAM stage for Ethernet-ingested payloads.",
+  "replaceable": true,
+  "parameters": {
+    "SIZE_BYTES": 262144,
+    "DATA_WIDTH": 128,
+    "BANKS": 4
+  },
+  "ports": [
+    {"name": "clk_i", "direction": "input", "width": 1, "connect": "top.clk_i"},
+    {"name": "rst_ni", "direction": "input", "width": 1, "connect": "top.rst_ni"},
+    {"name": "stream_valid_i", "direction": "input", "width": 1, "connect": "net.ingress_stream_valid"},
+    {"name": "stream_ready_o", "direction": "output", "width": 1, "connect": "net.ingress_stream_ready"},
+    {"name": "stream_data_i", "direction": "input", "width": 64, "connect": "net.ingress_stream_data"},
+    {"name": "stream_last_i", "direction": "input", "width": 1, "connect": "net.ingress_stream_last"},
+    {"name": "stream_error_i", "direction": "input", "width": 1, "connect": "net.ingress_stream_error"},
+    {"name": "array_valid_o", "direction": "output", "width": 1, "connect": "net.array_input_valid"},
+    {"name": "array_ready_i", "direction": "input", "width": 1, "connect": "net.array_input_ready"},
+    {"name": "array_data_o", "direction": "output", "width": 64, "connect": "net.array_input_data"}
+  ]
+}

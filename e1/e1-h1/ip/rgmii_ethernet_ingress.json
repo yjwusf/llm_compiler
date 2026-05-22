@@ -1,0 +1,21 @@
+{
+  "schema": "e1-h1-ip-v0",
+  "name": "rgmii_ethernet_ingress",
+  "module": "e1_h1_rgmii_ethernet_ingress",
+  "layer": "l2",
+  "order": 20,
+  "description": "Digital-only RGMII receive ingress block that converts Ethernet payloads into an internal stream.",
+  "replaceable": true,
+  "ports": [
+    {"name": "clk_i", "direction": "input", "width": 1, "connect": "top.clk_i"},
+    {"name": "rst_ni", "direction": "input", "width": 1, "connect": "top.rst_ni"},
+    {"name": "rgmii_rx_clk_i", "direction": "input", "width": 1, "connect": "top.rgmii_rx_clk_i"},
+    {"name": "rgmii_rxd_i", "direction": "input", "width": 4, "connect": "top.rgmii_rxd_i"},
+    {"name": "rgmii_rx_ctl_i", "direction": "input", "width": 1, "connect": "top.rgmii_rx_ctl_i"},
+    {"name": "stream_valid_o", "direction": "output", "width": 1, "connect": "net.ingress_stream_valid"},
+    {"name": "stream_ready_i", "direction": "input", "width": 1, "connect": "net.ingress_stream_ready"},
+    {"name": "stream_data_o", "direction": "output", "width": 64, "connect": "net.ingress_stream_data"},
+    {"name": "stream_last_o", "direction": "output", "width": 1, "connect": "net.ingress_stream_last"},
+    {"name": "stream_error_o", "direction": "output", "width": 1, "connect": "net.ingress_stream_error"}
+  ]
+}
