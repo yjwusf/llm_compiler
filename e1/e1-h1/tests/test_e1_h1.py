@@ -221,6 +221,22 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(export["stablehlo_out"], "e1/generated/pipeline/02_stablehlo.mlir")
         self.assertEqual(export["fixture"], "e1/fixtures/stablehlo/tinyllama_block.mlir")
 
+        chip_model_plan = json.loads((E1_PIPELINE_OUT / "08_chip_model_plan.json").read_text(encoding="utf-8"))
+        self.assertIn("e1/code/chip_model/e1_chip_smoke.cpp", chip_model_plan["chip_model"])
+        self.assertEqual(chip_model_plan["run_report"], "e1/generated/pipeline/08_chip_model_run.json")
+        self.assertEqual(chip_model_plan["run_status"], "pass")
+
+        chip_model_run = json.loads((E1_PIPELINE_OUT / "08_chip_model_run.json").read_text(encoding="utf-8"))
+        self.assertEqual(chip_model_run["schema"], "e1-chip-model-smoke-v0")
+        self.assertEqual(chip_model_run["source"], "e1/code/chip_model/e1_chip_smoke.cpp")
+        self.assertEqual(chip_model_run["status"], "pass")
+        self.assertEqual(chip_model_run["program"], "first_attention_tile")
+        self.assertGreater(chip_model_run["counters"]["cycles"], 0)
+        self.assertEqual(chip_model_run["counters"]["instructions"], 1)
+        self.assertEqual(chip_model_run["counters"]["array_commands"], 1)
+        self.assertEqual(chip_model_run["counters"]["output_transfers"], 1)
+        self.assertEqual(chip_model_run["counters"]["error_events"], 0)
+
         target_plan = json.loads((E1_PIPELINE_OUT / "12_target_package_plan.json").read_text(encoding="utf-8"))
         self.assertEqual(target_plan["manifest"], "e1/e1-h1/generated/targets/manifest.json")
         self.assertTrue(target_plan["digital_only"])

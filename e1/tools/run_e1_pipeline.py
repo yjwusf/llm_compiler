@@ -13,6 +13,8 @@ import importlib.util
 import json
 import re
 import shutil
+import subprocess
+import tempfile
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -208,6 +210,51 @@ def emit_target_packages(e1_h1_dir: Path, architecture: dict[str, Any]) -> dict[
     return manifest
 
 
+def run_chip_model_smoke(output_dir: Path) -> dict[str, Any]:
+    compiler = shutil.which("c++")
+    if compiler is None:
+        return {
+            "schema": "e1-chip-model-smoke-v0",
+            "status": "missing_cxx",
+            "compile_command": [],
+            "program": "first_attention_tile",
+        }
+
+    with tempfile.TemporaryDirectory(prefix="e1_chip_model_") as tmp:
+        exe = Path(tmp) / "e1_chip_smoke"
+        compile_command = [
+            compiler,
+            "-std=c++17",
+            "-I",
+            "e1/code/chip_model",
+            "e1/code/chip_model/e1_chip_model.cpp",
+            "e1/code/chip_model/e1_chip_smoke.cpp",
+            "-o",
+            str(exe),
+        ]
+        subprocess.run(
+            compile_command,
+            cwd=REPO_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=True,
+        )
+        result = subprocess.run(
+            [str(exe)],
+            cwd=REPO_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=True,
+        )
+        report = json.loads(result.stdout)
+        report["compile_command"] = compile_command[:-1] + ["<temp-exe>"]
+        report["source"] = "e1/code/chip_model/e1_chip_smoke.cpp"
+        write_json(output_dir / "08_chip_model_run.json", report)
+        return report
+
+
 def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path) -> dict[str, Any]:
     manifest = load_json(manifest_path)
     architecture = load_json(architecture_path)
@@ -320,13 +367,17 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
     passes.append({"pass": "e1_plan_device_program", "artifact": repo_rel(device_out)})
 
     chip_model_out = output_dir / "08_chip_model_plan.json"
+    chip_model_run = run_chip_model_smoke(output_dir)
     write_json(
         chip_model_out,
         {
             "chip_model": [
                 "e1/code/chip_model/e1_chip_model.hpp",
                 "e1/code/chip_model/e1_chip_model.cpp",
+                "e1/code/chip_model/e1_chip_smoke.cpp",
             ],
+            "run_report": "e1/generated/pipeline/08_chip_model_run.json",
+            "run_status": chip_model_run["status"],
             "replaceable_blocks": [ip["name"] for ip in ip_manifests],
         },
     )

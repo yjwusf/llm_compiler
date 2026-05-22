@@ -1,7 +1,8 @@
 {
   "chip_model": [
     "e1/code/chip_model/e1_chip_model.hpp",
-    "e1/code/chip_model/e1_chip_model.cpp"
+    "e1/code/chip_model/e1_chip_model.cpp",
+    "e1/code/chip_model/e1_chip_smoke.cpp"
   ],
   "replaceable_blocks": [
     "accumulator_sram",
@@ -10,5 +11,7 @@
     "ingress_sram",
     "rgmii_ethernet_ingress",
     "systolic_array"
-  ]
+  ],
+  "run_report": "e1/generated/pipeline/08_chip_model_run.json",
+  "run_status": "pass"
 }

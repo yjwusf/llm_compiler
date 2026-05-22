@@ -1,0 +1,25 @@
+{
+  "compile_command": [
+    "/usr/bin/c++",
+    "-std=c++17",
+    "-I",
+    "e1/code/chip_model",
+    "e1/code/chip_model/e1_chip_model.cpp",
+    "e1/code/chip_model/e1_chip_smoke.cpp",
+    "-o",
+    "<temp-exe>"
+  ],
+  "counters": {
+    "array_commands": 1,
+    "cycles": 257,
+    "error_events": 0,
+    "input_transfers": 9,
+    "instructions": 1,
+    "output_transfers": 1,
+    "stall_cycles": 0
+  },
+  "program": "first_attention_tile",
+  "schema": "e1-chip-model-smoke-v0",
+  "source": "e1/code/chip_model/e1_chip_smoke.cpp",
+  "status": "pass"
+}

@@ -37,6 +37,16 @@ The initial skeleton lives in:
 
 - `e1/code/chip_model/e1_chip_model.hpp`
 - `e1/code/chip_model/e1_chip_model.cpp`
+- `e1/code/chip_model/e1_chip_smoke.cpp`
 
 It is intentionally small. It records the first interface names and performance
 counters before detailed timing is implemented.
+
+Run:
+
+```sh
+python3 e1/tools/run_e1_pipeline.py --clean
+```
+
+The pipeline compiles and runs `e1_chip_smoke.cpp`, then writes
+`e1/generated/pipeline/08_chip_model_run.json` with C++ performance counters.
