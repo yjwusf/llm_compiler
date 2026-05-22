@@ -20,6 +20,13 @@ The E1 TinyLlama capture flow must produce:
   embedding paths.
 - A pass-by-pass artifact directory for later lowering stages.
 
+Current files:
+
+- Manifest: `e1/model/tinyllama_manifest.json`
+- Reduced StableHLO fixture: `e1/fixtures/stablehlo/tinyllama_block.mlir`
+- Deterministic scaffold runner: `e1/tools/run_e1_pipeline.py`
+- Pass artifacts: `e1/generated/pipeline/`
+
 ## StableHLO Inspection Questions
 
 The first inspection pass must answer:
@@ -41,3 +48,7 @@ that will be used.
 Large model artifacts should not be committed to this repository. Store only
 manifests, checksums, generated summaries, and small reduced IR fixtures unless
 the root docs explicitly allow a checked-in artifact.
+
+The checked-in pipeline currently runs in `offline_fixture` mode. The manifest
+records the pinned Hugging Face revision and exact `hf download` command that
+will be used when the full checkpoint is fetched outside the test path.

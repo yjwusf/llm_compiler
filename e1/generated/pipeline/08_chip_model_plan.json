@@ -1,0 +1,14 @@
+{
+  "chip_model": [
+    "e1/code/chip_model/e1_chip_model.hpp",
+    "e1/code/chip_model/e1_chip_model.cpp"
+  ],
+  "replaceable_blocks": [
+    "accumulator_sram",
+    "activation_sram",
+    "control_cpu",
+    "ingress_sram",
+    "rgmii_ethernet_ingress",
+    "systolic_array"
+  ]
+}

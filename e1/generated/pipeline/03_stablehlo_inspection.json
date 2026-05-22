@@ -1,0 +1,41 @@
+{
+  "answers": {
+    "cpu_mapping": "gather, add, multiply, tanh, and control sequencing remain CPU/C++ model responsibilities in this scaffold.",
+    "dominant_operations": [
+      "dot_general"
+    ],
+    "external_data_source": "Ethernet/RGMII ingress feeds on-chip SRAM; off-chip DRAM is not a source.",
+    "fallbacks": "No unsupported fixture operations require fallback.",
+    "sram_staging": "weights, activations, and accumulator tiles stage through configurable on-chip SRAM.",
+    "systolic_array_mapping": "stablehlo.dot_general maps to the E1-H1 systolic array command interface."
+  },
+  "cpu_or_stream_ops": [
+    "add",
+    "constant",
+    "gather",
+    "multiply",
+    "tanh"
+  ],
+  "operation_counts": {
+    "add": 2,
+    "constant": 1,
+    "dot_general": 6,
+    "gather": 1,
+    "multiply": 2,
+    "tanh": 1
+  },
+  "systolic_array_ops": [
+    "dot_general"
+  ],
+  "tensor_types": [
+    "tensor<16x16xf16>",
+    "tensor<16x64xf16>",
+    "tensor<1x16xf16>",
+    "tensor<1x1xi32>",
+    "tensor<1x64xf16>",
+    "tensor<32000x16xf16>",
+    "tensor<64x16xf16>"
+  ],
+  "total_operations": 13,
+  "unsupported_ops": []
+}

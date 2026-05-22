@@ -23,6 +23,8 @@ GENERATED_TOP = E1_H1 / "generated" / "e1_h1_soc_top.sv"
 GENERATOR = E1_H1 / "tools" / "generate_soc_top.py"
 RTL_IP = E1_H1 / "rtl" / "ip"
 L1_5_DIR = E1_H1 / "l1_5"
+E1_PIPELINE = REPO_ROOT / "e1" / "tools" / "run_e1_pipeline.py"
+E1_PIPELINE_OUT = REPO_ROOT / "e1" / "generated" / "pipeline"
 
 
 def load_generator():
@@ -159,6 +161,49 @@ class E1H1Tests(unittest.TestCase):
         self.assertIn("u_ingress_sram", actual)
         self.assertIn("u_systolic_array", actual)
         self.assertIn("Source of composition: e1/e1-h1/ip/*.json", actual)
+
+    def test_e1_pipeline_generates_e1_h1_artifacts(self) -> None:
+        result = run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])
+        self.assertIn("PASS e1_pipeline 12 passes", result.stdout)
+
+        summary = json.loads((E1_PIPELINE_OUT / "summary.json").read_text(encoding="utf-8"))
+        self.assertEqual(summary["schema"], "e1-pipeline-summary-v0")
+        self.assertEqual(summary["model_id"], "tinyllama-1.1b-chat-v1.0")
+        self.assertEqual(summary["architecture_id"], "e1-h1")
+        self.assertEqual(summary["pass_count"], 12)
+        self.assertEqual(summary["operation_counts"]["dot_general"], 6)
+        self.assertTrue(summary["all_current_modules_have_l1_5_harnesses"])
+        self.assertEqual(summary["generated_top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
+
+        expected_passes = [
+            "e1_fetch_model",
+            "e1_export_stablehlo",
+            "e1_inspect_stablehlo",
+            "e1_normalize_stablehlo",
+            "e1_bind_e1_h1",
+            "e1_plan_memory",
+            "e1_plan_device_program",
+            "e1_generate_chip_model",
+            "e1_generate_l1_5_harnesses",
+            "e1_lower_to_hardware_graph",
+            "e1_emit_systemverilog",
+            "e1_package_targets",
+        ]
+        self.assertEqual([entry["pass"] for entry in summary["passes"]], expected_passes)
+
+        inspection = json.loads((E1_PIPELINE_OUT / "03_stablehlo_inspection.json").read_text(encoding="utf-8"))
+        self.assertEqual(inspection["unsupported_ops"], [])
+        self.assertIn("dot_general", inspection["systolic_array_ops"])
+        self.assertIn("Ethernet/RGMII", inspection["answers"]["external_data_source"])
+
+        binding = json.loads((E1_PIPELINE_OUT / "05_e1_h1_binding.json").read_text(encoding="utf-8"))
+        self.assertEqual(binding["bindings"]["stablehlo.dot_general"], "systolic_array")
+        self.assertEqual(binding["bindings"]["external_data"], "rgmii_ethernet_ingress")
+
+        hardware_graph = json.loads((E1_PIPELINE_OUT / "10_hardware_graph.json").read_text(encoding="utf-8"))
+        self.assertEqual(hardware_graph["top"], "e1_h1_soc_top")
+        self.assertEqual(hardware_graph["generator"], "e1/e1-h1/tools/generate_soc_top.py")
+        self.assertIn("systolic_array", {ip["name"] for ip in hardware_graph["ips"]})
 
     def test_verilator_lints_generated_top_and_mock_ips(self) -> None:
         verilator = shutil.which("verilator")

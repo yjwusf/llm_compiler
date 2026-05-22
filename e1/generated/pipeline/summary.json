@@ -1,0 +1,67 @@
+{
+  "all_current_modules_have_l1_5_harnesses": true,
+  "architecture_id": "e1-h1",
+  "generated_top": "e1/e1-h1/generated/e1_h1_soc_top.sv",
+  "model_id": "tinyllama-1.1b-chat-v1.0",
+  "operation_counts": {
+    "add": 2,
+    "constant": 1,
+    "dot_general": 6,
+    "gather": 1,
+    "multiply": 2,
+    "tanh": 1
+  },
+  "pass_count": 12,
+  "passes": [
+    {
+      "artifact": "e1/generated/pipeline/01_fetch_model.json",
+      "pass": "e1_fetch_model"
+    },
+    {
+      "artifact": "e1/generated/pipeline/02_stablehlo.mlir",
+      "pass": "e1_export_stablehlo"
+    },
+    {
+      "artifact": "e1/generated/pipeline/03_stablehlo_inspection.json",
+      "pass": "e1_inspect_stablehlo"
+    },
+    {
+      "artifact": "e1/generated/pipeline/04_normalized_stablehlo.mlir",
+      "pass": "e1_normalize_stablehlo"
+    },
+    {
+      "artifact": "e1/generated/pipeline/05_e1_h1_binding.json",
+      "pass": "e1_bind_e1_h1"
+    },
+    {
+      "artifact": "e1/generated/pipeline/06_memory_plan.json",
+      "pass": "e1_plan_memory"
+    },
+    {
+      "artifact": "e1/generated/pipeline/07_device_program_plan.json",
+      "pass": "e1_plan_device_program"
+    },
+    {
+      "artifact": "e1/generated/pipeline/08_chip_model_plan.json",
+      "pass": "e1_generate_chip_model"
+    },
+    {
+      "artifact": "e1/generated/pipeline/09_l1_5_harness_plan.json",
+      "pass": "e1_generate_l1_5_harnesses"
+    },
+    {
+      "artifact": "e1/generated/pipeline/10_hardware_graph.json",
+      "pass": "e1_lower_to_hardware_graph"
+    },
+    {
+      "artifact": "e1/generated/pipeline/11_systemverilog_plan.json",
+      "pass": "e1_emit_systemverilog"
+    },
+    {
+      "artifact": "e1/generated/pipeline/12_target_package_plan.json",
+      "pass": "e1_package_targets"
+    }
+  ],
+  "schema": "e1-pipeline-summary-v0",
+  "stablehlo_fixture": "e1/fixtures/stablehlo/tinyllama_block.mlir"
+}

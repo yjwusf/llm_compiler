@@ -1,0 +1,48 @@
+{
+  "external_source": {
+    "digital_only": true,
+    "enable_frame_check": true,
+    "fifo_depth": 1024,
+    "kind": "ethernet",
+    "mac_interface": "rgmii",
+    "phy_boundary": "external",
+    "stream_data_width": 64
+  },
+  "sram": [
+    {
+      "banks": 4,
+      "data_width": 128,
+      "name": "ingress_sram",
+      "size_bytes": 262144
+    },
+    {
+      "banks": 8,
+      "data_width": 128,
+      "name": "activation_sram",
+      "size_bytes": 524288
+    },
+    {
+      "banks": 8,
+      "data_width": 256,
+      "name": "accumulator_sram",
+      "size_bytes": 524288
+    }
+  ],
+  "tile_plan": {
+    "attention_qkv": {
+      "cols": 16,
+      "depth": 16,
+      "rows": 16
+    },
+    "mlp_down": {
+      "cols": 16,
+      "depth": 64,
+      "rows": 64
+    },
+    "mlp_up": {
+      "cols": 64,
+      "depth": 16,
+      "rows": 16
+    }
+  }
+}

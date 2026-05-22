@@ -1,0 +1,11 @@
+{
+  "asic_openroad": {
+    "status": "smoke",
+    "top": "e1_h1_soc_top"
+  },
+  "digital_only": true,
+  "fpga": {
+    "status": "smoke",
+    "top": "e1_h1_soc_top"
+  }
+}

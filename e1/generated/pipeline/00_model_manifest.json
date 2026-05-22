@@ -1,0 +1,18 @@
+{
+  "download": {
+    "command": "hf download TinyLlama/TinyLlama-1.1B-Chat-v1.0 --revision 2539c747f7b95a4dac517d6620f2244efdca3543 --local-dir .cache/e1/tinyllama-1.1b-chat-v1.0",
+    "large_artifacts_committed": false
+  },
+  "frontend": {
+    "fixture": "e1/fixtures/stablehlo/tinyllama_block.mlir",
+    "target_ir": "stablehlo"
+  },
+  "model_id": "tinyllama-1.1b-chat-v1.0",
+  "schema": "e1-model-manifest-v0",
+  "source": {
+    "kind": "huggingface",
+    "repo": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+    "revision": "2539c747f7b95a4dac517d6620f2244efdca3543",
+    "url": "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+  }
+}

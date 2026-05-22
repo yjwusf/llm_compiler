@@ -1,0 +1,20 @@
+{
+  "architecture_id": "e1-h1",
+  "bindings": {
+    "external_data": "rgmii_ethernet_ingress",
+    "stablehlo.add": "control_cpu",
+    "stablehlo.dot_general": "systolic_array",
+    "stablehlo.gather": "control_cpu",
+    "stablehlo.multiply": "control_cpu",
+    "stablehlo.tanh": "control_cpu",
+    "staging": "ingress_sram"
+  },
+  "ip": [
+    "accumulator_sram",
+    "activation_sram",
+    "control_cpu",
+    "ingress_sram",
+    "rgmii_ethernet_ingress",
+    "systolic_array"
+  ]
+}

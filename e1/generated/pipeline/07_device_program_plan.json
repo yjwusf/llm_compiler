@@ -1,0 +1,5 @@
+{
+  "legibility_rule": "named MMIO constants and explicit tile commands",
+  "mmio": "e1/code/program/e1_device_mmio.hpp",
+  "program": "e1/code/program/e1_tinyllama_program.cpp"
+}
