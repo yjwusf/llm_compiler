@@ -255,6 +255,82 @@ def validate_rtl_interfaces(repo_root: Path, ips: list[Ip]) -> dict[str, dict[st
     return validation
 
 
+def require_ip(by_name: dict[str, Ip], name: str, kind: str) -> Ip:
+    ip = by_name.get(name)
+    if ip is None:
+        raise ValueError(f"architecture {kind} block {name!r}: missing IP manifest")
+    return ip
+
+
+def check_architecture_parameters(
+    ip: Ip,
+    kind: str,
+    expected: dict[str, int],
+) -> dict[str, Any]:
+    actual = {name: ip.parameters.get(name) for name in expected}
+    missing = sorted(name for name, value in actual.items() if value is None)
+    mismatched = {
+        name: {"architecture": expected[name], "manifest": actual[name]}
+        for name in expected
+        if actual[name] is not None and actual[name] != expected[name]
+    }
+    if missing or mismatched:
+        details: dict[str, Any] = {}
+        if missing:
+            details["missing"] = missing
+        if mismatched:
+            details["mismatched"] = mismatched
+        raise ValueError(f"{ip.name}: architecture {kind} parameters mismatch {details}")
+
+    return {
+        "name": ip.name,
+        "kind": kind,
+        "status": "pass",
+        "parameters": [{"name": name, "value": expected[name]} for name in sorted(expected)],
+    }
+
+
+def validate_architecture_bindings(arch: dict[str, Any], ips: list[Ip]) -> dict[str, Any]:
+    by_name = {ip.name: ip for ip in ips}
+    checks: list[dict[str, Any]] = []
+
+    for sram in arch.get("memory", {}).get("sram", []):
+        ip = require_ip(by_name, sram["name"], "SRAM")
+        checks.append(
+            check_architecture_parameters(
+                ip,
+                "sram",
+                {
+                    "SIZE_BYTES": int(sram["size_bytes"]),
+                    "DATA_WIDTH": int(sram["data_width"]),
+                    "BANKS": int(sram["banks"]),
+                },
+            )
+        )
+
+    accelerator = arch.get("accelerator", {})
+    if accelerator.get("kind") == "systolic_array":
+        ip = require_ip(by_name, "systolic_array", "accelerator")
+        checks.append(
+            check_architecture_parameters(
+                ip,
+                "systolic_array",
+                {
+                    "ROWS": int(accelerator["rows"]),
+                    "COLS": int(accelerator["cols"]),
+                    "DATA_WIDTH": int(accelerator["data_width"]),
+                    "ACCUMULATOR_WIDTH": int(accelerator["accumulator_width"]),
+                },
+            )
+        )
+
+    return {
+        "schema": "e1-h1-architecture-validation-v0",
+        "source": "e1/e1-h1/config/architecture.json",
+        "checks": checks,
+    }
+
+
 def collect_top_ports(ips: list[Ip]) -> dict[str, tuple[str, int]]:
     top_ports: dict[str, tuple[str, int]] = {}
     for ip in ips:
@@ -378,6 +454,7 @@ def generate(architecture_path: Path, ip_dir: Path) -> str:
     validate_top_port_connectivity(ips)
     validate_net_connectivity(ips)
     validate_rtl_interfaces(repo_root_from_architecture(architecture_path), ips)
+    validate_architecture_bindings(arch, ips)
     subsystems = subsystem_descriptions(arch)
     style_reference = arch.get("soc_top", {}).get("style_reference", {})
 
@@ -479,9 +556,11 @@ def generate_interface_contracts(architecture_path: Path, ip_dir: Path) -> dict[
     validate_top_port_connectivity(ips)
     validate_net_connectivity(ips)
     rtl_validation = validate_rtl_interfaces(repo_root_from_architecture(architecture_path), ips)
+    architecture_validation = validate_architecture_bindings(arch, ips)
     return {
         "schema": "e1-h1-interface-contracts-v0",
         "architecture_id": arch["architecture_id"],
+        "architecture_validation": architecture_validation,
         "source": "e1/e1-h1/ip/*.json",
         "rule": "implementation modules are replaceable only when the interface signature stays constant",
         "interfaces": [
@@ -508,6 +587,7 @@ def generate_composition_manifest(architecture_path: Path, ip_dir: Path) -> dict
     validate_top_port_connectivity(ips)
     validate_net_connectivity(ips)
     rtl_validation = validate_rtl_interfaces(repo_root_from_architecture(architecture_path), ips)
+    architecture_validation = validate_architecture_bindings(arch, ips)
     descriptions = subsystem_descriptions(arch)
     declared_subsystems = [
         item["name"]
@@ -534,6 +614,7 @@ def generate_composition_manifest(architecture_path: Path, ip_dir: Path) -> dict
         "architecture_id": arch["architecture_id"],
         "style_reference": arch.get("soc_top", {}).get("style_reference", {}),
         "generation": arch.get("soc_top", {}).get("generation", {}),
+        "architecture_validation": architecture_validation,
         "rtl_validation": [
             {
                 "name": name,

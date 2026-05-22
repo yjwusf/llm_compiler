@@ -38,10 +38,11 @@ The generator also emits:
 
 That JSON manifest records the same generated composition in reviewable data:
 top ports, internal nets, net endpoints, top/internal driver and load roles,
-RTL interface validation, subsystem grouping, and the Wujian100 style reference
-that the top is following. The interface contracts file records the stable
-replacement boundary for each IP and hashes the ports, parameters, connections,
-and performance counters that must remain compatible.
+RTL interface validation, architecture-to-IP parameter validation, subsystem
+grouping, and the Wujian100 style reference that the top is following. The
+interface contracts file records the stable replacement boundary for each IP and
+hashes the ports, parameters, connections, and performance counters that must
+remain compatible.
 
 ## IP Manifests
 
@@ -73,6 +74,14 @@ referenced SystemVerilog module must exist, every manifest parameter must be
 declared in the module parameter list, and every manifest port must exist with
 the same direction and bit width.
 
+For architecture-owned dimensions, `e1/e1-h1/config/architecture.json` is the
+source of truth. The generator validates that the SRAM manifests mirror
+`size_bytes`, `data_width`, and `banks` as `SIZE_BYTES`, `DATA_WIDTH`, and
+`BANKS`, and that the `systolic_array` manifest mirrors the architecture's
+`rows`, `cols`, `data_width`, and `accumulator_width` as `ROWS`, `COLS`,
+`DATA_WIDTH`, and `ACCUMULATOR_WIDTH`. Any drift is a generator error rather
+than a review-time convention.
+
 ## Current Generated Top
 
 The current generated top is:
@@ -98,6 +107,8 @@ compatibility:
 - `implementation_module` names the current RTL module used by the top.
 - `rtl` names the current SystemVerilog source for that IP.
 - `ports` and `parameters` define the stable generated wiring boundary.
+- `architecture_validation` records architecture-owned SRAM and accelerator
+  parameters that the manifests are required to mirror.
 - `perf_counters` define the required C++/L1.5 observation boundary.
 - `signature_sha256` changes when the stable interface payload changes.
 

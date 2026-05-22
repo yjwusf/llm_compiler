@@ -236,6 +236,15 @@ class E1H1Tests(unittest.TestCase):
             {entry["status"] for entry in actual_manifest["rtl_validation"]},
             {"pass"},
         )
+        self.assertEqual(actual_manifest["architecture_validation"]["schema"], "e1-h1-architecture-validation-v0")
+        self.assertEqual(
+            {entry["status"] for entry in actual_manifest["architecture_validation"]["checks"]},
+            {"pass"},
+        )
+        self.assertEqual(
+            {entry["name"] for entry in actual_manifest["architecture_validation"]["checks"]},
+            {"ingress_sram", "activation_sram", "accumulator_sram", "systolic_array"},
+        )
         self.assertEqual(
             [subsystem["name"] for subsystem in actual_manifest["subsystems"]],
             ["cpu_subsystem", "io_subsystem", "memory_subsystem", "accelerator_subsystem"],
@@ -258,6 +267,7 @@ class E1H1Tests(unittest.TestCase):
             self.assertTrue(net["validation"]["single_driver"], net["name"])
             self.assertTrue(net["validation"]["has_load"], net["name"])
         self.assertEqual(actual_interfaces["schema"], "e1-h1-interface-contracts-v0")
+        self.assertEqual(actual_interfaces["architecture_validation"], actual_manifest["architecture_validation"])
         self.assertEqual(actual_interfaces["source"], "e1/e1-h1/ip/*.json")
         self.assertEqual(
             {item["name"] for item in actual_interfaces["interfaces"]},
@@ -384,6 +394,29 @@ class E1H1Tests(unittest.TestCase):
             (ip_dir / "bad_cpu.json").write_text(json.dumps(manifest), encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "missing ports"):
                 generator.generate(ARCH, ip_dir)
+
+    def test_soc_top_generator_rejects_architecture_parameter_drift(self) -> None:
+        generator = load_generator()
+        bad_cases = {
+            "ingress_sram": ("ingress_sram.json", ("parameters", "SIZE_BYTES"), 1),
+            "systolic_array": ("systolic_array.json", ("parameters", "ROWS"), 8),
+        }
+
+        for name, (filename, key_path, value) in bad_cases.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                ip_dir = Path(tmp)
+                for manifest in IP_DIR.glob("*.json"):
+                    (ip_dir / manifest.name).write_text(manifest.read_text(encoding="utf-8"), encoding="utf-8")
+
+                data = json.loads((ip_dir / filename).read_text(encoding="utf-8"))
+                cursor = data
+                for key in key_path[:-1]:
+                    cursor = cursor[key]
+                cursor[key_path[-1]] = value
+                (ip_dir / filename).write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+                with self.assertRaisesRegex(ValueError, f"{name}: architecture"):
+                    generator.generate(ARCH, ip_dir)
 
     def test_e1_pipeline_generates_e1_h1_artifacts(self) -> None:
         result = run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])

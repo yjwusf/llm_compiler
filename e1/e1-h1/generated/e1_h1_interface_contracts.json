@@ -1,5 +1,91 @@
 {
   "architecture_id": "e1-h1",
+  "architecture_validation": {
+    "checks": [
+      {
+        "kind": "sram",
+        "name": "ingress_sram",
+        "parameters": [
+          {
+            "name": "BANKS",
+            "value": 4
+          },
+          {
+            "name": "DATA_WIDTH",
+            "value": 128
+          },
+          {
+            "name": "SIZE_BYTES",
+            "value": 262144
+          }
+        ],
+        "status": "pass"
+      },
+      {
+        "kind": "sram",
+        "name": "activation_sram",
+        "parameters": [
+          {
+            "name": "BANKS",
+            "value": 8
+          },
+          {
+            "name": "DATA_WIDTH",
+            "value": 128
+          },
+          {
+            "name": "SIZE_BYTES",
+            "value": 524288
+          }
+        ],
+        "status": "pass"
+      },
+      {
+        "kind": "sram",
+        "name": "accumulator_sram",
+        "parameters": [
+          {
+            "name": "BANKS",
+            "value": 8
+          },
+          {
+            "name": "DATA_WIDTH",
+            "value": 256
+          },
+          {
+            "name": "SIZE_BYTES",
+            "value": 524288
+          }
+        ],
+        "status": "pass"
+      },
+      {
+        "kind": "systolic_array",
+        "name": "systolic_array",
+        "parameters": [
+          {
+            "name": "ACCUMULATOR_WIDTH",
+            "value": 32
+          },
+          {
+            "name": "COLS",
+            "value": 16
+          },
+          {
+            "name": "DATA_WIDTH",
+            "value": 16
+          },
+          {
+            "name": "ROWS",
+            "value": 16
+          }
+        ],
+        "status": "pass"
+      }
+    ],
+    "schema": "e1-h1-architecture-validation-v0",
+    "source": "e1/e1-h1/config/architecture.json"
+  },
   "interfaces": [
     {
       "implementation_module": "e1_h1_control_cpu",

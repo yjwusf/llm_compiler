@@ -82,6 +82,13 @@ That file locks the stable IP interfaces independently from the current
 implementation module names, so module replacement can be reviewed as an
 interface-compatible or interface-changing edit.
 
+`e1/e1-h1/config/architecture.json` remains the owner of architecture-level
+dimensions. The generated SoC flow validates that SRAM manifest parameters match
+the configured SRAM `size_bytes`, `data_width`, and `banks`, and that the
+`systolic_array` manifest matches the configured array rows, columns, data
+width, and accumulator width. Reviews should change the architecture JSON first,
+then regenerate and review the IP manifests and generated artifacts together.
+
 ## Target Packages
 
 E1-H1 emits initial FPGA and ASIC/OpenROAD smoke packages from the same
