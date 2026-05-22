@@ -9,6 +9,17 @@ If an implementation changes but the interface is constant, dependent modules
 and device code must keep working. If the interface changes, the docs, C++
 model, L1.5 harness, VIP, and tests must change in the same patch.
 
+The generated interface lock file is:
+
+- `e1/e1-h1/generated/e1_h1_interface_contracts.json`
+
+It is generated from `e1/e1-h1/ip/*.json`. Each IP has a
+`signature_sha256` over the stable interface payload: IP name, subsystem,
+parameters, ports, connections, and performance counters. The implementation
+module name is recorded for build generation but is not part of the interface
+signature, so a replacement implementation can use a different module name when
+the manifest is updated without changing the stable interface.
+
 ## Required Per-Module Interface Definition
 
 Each E1-H1 module must document:
@@ -20,6 +31,7 @@ Each E1-H1 module must document:
 - Device-visible programming interface when applicable.
 - JSON fields that parameterize it.
 - Replacement-compatible behavior.
+- Generated interface signature in `e1_h1_interface_contracts.json`.
 
 ## CPU Interface
 

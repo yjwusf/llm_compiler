@@ -15,7 +15,8 @@
       "kind": "manifest_driven",
       "source": "e1/e1-h1/ip/*.json",
       "generated_top": "e1/e1-h1/generated/e1_h1_soc_top.sv",
-      "generated_manifest": "e1/e1-h1/generated/e1_h1_soc_top_manifest.json"
+      "generated_manifest": "e1/e1-h1/generated/e1_h1_soc_top_manifest.json",
+      "generated_interface_contracts": "e1/e1-h1/generated/e1_h1_interface_contracts.json"
     },
     "subsystems": [
       {

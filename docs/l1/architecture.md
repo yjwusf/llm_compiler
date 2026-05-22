@@ -73,7 +73,8 @@ schema will evolve, but files should follow this shape:
     },
     "generation": {
       "kind": "manifest_driven",
-      "source": "e1/e1-h1/ip/*.json"
+      "source": "e1/e1-h1/ip/*.json",
+      "generated_interface_contracts": "e1/e1-h1/generated/e1_h1_interface_contracts.json"
     }
   },
   "io": {

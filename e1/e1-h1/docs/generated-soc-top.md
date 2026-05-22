@@ -30,10 +30,13 @@ wiring. Tests regenerate it and compare the result to the checked-in file.
 The generator also emits:
 
 - `e1/e1-h1/generated/e1_h1_soc_top_manifest.json`
+- `e1/e1-h1/generated/e1_h1_interface_contracts.json`
 
 That JSON manifest records the same generated composition in reviewable data:
 top ports, internal nets, net endpoints, subsystem grouping, and the Wujian100
-style reference that the top is following.
+style reference that the top is following. The interface contracts file records
+the stable replacement boundary for each IP and hashes the ports, parameters,
+connections, and performance counters that must remain compatible.
 
 ## IP Manifests
 
@@ -71,6 +74,21 @@ It combines:
 Subsystems are declared in `e1/e1-h1/config/architecture.json` and assigned per
 IP manifest. The generated SystemVerilog comments and composition manifest must
 stay in agreement with those declarations.
+
+## Interface Contracts
+
+The generated interface contract file is the review point for replacement
+compatibility:
+
+- `implementation_module` names the current RTL module used by the top.
+- `ports` and `parameters` define the stable generated wiring boundary.
+- `perf_counters` define the required C++/L1.5 observation boundary.
+- `signature_sha256` changes when the stable interface payload changes.
+
+Changing a module implementation without changing `signature_sha256` is a
+replacement-compatible edit. Changing the signature requires matching updates to
+module docs, C++ model behavior, L1.5 harnesses, VIPs, generated artifacts, and
+tests.
 
 ## Replacement Rule
 

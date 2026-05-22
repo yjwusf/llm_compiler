@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -28,6 +29,9 @@ class Ip:
     order: int
     description: str
     replaceable: bool
+    spec: str
+    l1_5_harness: str
+    perf_counters: list[str]
     parameters: dict[str, int]
     ports: list[Port]
 
@@ -64,6 +68,9 @@ def load_ips(ip_dir: Path) -> list[Ip]:
                 order=int(data["order"]),
                 description=data.get("description", ""),
                 replaceable=bool(data["replaceable"]),
+                spec=data["spec"],
+                l1_5_harness=data["l1_5_harness"],
+                perf_counters=list(data["perf_counters"]),
                 parameters={k: int(v) for k, v in data.get("parameters", {}).items()},
                 ports=ports,
             )
@@ -202,6 +209,54 @@ def endpoint(port: Port) -> dict[str, Any]:
     }
 
 
+def interface_payload(ip: Ip) -> dict[str, Any]:
+    return {
+        "name": ip.name,
+        "subsystem": ip.subsystem,
+        "parameters": [
+            {"name": name, "value": value}
+            for name, value in sorted(ip.parameters.items())
+        ],
+        "ports": [
+            {
+                "name": port.name,
+                "direction": port.direction,
+                "width": port.width,
+                "connect": port.connect,
+            }
+            for port in ip.ports
+        ],
+        "perf_counters": ip.perf_counters,
+    }
+
+
+def interface_signature(ip: Ip) -> str:
+    payload = json.dumps(interface_payload(ip), sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def generate_interface_contracts(architecture_path: Path, ip_dir: Path) -> dict[str, Any]:
+    arch = load_json(architecture_path)
+    ips = load_ips(ip_dir)
+    return {
+        "schema": "e1-h1-interface-contracts-v0",
+        "architecture_id": arch["architecture_id"],
+        "source": "e1/e1-h1/ip/*.json",
+        "rule": "implementation modules are replaceable only when the interface signature stays constant",
+        "interfaces": [
+            {
+                **interface_payload(ip),
+                "implementation_module": ip.module,
+                "replaceable": ip.replaceable,
+                "spec": ip.spec,
+                "l1_5_harness": ip.l1_5_harness,
+                "signature_sha256": interface_signature(ip),
+            }
+            for ip in ips
+        ],
+    }
+
+
 def generate_composition_manifest(architecture_path: Path, ip_dir: Path) -> dict[str, Any]:
     arch = load_json(architecture_path)
     ips = load_ips(ip_dir)
@@ -264,6 +319,7 @@ def main() -> int:
     parser.add_argument("--ip-dir", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--manifest-output", type=Path)
+    parser.add_argument("--interfaces-output", type=Path)
     args = parser.parse_args()
 
     text = generate(args.architecture, args.ip_dir)
@@ -274,6 +330,13 @@ def main() -> int:
         args.manifest_output.parent.mkdir(parents=True, exist_ok=True)
         args.manifest_output.write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+    if args.interfaces_output is not None:
+        interfaces = generate_interface_contracts(args.architecture, args.ip_dir)
+        args.interfaces_output.parent.mkdir(parents=True, exist_ok=True)
+        args.interfaces_output.write_text(
+            json.dumps(interfaces, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
     return 0

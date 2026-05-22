@@ -72,11 +72,14 @@ def emit_soc_top_artifacts(e1_h1_dir: Path, architecture_path: Path) -> dict[str
     ip_dir = e1_h1_dir / "ip"
     top_path = e1_h1_dir / "generated" / "e1_h1_soc_top.sv"
     manifest_path = e1_h1_dir / "generated" / "e1_h1_soc_top_manifest.json"
+    interfaces_path = e1_h1_dir / "generated" / "e1_h1_interface_contracts.json"
     write_text(top_path, generator.generate(architecture_path, ip_dir))
     write_json(manifest_path, generator.generate_composition_manifest(architecture_path, ip_dir))
+    write_json(interfaces_path, generator.generate_interface_contracts(architecture_path, ip_dir))
     return {
         "top": repo_rel(top_path),
         "composition_manifest": repo_rel(manifest_path),
+        "interface_contracts": repo_rel(interfaces_path),
     }
 
 
@@ -428,6 +431,7 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
             "top": "e1_h1_soc_top",
             "generator": "e1/e1-h1/tools/generate_soc_top.py",
             "composition_manifest": soc_top_artifacts["composition_manifest"],
+            "interface_contracts": soc_top_artifacts["interface_contracts"],
             "subsystems": [item["name"] for item in architecture["soc_top"]["subsystems"]],
             "ips": [
                 {
@@ -449,6 +453,7 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
         {
             "generated_top": soc_top_artifacts["top"],
             "generated_composition_manifest": soc_top_artifacts["composition_manifest"],
+            "generated_interface_contracts": soc_top_artifacts["interface_contracts"],
             "mock_rtl": sorted(repo_rel(path) for path in (e1_h1_dir / "rtl" / "ip").glob("*.sv")),
             "composition_source": "e1/e1-h1/ip/*.json",
         },

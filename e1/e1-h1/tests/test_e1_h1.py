@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 import os
 import shutil
@@ -21,6 +22,7 @@ ARCH = E1_H1 / "config" / "architecture.json"
 IP_DIR = E1_H1 / "ip"
 GENERATED_TOP = E1_H1 / "generated" / "e1_h1_soc_top.sv"
 GENERATED_TOP_MANIFEST = E1_H1 / "generated" / "e1_h1_soc_top_manifest.json"
+GENERATED_INTERFACE_CONTRACTS = E1_H1 / "generated" / "e1_h1_interface_contracts.json"
 GENERATOR = E1_H1 / "tools" / "generate_soc_top.py"
 RTL_IP = E1_H1 / "rtl" / "ip"
 L1_5_DIR = E1_H1 / "l1_5"
@@ -57,6 +59,21 @@ def run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
     )
 
 
+def interface_signature_payload(interface: dict[str, object]) -> dict[str, object]:
+    return {
+        "name": interface["name"],
+        "subsystem": interface["subsystem"],
+        "parameters": interface["parameters"],
+        "ports": interface["ports"],
+        "perf_counters": interface["perf_counters"],
+    }
+
+
+def interface_signature(interface: dict[str, object]) -> str:
+    payload = json.dumps(interface_signature_payload(interface), sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 class E1H1Tests(unittest.TestCase):
     def test_architecture_json_contract(self) -> None:
         arch = json.loads(ARCH.read_text(encoding="utf-8"))
@@ -66,6 +83,10 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(arch["soc_top"]["style_reference"]["url"], "https://github.com/XUANTIE-RV/wujian100_open")
         self.assertEqual(arch["soc_top"]["generation"]["kind"], "manifest_driven")
         self.assertEqual(arch["soc_top"]["generation"]["source"], "e1/e1-h1/ip/*.json")
+        self.assertEqual(
+            arch["soc_top"]["generation"]["generated_interface_contracts"],
+            "e1/e1-h1/generated/e1_h1_interface_contracts.json",
+        )
         self.assertEqual(
             {subsystem["name"] for subsystem in arch["soc_top"]["subsystems"]},
             {"cpu_subsystem", "io_subsystem", "memory_subsystem", "accelerator_subsystem"},
@@ -173,6 +194,9 @@ class E1H1Tests(unittest.TestCase):
         expected_manifest = generator.generate_composition_manifest(ARCH, IP_DIR)
         actual_manifest = json.loads(GENERATED_TOP_MANIFEST.read_text(encoding="utf-8"))
         self.assertEqual(actual_manifest, expected_manifest)
+        expected_interfaces = generator.generate_interface_contracts(ARCH, IP_DIR)
+        actual_interfaces = json.loads(GENERATED_INTERFACE_CONTRACTS.read_text(encoding="utf-8"))
+        self.assertEqual(actual_interfaces, expected_interfaces)
         self.assertIn("module e1_h1_soc_top", actual)
         self.assertIn("SoC top style: wujian100_open", actual)
         self.assertIn("SoC top reference: https://github.com/XUANTIE-RV/wujian100_open", actual)
@@ -192,6 +216,18 @@ class E1H1Tests(unittest.TestCase):
             ["cpu_subsystem", "io_subsystem", "memory_subsystem", "accelerator_subsystem"],
         )
         self.assertIn("rgmii_rx_clk_i", {port["name"] for port in actual_manifest["top_ports"]})
+        self.assertEqual(actual_interfaces["schema"], "e1-h1-interface-contracts-v0")
+        self.assertEqual(actual_interfaces["source"], "e1/e1-h1/ip/*.json")
+        self.assertEqual(
+            {item["name"] for item in actual_interfaces["interfaces"]},
+            {path.stem for path in IP_DIR.glob("*.json")},
+        )
+        for interface in actual_interfaces["interfaces"]:
+            self.assertEqual(interface["signature_sha256"], interface_signature(interface))
+            self.assertRegex(interface["signature_sha256"], r"^[0-9a-f]{64}$")
+            self.assertTrue((REPO_ROOT / interface["spec"]).exists())
+            self.assertTrue((REPO_ROOT / interface["l1_5_harness"]).exists())
+            self.assertNotIn("implementation_module", interface_signature_payload(interface))
 
     def test_e1_pipeline_generates_e1_h1_artifacts(self) -> None:
         result = run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])
@@ -235,6 +271,7 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(hardware_graph["top"], "e1_h1_soc_top")
         self.assertEqual(hardware_graph["generator"], "e1/e1-h1/tools/generate_soc_top.py")
         self.assertEqual(hardware_graph["composition_manifest"], "e1/e1-h1/generated/e1_h1_soc_top_manifest.json")
+        self.assertEqual(hardware_graph["interface_contracts"], "e1/e1-h1/generated/e1_h1_interface_contracts.json")
         self.assertEqual(
             hardware_graph["subsystems"],
             ["cpu_subsystem", "io_subsystem", "memory_subsystem", "accelerator_subsystem"],
@@ -280,6 +317,7 @@ class E1H1Tests(unittest.TestCase):
         sv_plan = json.loads((E1_PIPELINE_OUT / "11_systemverilog_plan.json").read_text(encoding="utf-8"))
         self.assertEqual(sv_plan["generated_top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
         self.assertEqual(sv_plan["generated_composition_manifest"], "e1/e1-h1/generated/e1_h1_soc_top_manifest.json")
+        self.assertEqual(sv_plan["generated_interface_contracts"], "e1/e1-h1/generated/e1_h1_interface_contracts.json")
 
     def test_tinyllama_fetch_and_export_tools_have_offline_reports(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

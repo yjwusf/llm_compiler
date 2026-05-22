@@ -10,6 +10,9 @@ the stable project contract, move it into `docs/l1/`.
 - JSON is the first architecture configuration format.
 - Generated SoC tops are manifest-driven. The Wujian100-style reference means
   a visible named-IP top-level composition, not importing Wujian100 RTL.
+- Interface hashes are generated from stable manifest fields, excluding the
+  current implementation module name so compatible replacement modules can
+  change implementation names without redefining the interface.
 - SystemVerilog source will eventually use a matching `rtl/l1/`, `rtl/l2/`,
   and `rtl/l3/` directory layout.
 - Initial SystemVerilog modules are allowed to be mocks if their interfaces,

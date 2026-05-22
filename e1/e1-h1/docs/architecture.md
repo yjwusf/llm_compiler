@@ -77,6 +77,11 @@ The first E1-H1 top is divided into manifest-declared subsystems:
 | `memory_subsystem` | `ingress_sram`, `activation_sram`, `accumulator_sram` |
 | `accelerator_subsystem` | `systolic_array` |
 
+The generator also emits `e1/e1-h1/generated/e1_h1_interface_contracts.json`.
+That file locks the stable IP interfaces independently from the current
+implementation module names, so module replacement can be reviewed as an
+interface-compatible or interface-changing edit.
+
 ## Target Packages
 
 E1-H1 emits initial FPGA and ASIC/OpenROAD smoke packages from the same

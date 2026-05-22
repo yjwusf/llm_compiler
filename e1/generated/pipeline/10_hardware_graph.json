@@ -1,6 +1,7 @@
 {
   "composition_manifest": "e1/e1-h1/generated/e1_h1_soc_top_manifest.json",
   "generator": "e1/e1-h1/tools/generate_soc_top.py",
+  "interface_contracts": "e1/e1-h1/generated/e1_h1_interface_contracts.json",
   "ips": [
     {
       "module": "e1_h1_config_sram",
