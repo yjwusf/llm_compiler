@@ -1,0 +1,24 @@
+{
+  "schema": "e1-h1-l1_5-harness-v0",
+  "name": "accumulator_sram",
+  "ip_manifest": "e1/e1-h1/ip/accumulator_sram.json",
+  "top_module": "e1_h1_config_sram",
+  "rtl": "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv",
+  "cpp_testbench": "e1/e1-h1/l1_5/config_sram_tb.cpp",
+  "parameters": {
+    "SIZE_BYTES": 524288,
+    "DATA_WIDTH": 256,
+    "BANKS": 8
+  },
+  "cpp_environment": [
+    "reset_clock_driver",
+    "future_accumulator_memory_model"
+  ],
+  "perf_counters": [
+    "cycles",
+    "input_transfers",
+    "output_transfers",
+    "stall_cycles",
+    "error_events"
+  ]
+}

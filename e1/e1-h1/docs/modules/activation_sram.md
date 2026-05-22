@@ -12,6 +12,8 @@ C++ model: `e1/code/chip_model/e1_chip_model.*`
 
 L1.5 hybrid run: `e1_h1_activation_sram_hybrid`
 
+L1.5 harness: `e1/e1-h1/l1_5/activation_sram.json`
+
 ## Purpose
 
 Activation SRAM configuration placeholder. It preserves the replaceable SRAM
@@ -58,7 +60,8 @@ introduced.
 
 ## L1.5 Hybrid Execution
 
-Only this RTL instance is instantiated. C++ provides reset, clocking, memory
+Only this RTL instance is instantiated through
+`e1/e1-h1/l1_5/activation_sram.json`. C++ provides reset, clocking, memory
 stimulus expectations, and counters.
 
 ## C++ Performance Counters

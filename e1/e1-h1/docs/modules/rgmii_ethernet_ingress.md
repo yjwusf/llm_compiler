@@ -12,6 +12,8 @@ C++ model: `e1/code/chip_model/e1_chip_model.*`
 
 L1.5 hybrid run: `e1_h1_rgmii_ethernet_ingress_hybrid`
 
+L1.5 harness: `e1/e1-h1/l1_5/rgmii_ethernet_ingress.json`
+
 ## Purpose
 
 Digital-only Ethernet ingress boundary. It receives RGMII-side nibbles from an
@@ -62,8 +64,9 @@ backpressure, and error reporting.
 
 ## L1.5 Hybrid Execution
 
-Only this RTL module is instantiated. C++ supplies RGMII stimulus, downstream
-consumer behavior, scoreboarding, and counters.
+Only this RTL module is instantiated through
+`e1/e1-h1/l1_5/rgmii_ethernet_ingress.json`. C++ supplies RGMII stimulus,
+downstream consumer behavior, scoreboarding, and counters.
 
 ## C++ Performance Counters
 

@@ -22,6 +22,7 @@ IP_DIR = E1_H1 / "ip"
 GENERATED_TOP = E1_H1 / "generated" / "e1_h1_soc_top.sv"
 GENERATOR = E1_H1 / "tools" / "generate_soc_top.py"
 RTL_IP = E1_H1 / "rtl" / "ip"
+L1_5_DIR = E1_H1 / "l1_5"
 
 
 def load_generator():
@@ -81,6 +82,7 @@ class E1H1Tests(unittest.TestCase):
             self.assertIn("spec", data, path)
             self.assertIn("cpp_model", data, path)
             self.assertIn("l1_5_hybrid", data, path)
+            self.assertIn("l1_5_harness", data, path)
             self.assertIn("perf_counters", data, path)
             self.assertGreater(len(data["perf_counters"]), 0, path)
             self.assertGreater(len(data["ports"]), 0, path)
@@ -112,12 +114,39 @@ class E1H1Tests(unittest.TestCase):
             self.assertIn(data["module"], text, spec_path)
             self.assertIn(data["cpp_model"], text, spec_path)
             self.assertIn(data["l1_5_hybrid"], text, spec_path)
+            self.assertIn(data["l1_5_harness"], text, spec_path)
             for section in required_sections:
                 self.assertIn(section, text, spec_path)
             for port in data["ports"]:
                 self.assertIn(f"`{port['name']}`", text, spec_path)
             for counter in data["perf_counters"]:
                 self.assertIn(f"`{counter}`", text, spec_path)
+
+    def test_l1_5_harnesses_match_ip_manifests(self) -> None:
+        for manifest in sorted(IP_DIR.glob("*.json")):
+            ip = json.loads(manifest.read_text(encoding="utf-8"))
+            harness_path = REPO_ROOT / ip["l1_5_harness"]
+            self.assertTrue(harness_path.exists(), harness_path)
+            harness = json.loads(harness_path.read_text(encoding="utf-8"))
+            self.assertEqual(harness["schema"], "e1-h1-l1_5-harness-v0")
+            self.assertEqual(harness["ip_manifest"], str(manifest.relative_to(REPO_ROOT)))
+            self.assertEqual(harness["top_module"], ip["module"])
+            self.assertTrue((REPO_ROOT / harness["rtl"]).exists(), harness)
+            self.assertTrue((REPO_ROOT / harness["cpp_testbench"]).exists(), harness)
+            self.assertGreater(len(harness["cpp_environment"]), 0, harness)
+            self.assertEqual(harness["perf_counters"], ip["perf_counters"])
+
+    def test_l1_5_hybrid_runs_each_ip_individually(self) -> None:
+        harnesses = sorted(L1_5_DIR.glob("*.json"))
+        self.assertGreaterEqual(len(harnesses), 6)
+        for harness in harnesses:
+            result = run([
+                "python3",
+                "e1/e1-h1/tools/run_l1_5.py",
+                "--harness",
+                str(harness.relative_to(REPO_ROOT)),
+            ])
+            self.assertIn(f"PASS {harness.stem}", result.stdout)
 
     def test_generated_soc_top_matches_manifests(self) -> None:
         generator = load_generator()

@@ -1,0 +1,21 @@
+{
+  "schema": "e1-h1-l1_5-harness-v0",
+  "name": "rgmii_ethernet_ingress",
+  "ip_manifest": "e1/e1-h1/ip/rgmii_ethernet_ingress.json",
+  "top_module": "e1_h1_rgmii_ethernet_ingress",
+  "rtl": "e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv",
+  "cpp_testbench": "e1/e1-h1/l1_5/rgmii_ethernet_ingress_tb.cpp",
+  "cpp_environment": [
+    "external_phy_rx_stimulus",
+    "downstream_stream_consumer"
+  ],
+  "perf_counters": [
+    "cycles",
+    "rgmii_rx_cycles",
+    "input_transfers",
+    "output_transfers",
+    "stall_cycles",
+    "error_events",
+    "frames_seen"
+  ]
+}

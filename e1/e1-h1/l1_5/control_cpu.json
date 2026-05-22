@@ -1,0 +1,19 @@
+{
+  "schema": "e1-h1-l1_5-harness-v0",
+  "name": "control_cpu",
+  "ip_manifest": "e1/e1-h1/ip/control_cpu.json",
+  "top_module": "e1_h1_control_cpu",
+  "rtl": "e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv",
+  "cpp_testbench": "e1/e1-h1/l1_5/control_cpu_tb.cpp",
+  "cpp_environment": [
+    "systolic_array_ready_model",
+    "systolic_array_completion_model"
+  ],
+  "perf_counters": [
+    "cycles",
+    "instructions",
+    "array_commands",
+    "stall_cycles",
+    "error_events"
+  ]
+}

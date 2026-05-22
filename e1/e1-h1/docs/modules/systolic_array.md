@@ -12,6 +12,8 @@ C++ model: `e1/code/chip_model/e1_chip_model.*`
 
 L1.5 hybrid run: `e1_h1_systolic_array_hybrid`
 
+L1.5 harness: `e1/e1-h1/l1_5/systolic_array.json`
+
 ## Purpose
 
 Gemmini-inspired systolic-array placeholder behind the E1-H1 stable command and
@@ -75,7 +77,8 @@ behavioral reference for command acceptance and completion counters.
 
 ## L1.5 Hybrid Execution
 
-Only this RTL module is instantiated. C++ supplies command producer, input
+Only this RTL module is instantiated through
+`e1/e1-h1/l1_5/systolic_array.json`. C++ supplies command producer, input
 stream producer, completion checker, memory context, and counters.
 
 ## C++ Performance Counters

@@ -12,6 +12,8 @@ C++ model: `e1/code/chip_model/e1_chip_model.*`
 
 L1.5 hybrid run: `e1_h1_ingress_sram_hybrid`
 
+L1.5 harness: `e1/e1-h1/l1_5/ingress_sram.json`
+
 ## Purpose
 
 Ingress SRAM staging mock. It accepts Ethernet-ingested stream data and presents
@@ -66,8 +68,9 @@ ingress and array consumption.
 
 ## L1.5 Hybrid Execution
 
-Only this RTL module is instantiated. C++ supplies ingress stream producer,
-array stream consumer, memory expectations, and counters.
+Only this RTL module is instantiated through
+`e1/e1-h1/l1_5/ingress_sram.json`. C++ supplies ingress stream producer, array
+stream consumer, memory expectations, and counters.
 
 ## C++ Performance Counters
 

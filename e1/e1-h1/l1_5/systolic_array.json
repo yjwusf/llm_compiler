@@ -1,0 +1,27 @@
+{
+  "schema": "e1-h1-l1_5-harness-v0",
+  "name": "systolic_array",
+  "ip_manifest": "e1/e1-h1/ip/systolic_array.json",
+  "top_module": "e1_h1_systolic_array",
+  "rtl": "e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv",
+  "cpp_testbench": "e1/e1-h1/l1_5/systolic_array_tb.cpp",
+  "parameters": {
+    "ROWS": 16,
+    "COLS": 16,
+    "DATA_WIDTH": 16,
+    "ACCUMULATOR_WIDTH": 32
+  },
+  "cpp_environment": [
+    "cpu_command_producer",
+    "input_stream_producer",
+    "completion_scoreboard"
+  ],
+  "perf_counters": [
+    "cycles",
+    "array_commands",
+    "input_transfers",
+    "output_transfers",
+    "stall_cycles",
+    "error_events"
+  ]
+}

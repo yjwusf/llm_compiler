@@ -12,6 +12,8 @@ C++ model: `e1/code/chip_model/e1_chip_model.*`
 
 L1.5 hybrid run: `e1_h1_control_cpu_hybrid`
 
+L1.5 harness: `e1/e1-h1/l1_5/control_cpu.json`
+
 ## Purpose
 
 Barebones 3-wide control CPU placeholder. It represents the E1-H1 control core
@@ -70,9 +72,9 @@ and counting `instructions` and `array_commands`.
 
 ## L1.5 Hybrid Execution
 
-The L1.5 run instantiates only `e1_h1_control_cpu` in SystemVerilog. C++ models
-the systolic array readiness, completion, errors, reset sequencing, and
-performance counters.
+The L1.5 run instantiates only `e1_h1_control_cpu` in SystemVerilog through
+`e1/e1-h1/l1_5/control_cpu.json`. C++ models the systolic array readiness,
+completion, errors, reset sequencing, and performance counters.
 
 ## C++ Performance Counters
 
