@@ -24,7 +24,6 @@ GENERATED_TOP = E1_H1 / "generated" / "e1_h1_soc_top.sv"
 GENERATED_TOP_MANIFEST = E1_H1 / "generated" / "e1_h1_soc_top_manifest.json"
 GENERATED_INTERFACE_CONTRACTS = E1_H1 / "generated" / "e1_h1_interface_contracts.json"
 GENERATOR = E1_H1 / "tools" / "generate_soc_top.py"
-RTL_IP = E1_H1 / "rtl" / "ip"
 L1_5_DIR = E1_H1 / "l1_5"
 E1_PIPELINE = REPO_ROOT / "e1" / "tools" / "run_e1_pipeline.py"
 E1_FETCH = REPO_ROOT / "e1" / "tools" / "fetch_tinyllama.py"
@@ -257,6 +256,38 @@ class E1H1Tests(unittest.TestCase):
             self.assertTrue((REPO_ROOT / interface["l1_5_harness"]).exists())
             self.assertNotIn("implementation_module", interface_signature_payload(interface))
 
+    def test_soc_top_generator_cli_emits_all_review_artifacts(self) -> None:
+        generator = load_generator()
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            top_out = tmp_path / "e1_h1_soc_top.sv"
+            manifest_out = tmp_path / "e1_h1_soc_top_manifest.json"
+            interfaces_out = tmp_path / "e1_h1_interface_contracts.json"
+            run([
+                "python3",
+                str(GENERATOR.relative_to(REPO_ROOT)),
+                "--architecture",
+                str(ARCH.relative_to(REPO_ROOT)),
+                "--ip-dir",
+                str(IP_DIR.relative_to(REPO_ROOT)),
+                "--output",
+                str(top_out),
+                "--manifest-output",
+                str(manifest_out),
+                "--interfaces-output",
+                str(interfaces_out),
+            ])
+
+            self.assertEqual(top_out.read_text(encoding="utf-8"), generator.generate(ARCH, IP_DIR))
+            self.assertEqual(
+                json.loads(manifest_out.read_text(encoding="utf-8")),
+                generator.generate_composition_manifest(ARCH, IP_DIR),
+            )
+            self.assertEqual(
+                json.loads(interfaces_out.read_text(encoding="utf-8")),
+                generator.generate_interface_contracts(ARCH, IP_DIR),
+            )
+
     def test_soc_top_generator_rejects_bad_net_roles(self) -> None:
         generator = load_generator()
         bad_cases = {
@@ -484,7 +515,8 @@ class E1H1Tests(unittest.TestCase):
     def test_verilator_lints_generated_top_and_mock_ips(self) -> None:
         verilator = shutil.which("verilator")
         self.assertIsNotNone(verilator, "verilator is required for E1-H1 RTL lint")
-        rtl_files = sorted(str(path.relative_to(REPO_ROOT)) for path in RTL_IP.glob("*.sv"))
+        manifest = json.loads((TARGETS / "manifest.json").read_text(encoding="utf-8"))
+        rtl_files = manifest["rtl_files"]
         cmd = [
             verilator,
             "--lint-only",
@@ -494,7 +526,6 @@ class E1H1Tests(unittest.TestCase):
             "-Wno-UNUSEDSIGNAL",
             "-Wno-UNUSEDPARAM",
             "-Wno-MULTITOP",
-            str(GENERATED_TOP.relative_to(REPO_ROOT)),
             *rtl_files,
         ]
         run(cmd)

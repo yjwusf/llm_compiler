@@ -21,11 +21,15 @@ The generator is:
 e1/e1-h1/tools/generate_soc_top.py \
   --architecture e1/e1-h1/config/architecture.json \
   --ip-dir e1/e1-h1/ip \
-  --output e1/e1-h1/generated/e1_h1_soc_top.sv
+  --output e1/e1-h1/generated/e1_h1_soc_top.sv \
+  --manifest-output e1/e1-h1/generated/e1_h1_soc_top_manifest.json \
+  --interfaces-output e1/e1-h1/generated/e1_h1_interface_contracts.json
 ```
 
-The generated file is checked in so reviews can inspect the current top-level
-wiring. Tests regenerate it and compare the result to the checked-in file.
+The generated files are checked in so reviews can inspect the current top-level
+wiring, composition data, and interface locks. Tests regenerate them through
+both the Python API and the CLI, then compare the result to the checked-in
+files.
 
 The generator also emits:
 
