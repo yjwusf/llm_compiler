@@ -94,6 +94,7 @@
         }
       ],
       "replaceable": true,
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv",
       "signature_sha256": "d6e20779bfb25660106a729ebdf9204d07dd659e98aebb00c7bb7820e2ae6c89",
       "spec": "e1/e1-h1/docs/modules/control_cpu.md",
       "subsystem": "cpu_subsystem"
@@ -175,6 +176,7 @@
         }
       ],
       "replaceable": true,
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv",
       "signature_sha256": "53a0708bad0f54eccc7b3e3e226a8f96905321a8adf368a142f485725a9a9c15",
       "spec": "e1/e1-h1/docs/modules/rgmii_ethernet_ingress.md",
       "subsystem": "io_subsystem"
@@ -267,6 +269,7 @@
         }
       ],
       "replaceable": true,
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv",
       "signature_sha256": "fce5f55958623a0d09bb7d76d8d63c55a78322d6dc1b9cab357fd54c2fb643d5",
       "spec": "e1/e1-h1/docs/modules/ingress_sram.md",
       "subsystem": "memory_subsystem"
@@ -311,6 +314,7 @@
         }
       ],
       "replaceable": true,
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv",
       "signature_sha256": "587f0f7c1ed1e301dff894e920800fdfdb1fc9ccb21f511fb734efec4f698447",
       "spec": "e1/e1-h1/docs/modules/activation_sram.md",
       "subsystem": "memory_subsystem"
@@ -355,6 +359,7 @@
         }
       ],
       "replaceable": true,
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv",
       "signature_sha256": "1fad28f4ac4b0faf04fcca04ded4f53732a606de3e0a4bb51fc4dd91918bc130",
       "spec": "e1/e1-h1/docs/modules/accumulator_sram.md",
       "subsystem": "memory_subsystem"
@@ -488,6 +493,7 @@
         }
       ],
       "replaceable": true,
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv",
       "signature_sha256": "90742450371d8b9635a2091568ae8a1695881102efe7fb8d77861e3d2d4ee51b",
       "spec": "e1/e1-h1/docs/modules/systolic_array.md",
       "subsystem": "accelerator_subsystem"

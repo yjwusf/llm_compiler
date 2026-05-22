@@ -45,6 +45,7 @@ Each file under `e1/e1-h1/ip/` describes one replaceable IP:
 
 - Instance name.
 - SystemVerilog module name.
+- SystemVerilog RTL file.
 - Subsystem membership.
 - Composition order.
 - Optional implementation reference.
@@ -85,6 +86,7 @@ The generated interface contract file is the review point for replacement
 compatibility:
 
 - `implementation_module` names the current RTL module used by the top.
+- `rtl` names the current SystemVerilog source for that IP.
 - `ports` and `parameters` define the stable generated wiring boundary.
 - `perf_counters` define the required C++/L1.5 observation boundary.
 - `signature_sha256` changes when the stable interface payload changes.

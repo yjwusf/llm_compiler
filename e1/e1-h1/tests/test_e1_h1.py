@@ -83,6 +83,7 @@ def minimal_ip(name: str, order: int, ports: list[dict[str, object]]) -> dict[st
         "order": order,
         "description": f"Test IP {name}.",
         "replaceable": True,
+        "rtl": "e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv",
         "spec": "e1/e1-h1/docs/modules/control_cpu.md",
         "cpp_model": "e1/code/chip_model/e1_chip_model.*",
         "l1_5_hybrid": f"test_{name}_hybrid",
@@ -133,6 +134,7 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual(data["schema"], "e1-h1-ip-v0", path)
             self.assertTrue(data["replaceable"], path)
             self.assertIn("module", data, path)
+            self.assertIn("rtl", data, path)
             self.assertIn("order", data, path)
             self.assertIn(data["subsystem"], valid_subsystems, path)
             self.assertIn("spec", data, path)
@@ -140,6 +142,7 @@ class E1H1Tests(unittest.TestCase):
             self.assertIn("l1_5_hybrid", data, path)
             self.assertIn("l1_5_harness", data, path)
             self.assertIn("perf_counters", data, path)
+            self.assertTrue((REPO_ROOT / data["rtl"]).exists(), data["rtl"])
             self.assertGreater(len(data["perf_counters"]), 0, path)
             self.assertGreater(len(data["ports"]), 0, path)
             for port in data["ports"]:
@@ -187,7 +190,8 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual(harness["schema"], "e1-h1-l1_5-harness-v0")
             self.assertEqual(harness["ip_manifest"], str(manifest.relative_to(REPO_ROOT)))
             self.assertEqual(harness["top_module"], ip["module"])
-            self.assertTrue((REPO_ROOT / harness["rtl"]).exists(), harness)
+            self.assertEqual(harness["rtl"], ip["rtl"])
+            self.assertTrue((REPO_ROOT / ip["rtl"]).exists(), harness)
             self.assertTrue((REPO_ROOT / harness["cpp_testbench"]).exists(), harness)
             self.assertGreater(len(harness["cpp_environment"]), 0, harness)
             self.assertEqual(harness["perf_counters"], ip["perf_counters"])
@@ -347,6 +351,8 @@ class E1H1Tests(unittest.TestCase):
         )
         self.assertIn("systolic_array", {ip["name"] for ip in hardware_graph["ips"]})
         self.assertIn("accelerator_subsystem", {ip["subsystem"] for ip in hardware_graph["ips"]})
+        for ip in hardware_graph["ips"]:
+            self.assertTrue((REPO_ROOT / ip["rtl"]).exists(), ip)
 
         fetch = json.loads((E1_PIPELINE_OUT / "01_fetch_model.json").read_text(encoding="utf-8"))
         self.assertEqual(fetch["schema"], "e1-fetch-model-report-v0")
@@ -382,6 +388,10 @@ class E1H1Tests(unittest.TestCase):
         self.assertTrue(target_plan["digital_only"])
         self.assertEqual(target_plan["fpga"]["top"], "e1_h1_soc_top")
         self.assertEqual(target_plan["asic_openroad"]["top"], "e1_h1_soc_top")
+        self.assertEqual(
+            target_plan["fpga"]["package"]["filelist"],
+            "e1/e1-h1/generated/targets/fpga/rtl.filelist",
+        )
 
         sv_plan = json.loads((E1_PIPELINE_OUT / "11_systemverilog_plan.json").read_text(encoding="utf-8"))
         self.assertEqual(sv_plan["generated_top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
@@ -432,10 +442,29 @@ class E1H1Tests(unittest.TestCase):
         self.assertTrue(manifest["digital_only"])
         self.assertEqual(manifest["external_data_source"]["kind"], "ethernet")
         self.assertEqual(manifest["external_data_source"]["mac_interface"], "rgmii")
+        self.assertEqual(manifest["rtl_source"], "e1/e1-h1/ip/*.json")
 
         rtl_files = manifest["rtl_files"]
-        self.assertIn("e1/e1-h1/generated/e1_h1_soc_top.sv", rtl_files)
+        ip_manifests = [
+            json.loads(path.read_text(encoding="utf-8"))
+            for path in sorted(IP_DIR.glob("*.json"))
+        ]
+        ordered_ip_rtl = []
+        for ip in sorted(ip_manifests, key=lambda item: (item["order"], item["name"])):
+            if ip["rtl"] not in ordered_ip_rtl:
+                ordered_ip_rtl.append(ip["rtl"])
+        expected_rtl_files = ["e1/e1-h1/generated/e1_h1_soc_top.sv", *ordered_ip_rtl]
+        self.assertEqual(rtl_files, expected_rtl_files)
+        self.assertEqual(
+            [entry["name"] for entry in manifest["ip_rtl"]],
+            [ip["name"] for ip in sorted(ip_manifests, key=lambda item: (item["order"], item["name"]))],
+        )
+        self.assertEqual(
+            [entry["rtl"] for entry in manifest["ip_rtl"]],
+            [ip["rtl"] for ip in sorted(ip_manifests, key=lambda item: (item["order"], item["name"]))],
+        )
         self.assertIn("e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv", rtl_files)
+        self.assertEqual(len(rtl_files), len(set(rtl_files)))
         for rtl_file in rtl_files:
             self.assertTrue((REPO_ROOT / rtl_file).exists(), rtl_file)
 

@@ -10,6 +10,50 @@
     "filelist": "e1/e1-h1/generated/targets/fpga/rtl.filelist",
     "script": "e1/e1-h1/generated/targets/fpga/run_synth.tcl"
   },
+  "ip_rtl": [
+    {
+      "manifest": "e1/e1-h1/ip/control_cpu.json",
+      "module": "e1_h1_control_cpu",
+      "name": "control_cpu",
+      "order": 10,
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv"
+    },
+    {
+      "manifest": "e1/e1-h1/ip/rgmii_ethernet_ingress.json",
+      "module": "e1_h1_rgmii_ethernet_ingress",
+      "name": "rgmii_ethernet_ingress",
+      "order": 20,
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv"
+    },
+    {
+      "manifest": "e1/e1-h1/ip/ingress_sram.json",
+      "module": "e1_h1_stream_sram",
+      "name": "ingress_sram",
+      "order": 30,
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv"
+    },
+    {
+      "manifest": "e1/e1-h1/ip/activation_sram.json",
+      "module": "e1_h1_config_sram",
+      "name": "activation_sram",
+      "order": 40,
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv"
+    },
+    {
+      "manifest": "e1/e1-h1/ip/accumulator_sram.json",
+      "module": "e1_h1_config_sram",
+      "name": "accumulator_sram",
+      "order": 50,
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv"
+    },
+    {
+      "manifest": "e1/e1-h1/ip/systolic_array.json",
+      "module": "e1_h1_systolic_array",
+      "name": "systolic_array",
+      "order": 60,
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv"
+    }
+  ],
   "openroad": {
     "config": "e1/e1-h1/generated/targets/openroad/config.mk",
     "constraints": "e1/e1-h1/generated/targets/openroad/constraints.sdc",
@@ -17,12 +61,13 @@
   },
   "rtl_files": [
     "e1/e1-h1/generated/e1_h1_soc_top.sv",
-    "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv",
     "e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv",
     "e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv",
     "e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv",
+    "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv",
     "e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv"
   ],
+  "rtl_source": "e1/e1-h1/ip/*.json",
   "schema": "e1-h1-target-package-v0",
   "top": "e1_h1_soc_top"
 }

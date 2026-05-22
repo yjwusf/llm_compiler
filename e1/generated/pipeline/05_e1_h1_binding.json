@@ -10,11 +10,11 @@
     "staging": "ingress_sram"
   },
   "ip": [
-    "accumulator_sram",
-    "activation_sram",
     "control_cpu",
-    "ingress_sram",
     "rgmii_ethernet_ingress",
+    "ingress_sram",
+    "activation_sram",
+    "accumulator_sram",
     "systolic_array"
   ]
 }

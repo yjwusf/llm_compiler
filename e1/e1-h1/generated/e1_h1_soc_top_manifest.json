@@ -815,7 +815,8 @@
           "module": "e1_h1_control_cpu",
           "name": "control_cpu",
           "order": 10,
-          "replaceable": true
+          "replaceable": true,
+          "rtl": "e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv"
         }
       ],
       "name": "cpu_subsystem"
@@ -827,7 +828,8 @@
           "module": "e1_h1_rgmii_ethernet_ingress",
           "name": "rgmii_ethernet_ingress",
           "order": 20,
-          "replaceable": true
+          "replaceable": true,
+          "rtl": "e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv"
         }
       ],
       "name": "io_subsystem"
@@ -839,19 +841,22 @@
           "module": "e1_h1_stream_sram",
           "name": "ingress_sram",
           "order": 30,
-          "replaceable": true
+          "replaceable": true,
+          "rtl": "e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv"
         },
         {
           "module": "e1_h1_config_sram",
           "name": "activation_sram",
           "order": 40,
-          "replaceable": true
+          "replaceable": true,
+          "rtl": "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv"
         },
         {
           "module": "e1_h1_config_sram",
           "name": "accumulator_sram",
           "order": 50,
-          "replaceable": true
+          "replaceable": true,
+          "rtl": "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv"
         }
       ],
       "name": "memory_subsystem"
@@ -863,7 +868,8 @@
           "module": "e1_h1_systolic_array",
           "name": "systolic_array",
           "order": 60,
-          "replaceable": true
+          "replaceable": true,
+          "rtl": "e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv"
         }
       ],
       "name": "accelerator_subsystem"

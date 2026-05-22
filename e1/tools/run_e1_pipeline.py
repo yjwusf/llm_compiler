@@ -53,7 +53,19 @@ def tensors(text: str) -> list[str]:
 
 
 def load_ip_manifests(ip_dir: Path) -> list[dict[str, Any]]:
-    return [load_json(path) for path in sorted(ip_dir.glob("*.json"))]
+    manifests = [load_json(path) for path in sorted(ip_dir.glob("*.json"))]
+    return sorted(manifests, key=lambda item: (int(item["order"]), item["name"]))
+
+
+def unique_ordered(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for value in values:
+        if value in seen:
+            continue
+        seen.add(value)
+        ordered.append(value)
+    return ordered
 
 
 def load_soc_top_generator(e1_h1_dir: Path) -> Any:
@@ -137,13 +149,27 @@ def stablehlo_export_report(
     }
 
 
-def emit_target_packages(e1_h1_dir: Path, architecture: dict[str, Any]) -> dict[str, Any]:
+def emit_target_packages(
+    e1_h1_dir: Path,
+    architecture: dict[str, Any],
+    ip_manifests: list[dict[str, Any]],
+) -> dict[str, Any]:
     target_dir = e1_h1_dir / "generated" / "targets"
     fpga_dir = target_dir / "fpga"
     openroad_dir = target_dir / "openroad"
+    ip_rtl = [
+        {
+            "name": ip["name"],
+            "module": ip["module"],
+            "order": ip["order"],
+            "manifest": f"e1/e1-h1/ip/{ip['name']}.json",
+            "rtl": ip["rtl"],
+        }
+        for ip in ip_manifests
+    ]
     rtl_files = [
         e1_h1_dir / "generated" / "e1_h1_soc_top.sv",
-        *sorted((e1_h1_dir / "rtl" / "ip").glob("*.sv")),
+        *(REPO_ROOT / path for path in unique_ordered([item["rtl"] for item in ip_rtl])),
     ]
     rtl_rel = [repo_rel(path) for path in rtl_files]
     top = "e1_h1_soc_top"
@@ -222,6 +248,8 @@ def emit_target_packages(e1_h1_dir: Path, architecture: dict[str, Any]) -> dict[
             "mac_interface": rgmii["mac_interface"],
             "phy_boundary": rgmii["phy_boundary"],
         },
+        "rtl_source": "e1/e1-h1/ip/*.json",
+        "ip_rtl": ip_rtl,
         "rtl_files": rtl_rel,
         "fpga": {
             "filelist": repo_rel(fpga_dir / "rtl.filelist"),
@@ -438,6 +466,7 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
                     "name": ip["name"],
                     "module": ip["module"],
                     "subsystem": ip["subsystem"],
+                    "rtl": ip["rtl"],
                     "spec": ip["spec"],
                     "replaceable": ip["replaceable"],
                 }
@@ -460,7 +489,7 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
     )
     passes.append({"pass": "e1_emit_systemverilog", "artifact": repo_rel(sv_out)})
 
-    target_manifest = emit_target_packages(e1_h1_dir, architecture)
+    target_manifest = emit_target_packages(e1_h1_dir, architecture, ip_manifests)
     target_out = output_dir / "12_target_package_plan.json"
     write_json(
         target_out,

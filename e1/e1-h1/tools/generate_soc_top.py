@@ -29,6 +29,7 @@ class Ip:
     order: int
     description: str
     replaceable: bool
+    rtl: str
     spec: str
     l1_5_harness: str
     perf_counters: list[str]
@@ -68,6 +69,7 @@ def load_ips(ip_dir: Path) -> list[Ip]:
                 order=int(data["order"]),
                 description=data.get("description", ""),
                 replaceable=bool(data["replaceable"]),
+                rtl=data["rtl"],
                 spec=data["spec"],
                 l1_5_harness=data["l1_5_harness"],
                 perf_counters=list(data["perf_counters"]),
@@ -293,6 +295,7 @@ def generate_interface_contracts(architecture_path: Path, ip_dir: Path) -> dict[
             {
                 **interface_payload(ip),
                 "implementation_module": ip.module,
+                "rtl": ip.rtl,
                 "replaceable": ip.replaceable,
                 "spec": ip.spec,
                 "l1_5_harness": ip.l1_5_harness,
@@ -320,6 +323,7 @@ def generate_composition_manifest(architecture_path: Path, ip_dir: Path) -> dict
             {
                 "name": ip.name,
                 "module": ip.module,
+                "rtl": ip.rtl,
                 "order": ip.order,
                 "replaceable": ip.replaceable,
             }

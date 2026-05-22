@@ -1,9 +1,10 @@
 # E1-H1 Target Packaging
 
 E1-H1 emits smoke packages for FPGA and ASIC/OpenROAD targets from the same
-generated SoC top and IP RTL files. These packages are not full implementation
-flows yet; they are the first target artifacts that prove the generated top,
-mock IPs, digital RGMII boundary, and target constraints are wired together.
+generated SoC top and IP RTL files listed in the IP manifests. These packages
+are not full implementation flows yet; they are the first target artifacts that
+prove the generated top, mock IPs, digital RGMII boundary, and target
+constraints are wired together.
 
 ## Generator
 
@@ -27,7 +28,10 @@ The pipeline writes:
 
 - Both targets use `e1_h1_soc_top` as the top.
 - Both targets consume `e1/e1-h1/generated/e1_h1_soc_top.sv`.
-- Both targets include every current E1-H1 mock IP RTL file.
+- Both targets include every current E1-H1 mock IP RTL file through the `rtl`
+  field in `e1/e1-h1/ip/*.json`.
+- Shared implementation RTL, such as `e1_h1_config_sram.sv`, appears only once
+  in target filelists even when multiple IP manifests use it.
 - RGMII remains digital-only. The external Ethernet PHY owns analog signaling.
 - OpenROAD packaging must not require an analog PHY macro or off-chip DRAM data
   source.
