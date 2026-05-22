@@ -1,0 +1,15 @@
+{
+  "dependencies": {
+    "jax": false,
+    "torch": false,
+    "transformers": false
+  },
+  "fetch_report": "e1/generated/pipeline/01_fetch_model.json",
+  "fixture": "e1/fixtures/stablehlo/tinyllama_block.mlir",
+  "live_ready": false,
+  "mode": "offline",
+  "model_id": "tinyllama-1.1b-chat-v1.0",
+  "schema": "e1-stablehlo-export-report-v0",
+  "stablehlo_out": "e1/generated/pipeline/02_stablehlo.mlir",
+  "status": "offline_fixture"
+}

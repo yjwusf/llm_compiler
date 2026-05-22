@@ -24,6 +24,8 @@ GENERATOR = E1_H1 / "tools" / "generate_soc_top.py"
 RTL_IP = E1_H1 / "rtl" / "ip"
 L1_5_DIR = E1_H1 / "l1_5"
 E1_PIPELINE = REPO_ROOT / "e1" / "tools" / "run_e1_pipeline.py"
+E1_FETCH = REPO_ROOT / "e1" / "tools" / "fetch_tinyllama.py"
+E1_EXPORT = REPO_ROOT / "e1" / "tools" / "export_stablehlo.py"
 E1_PIPELINE_OUT = REPO_ROOT / "e1" / "generated" / "pipeline"
 TARGETS = E1_H1 / "generated" / "targets"
 
@@ -206,11 +208,59 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(hardware_graph["generator"], "e1/e1-h1/tools/generate_soc_top.py")
         self.assertIn("systolic_array", {ip["name"] for ip in hardware_graph["ips"]})
 
+        fetch = json.loads((E1_PIPELINE_OUT / "01_fetch_model.json").read_text(encoding="utf-8"))
+        self.assertEqual(fetch["schema"], "e1-fetch-model-report-v0")
+        self.assertEqual(fetch["source"]["repo"], "TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+        self.assertEqual(fetch["source"]["revision"], "2539c747f7b95a4dac517d6620f2244efdca3543")
+        self.assertEqual(fetch["command"][:4], ["hf", "download", "TinyLlama/TinyLlama-1.1B-Chat-v1.0", "--revision"])
+        self.assertFalse(fetch["large_artifacts_committed"])
+
+        export = json.loads((E1_PIPELINE_OUT / "02_stablehlo_export.json").read_text(encoding="utf-8"))
+        self.assertEqual(export["schema"], "e1-stablehlo-export-report-v0")
+        self.assertEqual(export["status"], "offline_fixture")
+        self.assertEqual(export["stablehlo_out"], "e1/generated/pipeline/02_stablehlo.mlir")
+        self.assertEqual(export["fixture"], "e1/fixtures/stablehlo/tinyllama_block.mlir")
+
         target_plan = json.loads((E1_PIPELINE_OUT / "12_target_package_plan.json").read_text(encoding="utf-8"))
         self.assertEqual(target_plan["manifest"], "e1/e1-h1/generated/targets/manifest.json")
         self.assertTrue(target_plan["digital_only"])
         self.assertEqual(target_plan["fpga"]["top"], "e1_h1_soc_top")
         self.assertEqual(target_plan["asic_openroad"]["top"], "e1_h1_soc_top")
+
+    def test_tinyllama_fetch_and_export_tools_have_offline_reports(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            fetch_report = tmp_path / "fetch.json"
+            stablehlo_out = tmp_path / "stablehlo.mlir"
+            export_report = tmp_path / "export.json"
+            fetch_result = run([
+                "python3",
+                str(E1_FETCH.relative_to(REPO_ROOT)),
+                "--mode",
+                "offline",
+                "--report",
+                str(fetch_report),
+            ])
+            self.assertIn("PASS e1_fetch_model offline_fixture", fetch_result.stdout)
+            export_result = run([
+                "python3",
+                str(E1_EXPORT.relative_to(REPO_ROOT)),
+                "--mode",
+                "offline",
+                "--fetch-report",
+                str(fetch_report),
+                "--stablehlo-out",
+                str(stablehlo_out),
+                "--report",
+                str(export_report),
+            ])
+            self.assertIn("PASS e1_export_stablehlo offline_fixture", export_result.stdout)
+            fetch = json.loads(fetch_report.read_text(encoding="utf-8"))
+            export = json.loads(export_report.read_text(encoding="utf-8"))
+            self.assertEqual(fetch["schema"], "e1-fetch-model-report-v0")
+            self.assertEqual(export["schema"], "e1-stablehlo-export-report-v0")
+            self.assertTrue(stablehlo_out.exists())
+            self.assertIn("stablehlo.dot_general", stablehlo_out.read_text(encoding="utf-8"))
 
     def test_target_packages_cover_fpga_and_openroad(self) -> None:
         run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])

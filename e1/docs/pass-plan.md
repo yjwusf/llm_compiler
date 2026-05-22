@@ -66,6 +66,6 @@ python3 e1/tools/run_e1_pipeline.py --clean
 ```
 
 This creates `e1/generated/pipeline/` from the pinned TinyLlama manifest,
-reduced StableHLO fixture, E1-H1 architecture JSON, IP manifests, module docs,
-and generated SoC top. It is intentionally deterministic and network-free so it
-can run in E1-H1 tests.
+fetch/export reports, reduced StableHLO fixture, E1-H1 architecture JSON, IP
+manifests, module docs, and generated SoC top. It is intentionally
+deterministic and network-free so it can run in E1-H1 tests.

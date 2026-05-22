@@ -9,6 +9,7 @@ same artifact boundaries that the real TinyLlama export will use.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import re
 import shutil
@@ -50,6 +51,60 @@ def tensors(text: str) -> list[str]:
 
 def load_ip_manifests(ip_dir: Path) -> list[dict[str, Any]]:
     return [load_json(path) for path in sorted(ip_dir.glob("*.json"))]
+
+
+def has_module(name: str) -> bool:
+    return importlib.util.find_spec(name) is not None
+
+
+def fetch_report(manifest: dict[str, Any], cache_dir: Path) -> dict[str, Any]:
+    return {
+        "schema": "e1-fetch-model-report-v0",
+        "model_id": manifest["model_id"],
+        "source": manifest["source"],
+        "mode": "offline",
+        "hf_available": shutil.which("hf") is not None,
+        "hf_path": shutil.which("hf"),
+        "command": [
+            "hf",
+            "download",
+            manifest["source"]["repo"],
+            "--revision",
+            manifest["source"]["revision"],
+            "--local-dir",
+            repo_rel(cache_dir),
+        ],
+        "cache_dir": repo_rel(cache_dir),
+        "cache_exists": cache_dir.exists(),
+        "large_artifacts_committed": False,
+        "ready_for_live_fetch": shutil.which("hf") is not None,
+        "status": "offline_fixture",
+    }
+
+
+def stablehlo_export_report(
+    manifest: dict[str, Any],
+    fetch: dict[str, Any],
+    fetch_report_path: Path,
+    stablehlo_out: Path,
+    fixture_path: Path,
+) -> dict[str, Any]:
+    deps = {
+        "torch": has_module("torch"),
+        "transformers": has_module("transformers"),
+        "jax": has_module("jax"),
+    }
+    return {
+        "schema": "e1-stablehlo-export-report-v0",
+        "model_id": manifest["model_id"],
+        "mode": "offline",
+        "dependencies": deps,
+        "fetch_report": repo_rel(fetch_report_path),
+        "stablehlo_out": repo_rel(stablehlo_out),
+        "fixture": repo_rel(fixture_path),
+        "live_ready": all(deps.values()) and fetch.get("cache_exists", False),
+        "status": "offline_fixture",
+    }
 
 
 def emit_target_packages(e1_h1_dir: Path, architecture: dict[str, Any]) -> dict[str, Any]:
@@ -174,21 +229,17 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
     write_json(model_manifest_out, manifest)
 
     fetch_out = output_dir / "01_fetch_model.json"
-    write_json(
-        fetch_out,
-        {
-            "model_id": manifest["model_id"],
-            "source": manifest["source"],
-            "download_command": manifest["download"]["command"],
-            "mode": "offline_fixture",
-            "large_artifacts_committed": False,
-            "cache_expected": ".cache/e1/tinyllama-1.1b-chat-v1.0",
-        },
-    )
+    fetch = fetch_report(manifest, REPO_ROOT / ".cache/e1/tinyllama-1.1b-chat-v1.0")
+    write_json(fetch_out, fetch)
     passes.append({"pass": "e1_fetch_model", "artifact": repo_rel(fetch_out)})
 
     stablehlo_out = output_dir / "02_stablehlo.mlir"
     write_text(stablehlo_out, fixture_text)
+    stablehlo_report_out = output_dir / "02_stablehlo_export.json"
+    write_json(
+        stablehlo_report_out,
+        stablehlo_export_report(manifest, fetch, fetch_out, stablehlo_out, fixture_path),
+    )
     passes.append({"pass": "e1_export_stablehlo", "artifact": repo_rel(stablehlo_out)})
 
     inspection_out = output_dir / "03_stablehlo_inspection.json"
