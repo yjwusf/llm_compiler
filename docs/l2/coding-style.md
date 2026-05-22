@@ -29,11 +29,28 @@
   the module's L3 document.
 - Document latency for every pipelined module.
 
+## RGMII
+
+- Use `rgmii_rx_clk_i`, `rgmii_rxd_i`, and `rgmii_rx_ctl_i` for receive-side
+  RGMII pins.
+- Use `rgmii_tx_clk_o`, `rgmii_txd_o`, and `rgmii_tx_ctl_o` for transmit-side
+  RGMII pins when transmit support is present.
+- Treat the RGMII PHY as external. RTL in this repository must remain
+  digital-only.
+- Keep clock-domain crossing behavior explicit in module docs and tests.
+
 ## C++
 
 - C++ models define the behavioral reference for mocks and module tests.
 - Keep C++ model inputs and outputs aligned with the SystemVerilog module
   ports.
+- Keep L1.5 harnesses explicit about which C++ model, mock, or adapter replaces
+  each non-DUT component.
+- Use snake_case names for C++ performance counters.
+- Keep common C++ performance counters named `cycles`, `input_transfers`,
+  `output_transfers`, `stall_cycles`, and `error_events`.
+- Store module-specific counters next to the module's C++ model or L1.5
+  harness.
 - Prefer deterministic tests and explicit fixtures over randomized-only tests.
 - If randomized tests are added, record the seed in failures.
 
@@ -44,3 +61,4 @@
 - Do not add implicit defaults in compiler code without documenting them in
   `docs/l2/assumptions.md` or L1.
 - Add schema tests when new JSON fields affect generated hardware.
+- Use `io.external_data_source` for external ingress configuration.

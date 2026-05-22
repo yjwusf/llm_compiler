@@ -13,8 +13,17 @@ the stable project contract, move it into `docs/l1/`.
 - Initial SystemVerilog modules are allowed to be mocks if their interfaces,
   C++ behavior, Verilator path, and module VIP are documented.
 - The C++ model is the behavioral reference for mocked modules.
+- L1.5 harnesses use C++ models or mocks for every component surrounding the
+  single SystemVerilog module under test.
+- Initial performance counters are collected in C++ harness code.
 - Valid/ready streaming interfaces are the default for tensor-like data unless
   a module document says otherwise.
+- External model data enters through Ethernet over RGMII by default.
+- The RGMII PHY is external to generated RTL. The repository models only the
+  digital MAC-side RGMII boundary.
+- Off-chip DRAM is not the default source of input model data.
+- RGMII and Ethernet verification are digital-only and do not require
+  mixed-signal simulation.
 - Pipeline length is configurable through JSON and lowered into SystemVerilog
   parameters.
 - SRAM sizing is configurable through JSON and lowered into SystemVerilog

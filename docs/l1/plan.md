@@ -31,6 +31,19 @@ Initial pass boundaries:
 
 Done when each pass has a documented input/output contract and minimal tests.
 
+## Phase 1A: L1.5 Hybrid Execution Skeleton
+
+Add the shared C++/SystemVerilog harness shape used to run one RTL module with
+the rest of the system supplied by C++ models or mocks.
+
+Done when:
+
+- The repository has a documented L1.5 harness contract.
+- The harness contract supports mocked and real SystemVerilog modules.
+- C++ performance counters are defined for cycles, transfers, stalls, and
+  errors.
+- The module template requires a per-module L1.5 run command and counter list.
+
 ## Phase 2: Architecture JSON Schema
 
 Define a human-editable JSON schema for architecture configuration.
@@ -39,12 +52,25 @@ The schema must cover:
 
 - Systolic array dimensions and link topology.
 - SRAM sizes, banking, widths, and logical ownership.
+- Ethernet/RGMII external data-source configuration.
 - Pipeline depths.
 - Precision choices.
 - Target selection.
 - Host/device interface assumptions.
 
 Done when sample JSON files can drive a mock hardware graph.
+
+## Phase 2A: Ethernet RGMII Ingress
+
+Define and mock the digital Ethernet ingress boundary.
+
+Done when:
+
+- Architecture JSON can select Ethernet over RGMII as the external data source.
+- No compiler pass assumes off-chip DRAM as the source of input model data.
+- L3 documentation exists for the RGMII ingress module.
+- The mock RGMII ingress path has a C++ model, Verilator harness, and
+  digital-only module VIP.
 
 ## Phase 3: Mock Hardware Modules
 
@@ -57,6 +83,8 @@ Done when every mock module has:
 - L3 module documentation.
 - Input and output signal tables.
 - C++ model.
+- L1.5 hybrid run mode with the mock as the only SystemVerilog module.
+- C++ performance counters.
 - Verilator harness.
 - Module-local VIP.
 
@@ -70,6 +98,7 @@ Done when:
 - Systolic arrays can be linked according to JSON configuration.
 - SRAM size changes are driven by JSON and reflected in generated RTL
   parameters.
+- Ethernet-ingested payloads can be staged through configurable on-chip SRAM.
 - C++ models and VIPs cover the replaced RTL.
 
 ## Phase 5: Configurable Pipelines
@@ -106,3 +135,10 @@ Done when:
 - End-to-end tests compile an MLIR LLM fragment through generated hardware.
 - C++ model, Verilator, and generated target artifacts agree on expected
   behavior.
+
+## Example Track: E1
+
+E1 is the first concrete example track. It starts with TinyLlama, captures
+StableHLO-compatible MLIR, binds the workload to the E1-H1 architecture, and
+drives the first C++ chip model, legible device program, L1.5 hybrid runs, and
+SystemVerilog mocks.

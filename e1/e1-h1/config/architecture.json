@@ -1,0 +1,68 @@
+{
+  "example": "e1",
+  "architecture_id": "e1-h1",
+  "target": {
+    "kind": "fpga",
+    "asic_flow": "openroad"
+  },
+  "io": {
+    "external_data_source": {
+      "kind": "ethernet",
+      "mac_interface": "rgmii",
+      "phy_boundary": "external",
+      "digital_only": true,
+      "stream_data_width": 64,
+      "fifo_depth": 1024,
+      "enable_frame_check": true
+    }
+  },
+  "cpu": {
+    "kind": "barebones_riscv_control_cpu",
+    "issue_width": 3,
+    "first_reference": "https://github.com/openhwgroup/core-et",
+    "strip_linux_boot_features": true,
+    "bare_metal_only": true,
+    "programs_systolic_array": true
+  },
+  "accelerator": {
+    "kind": "systolic_array",
+    "first_reference": "https://github.com/ucb-bar/gemmini",
+    "rows": 16,
+    "cols": 16,
+    "data_width": 16,
+    "accumulator_width": 32,
+    "interface_contract": "e1_h1_systolic_command_v0"
+  },
+  "memory": {
+    "sram": [
+      {
+        "name": "ingress_sram",
+        "size_bytes": 262144,
+        "data_width": 128,
+        "banks": 4
+      },
+      {
+        "name": "activation_sram",
+        "size_bytes": 524288,
+        "data_width": 128,
+        "banks": 8
+      },
+      {
+        "name": "accumulator_sram",
+        "size_bytes": 524288,
+        "data_width": 256,
+        "banks": 8
+      }
+    ]
+  },
+  "pipeline": {
+    "default_depth": 2,
+    "cpu_to_accelerator_depth": 1,
+    "array_input_depth": 2,
+    "array_output_depth": 2
+  },
+  "replaceability": {
+    "rule": "interfaces_are_constant_implementations_are_replaceable",
+    "required_for_every_module": true
+  }
+}

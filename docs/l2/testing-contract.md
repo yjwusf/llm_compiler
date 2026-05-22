@@ -5,23 +5,41 @@
 Tests must match the documentation hierarchy:
 
 - L1 tests verify complete flows, target packaging, and end-to-end behavior.
+- L1.5 tests verify one SystemVerilog module running with all surrounding
+  system behavior supplied by C++.
 - L2 tests verify implementation assumptions, coding conventions, pass
   contracts, and architecture JSON semantics.
 - L3 tests verify individual modules with C++ models, Verilator, and VIPs.
+
+Peripheral tests must be digital-only unless an L1 document explicitly adds a
+mixed-signal requirement.
 
 ## Module Verification
 
 Every SystemVerilog module requires:
 
 - C++ model for expected behavior.
+- L1.5 hybrid run where the module is the only SystemVerilog instance and all
+  other behavior is C++.
+- C++ performance counters for the hybrid run.
 - Verilator harness for running the module.
 - Module-local VIP that targets only that module.
 - Tests covering reset, nominal behavior, backpressure if applicable, and at
   least one parameterized configuration when the module has parameters.
+- Tests confirming required C++ performance counters increment for at least one
+  representative run.
 
 The VIP for one module must not depend on another module's implementation. It
 may instantiate adapters or drivers, but the device under test must be exactly
 the documented module.
+
+The L1.5 harness for one module must also avoid depending on any other
+SystemVerilog module. All neighbors must be represented by C++ models, C++
+mocks, or explicit C++ adapters.
+
+Ethernet/RGMII VIPs must drive and monitor digital RGMII pins and internal
+streams. They must not require analog PHY models, mixed-signal simulators, or
+off-chip DRAM traffic sources.
 
 ## Mock Verification
 
@@ -30,6 +48,8 @@ when:
 
 - Its interface is documented in L3.
 - Its C++ model defines the intended inputs and outputs.
+- Its L1.5 hybrid run can execute the mock with a C++ environment.
+- Its C++ performance counters report the documented module-local events.
 - Verilator can compile and run it.
 - Its VIP checks behavior at the module boundary.
 
@@ -44,6 +64,8 @@ Each compiler pass must have tests that cover:
 - Rejected invalid input form.
 - Output artifact or IR shape.
 - Relevant architecture JSON fields.
+- External data-source behavior, including Ethernet/RGMII selection when
+  applicable.
 
 Pass tests should compare structured artifacts when possible instead of relying
 only on fragile string matching.

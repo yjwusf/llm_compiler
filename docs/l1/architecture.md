@@ -13,10 +13,10 @@ Planned flow:
 3. Analyze tensor shapes, layouts, and precision.
 4. Load architecture JSON.
 5. Bind model operations to architecture resources.
-6. Plan SRAM allocation and data movement.
+6. Plan Ethernet ingress, SRAM allocation, and data movement.
 7. Insert configurable pipelines.
 8. Lower to a hardware graph.
-9. Emit SystemVerilog and C++ model bindings.
+9. Emit SystemVerilog, C++ model bindings, and L1.5 hybrid harness metadata.
 10. Package for FPGA or ASIC/OpenROAD.
 
 Each pass must be testable on its own. Intermediate artifacts should be easy to
@@ -25,19 +25,30 @@ dump for debugging.
 ## Hardware Flow
 
 The hardware architecture is centered on linked systolic arrays with
-configurable SRAM resources and configurable pipeline depths.
+configurable SRAM resources, Ethernet/RGMII ingress, and configurable pipeline
+depths.
 
 Expected hierarchy:
 
 - `l1`: top-level accelerator composition, model/layer orchestration, host or
-  device-facing interfaces, target wrapper selection.
+  device-facing Ethernet interfaces, target wrapper selection.
 - `l2`: systolic array clusters, SRAM subsystems, stream routers, DMA/control
-  blocks, scheduling blocks, target adapters.
+  blocks, RGMII Ethernet ingress, scheduling blocks, target adapters.
 - `l3`: MAC cells, FIFOs, register slices, SRAM wrappers, arbiters, adapters,
   and other leaf modules.
 
 L1 modules should make the system structure obvious. L2 and L3 modules may be
 more detailed, but every interface must be documented.
+
+## L1.5 Hybrid Execution Flow
+
+Every module must be runnable as the only SystemVerilog module in a C++ system
+environment. The L1.5 harness instantiates the module through Verilator,
+connects C++ models or mocks for all neighboring behavior, drives inputs,
+checks outputs, and records C++ performance counters.
+
+This flow applies to planned mocks and real RTL. It is the required bridge
+between module-local verification and later end-to-end hardware tests.
 
 ## Architecture JSON
 
@@ -48,6 +59,17 @@ schema will evolve, but files should follow this shape:
 {
   "target": {
     "kind": "fpga"
+  },
+  "io": {
+    "external_data_source": {
+      "kind": "ethernet",
+      "mac_interface": "rgmii",
+      "phy_boundary": "external",
+      "digital_only": true,
+      "stream_data_width": 64,
+      "fifo_depth": 1024,
+      "enable_frame_check": true
+    }
   },
   "architecture": {
     "systolic_arrays": [
@@ -79,6 +101,17 @@ schema will evolve, but files should follow this shape:
 Compiler code may reject incomplete JSON, but defaults must be documented in
 L2 before Codex relies on them.
 
+## Peripheral Flow
+
+External data enters through Ethernet over RGMII. The generated design connects
+to an external Ethernet PHY through digital RGMII pins, converts accepted
+payloads into internal streams, stages data in configurable on-chip SRAM, and
+feeds the systolic-array dataflow.
+
+Off-chip DRAM is not part of the initial data-source architecture. If target
+wrappers include memory interfaces for other reasons, those interfaces must not
+be treated as the source of model input data without an L1 contract update.
+
 ## Generated Code
 
 Generated SystemVerilog must be readable enough for human review. Generated
@@ -87,6 +120,8 @@ files should identify the pass and architecture JSON that produced them.
 Generated companion code may include:
 
 - C++ model wrappers.
+- L1.5 hybrid C++/SystemVerilog harnesses.
+- C++ performance counter collectors.
 - Verilator harnesses.
 - Host/device runtime descriptors.
 - Target build metadata.
