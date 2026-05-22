@@ -7,6 +7,12 @@ assembly idea but makes the composition source the local IP manifests.
 
 Reference: https://github.com/XUANTIE-RV/wujian100_open
 
+The Wujian100 reference is used as a structural reference, not as copied RTL:
+keep a visible top-level SoC boundary, keep named IP blocks readable at the top
+level, and emit FPGA/simulation collateral from a single SoC source. E1-H1
+replaces Wujian100's fixed MCU top with generated composition from
+`e1/e1-h1/ip/*.json`.
+
 ## Generator
 
 The generator is:
@@ -21,12 +27,21 @@ e1/e1-h1/tools/generate_soc_top.py \
 The generated file is checked in so reviews can inspect the current top-level
 wiring. Tests regenerate it and compare the result to the checked-in file.
 
+The generator also emits:
+
+- `e1/e1-h1/generated/e1_h1_soc_top_manifest.json`
+
+That JSON manifest records the same generated composition in reviewable data:
+top ports, internal nets, net endpoints, subsystem grouping, and the Wujian100
+style reference that the top is following.
+
 ## IP Manifests
 
 Each file under `e1/e1-h1/ip/` describes one replaceable IP:
 
 - Instance name.
 - SystemVerilog module name.
+- Subsystem membership.
 - Composition order.
 - Optional implementation reference.
 - Parameters.
@@ -48,12 +63,14 @@ The current generated top is:
 
 It combines:
 
-- `control_cpu`
-- `rgmii_ethernet_ingress`
-- `ingress_sram`
-- `activation_sram`
-- `accumulator_sram`
-- `systolic_array`
+- `cpu_subsystem`: `control_cpu`
+- `io_subsystem`: `rgmii_ethernet_ingress`
+- `memory_subsystem`: `ingress_sram`, `activation_sram`, `accumulator_sram`
+- `accelerator_subsystem`: `systolic_array`
+
+Subsystems are declared in `e1/e1-h1/config/architecture.json` and assigned per
+IP manifest. The generated SystemVerilog comments and composition manifest must
+stay in agreement with those declarations.
 
 ## Replacement Rule
 

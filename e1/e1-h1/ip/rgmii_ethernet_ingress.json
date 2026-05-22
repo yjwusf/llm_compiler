@@ -3,6 +3,7 @@
   "name": "rgmii_ethernet_ingress",
   "module": "e1_h1_rgmii_ethernet_ingress",
   "layer": "l2",
+  "subsystem": "io_subsystem",
   "order": 20,
   "description": "Digital-only RGMII receive ingress block that converts Ethernet payloads into an internal stream.",
   "replaceable": true,

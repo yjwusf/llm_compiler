@@ -3,6 +3,7 @@
   "name": "activation_sram",
   "module": "e1_h1_config_sram",
   "layer": "l2",
+  "subsystem": "memory_subsystem",
   "order": 40,
   "description": "Configurable on-chip SRAM for activation tiles.",
   "replaceable": true,

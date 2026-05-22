@@ -60,12 +60,22 @@ The interface, not the first implementation, is the contract.
 
 E1-H1 uses a generated SoC top assembled from individual IP manifests under
 `e1/e1-h1/ip/`. The generator emits
-`e1/e1-h1/generated/e1_h1_soc_top.sv` and the tests check that the checked-in
-top matches the manifest-driven output.
+`e1/e1-h1/generated/e1_h1_soc_top.sv` and
+`e1/e1-h1/generated/e1_h1_soc_top_manifest.json`; tests check that both
+checked-in generated artifacts match the manifest-driven output.
 
 This follows the Wujian100-style idea of a visible SoC top that connects IP
 blocks, while avoiding a hand-maintained monolithic top. See
 [generated-soc-top.md](generated-soc-top.md).
+
+The first E1-H1 top is divided into manifest-declared subsystems:
+
+| Subsystem | Blocks |
+| --- | --- |
+| `cpu_subsystem` | `control_cpu` |
+| `io_subsystem` | `rgmii_ethernet_ingress` |
+| `memory_subsystem` | `ingress_sram`, `activation_sram`, `accumulator_sram` |
+| `accelerator_subsystem` | `systolic_array` |
 
 ## Target Packages
 

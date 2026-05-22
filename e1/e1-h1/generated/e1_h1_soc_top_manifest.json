@@ -1,0 +1,477 @@
+{
+  "architecture_id": "e1-h1",
+  "generation": {
+    "generated_manifest": "e1/e1-h1/generated/e1_h1_soc_top_manifest.json",
+    "generated_top": "e1/e1-h1/generated/e1_h1_soc_top.sv",
+    "kind": "manifest_driven",
+    "source": "e1/e1-h1/ip/*.json"
+  },
+  "nets": [
+    {
+      "endpoints": [
+        {
+          "direction": "output",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "cmd_cols_o",
+          "width": 16
+        },
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "cmd_cols_i",
+          "width": 16
+        }
+      ],
+      "name": "accel_cmd_cols",
+      "width": 16
+    },
+    {
+      "endpoints": [
+        {
+          "direction": "output",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "cmd_depth_o",
+          "width": 16
+        },
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "cmd_depth_i",
+          "width": 16
+        }
+      ],
+      "name": "accel_cmd_depth",
+      "width": 16
+    },
+    {
+      "endpoints": [
+        {
+          "direction": "output",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "cmd_input_addr_o",
+          "width": 32
+        },
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "cmd_input_addr_i",
+          "width": 32
+        }
+      ],
+      "name": "accel_cmd_input_addr",
+      "width": 32
+    },
+    {
+      "endpoints": [
+        {
+          "direction": "output",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "cmd_output_addr_o",
+          "width": 32
+        },
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "cmd_output_addr_i",
+          "width": 32
+        }
+      ],
+      "name": "accel_cmd_output_addr",
+      "width": 32
+    },
+    {
+      "endpoints": [
+        {
+          "direction": "input",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "cmd_ready_i",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "cmd_ready_o",
+          "width": 1
+        }
+      ],
+      "name": "accel_cmd_ready",
+      "width": 1
+    },
+    {
+      "endpoints": [
+        {
+          "direction": "output",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "cmd_rows_o",
+          "width": 16
+        },
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "cmd_rows_i",
+          "width": 16
+        }
+      ],
+      "name": "accel_cmd_rows",
+      "width": 16
+    },
+    {
+      "endpoints": [
+        {
+          "direction": "output",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "cmd_valid_o",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "cmd_valid_i",
+          "width": 1
+        }
+      ],
+      "name": "accel_cmd_valid",
+      "width": 1
+    },
+    {
+      "endpoints": [
+        {
+          "direction": "output",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "cmd_weight_addr_o",
+          "width": 32
+        },
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "cmd_weight_addr_i",
+          "width": 32
+        }
+      ],
+      "name": "accel_cmd_weight_addr",
+      "width": 32
+    },
+    {
+      "endpoints": [
+        {
+          "direction": "input",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "array_done_i",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "done_o",
+          "width": 1
+        }
+      ],
+      "name": "array_done",
+      "width": 1
+    },
+    {
+      "endpoints": [
+        {
+          "direction": "input",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "array_error_i",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "error_o",
+          "width": 1
+        }
+      ],
+      "name": "array_error",
+      "width": 1
+    },
+    {
+      "endpoints": [
+        {
+          "direction": "output",
+          "instance": "ingress_sram",
+          "module": "e1_h1_stream_sram",
+          "port": "array_data_o",
+          "width": 64
+        },
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "input_data_i",
+          "width": 64
+        }
+      ],
+      "name": "array_input_data",
+      "width": 64
+    },
+    {
+      "endpoints": [
+        {
+          "direction": "input",
+          "instance": "ingress_sram",
+          "module": "e1_h1_stream_sram",
+          "port": "array_ready_i",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "input_ready_o",
+          "width": 1
+        }
+      ],
+      "name": "array_input_ready",
+      "width": 1
+    },
+    {
+      "endpoints": [
+        {
+          "direction": "output",
+          "instance": "ingress_sram",
+          "module": "e1_h1_stream_sram",
+          "port": "array_valid_o",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "input_valid_i",
+          "width": 1
+        }
+      ],
+      "name": "array_input_valid",
+      "width": 1
+    },
+    {
+      "endpoints": [
+        {
+          "direction": "input",
+          "instance": "ingress_sram",
+          "module": "e1_h1_stream_sram",
+          "port": "stream_data_i",
+          "width": 64
+        },
+        {
+          "direction": "output",
+          "instance": "rgmii_ethernet_ingress",
+          "module": "e1_h1_rgmii_ethernet_ingress",
+          "port": "stream_data_o",
+          "width": 64
+        }
+      ],
+      "name": "ingress_stream_data",
+      "width": 64
+    },
+    {
+      "endpoints": [
+        {
+          "direction": "input",
+          "instance": "ingress_sram",
+          "module": "e1_h1_stream_sram",
+          "port": "stream_error_i",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "instance": "rgmii_ethernet_ingress",
+          "module": "e1_h1_rgmii_ethernet_ingress",
+          "port": "stream_error_o",
+          "width": 1
+        }
+      ],
+      "name": "ingress_stream_error",
+      "width": 1
+    },
+    {
+      "endpoints": [
+        {
+          "direction": "input",
+          "instance": "ingress_sram",
+          "module": "e1_h1_stream_sram",
+          "port": "stream_last_i",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "instance": "rgmii_ethernet_ingress",
+          "module": "e1_h1_rgmii_ethernet_ingress",
+          "port": "stream_last_o",
+          "width": 1
+        }
+      ],
+      "name": "ingress_stream_last",
+      "width": 1
+    },
+    {
+      "endpoints": [
+        {
+          "direction": "output",
+          "instance": "ingress_sram",
+          "module": "e1_h1_stream_sram",
+          "port": "stream_ready_o",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "rgmii_ethernet_ingress",
+          "module": "e1_h1_rgmii_ethernet_ingress",
+          "port": "stream_ready_i",
+          "width": 1
+        }
+      ],
+      "name": "ingress_stream_ready",
+      "width": 1
+    },
+    {
+      "endpoints": [
+        {
+          "direction": "input",
+          "instance": "ingress_sram",
+          "module": "e1_h1_stream_sram",
+          "port": "stream_valid_i",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "instance": "rgmii_ethernet_ingress",
+          "module": "e1_h1_rgmii_ethernet_ingress",
+          "port": "stream_valid_o",
+          "width": 1
+        }
+      ],
+      "name": "ingress_stream_valid",
+      "width": 1
+    }
+  ],
+  "schema": "e1-h1-soc-top-composition-v0",
+  "style_reference": {
+    "name": "wujian100_open",
+    "pattern": "visible MCU-style SoC top that assembles CPU, interconnect, memory, peripherals, simulation, and FPGA collateral from named RTL blocks",
+    "url": "https://github.com/XUANTIE-RV/wujian100_open"
+  },
+  "subsystems": [
+    {
+      "description": "Bare-metal control island that owns command issue and accelerator status handling.",
+      "ips": [
+        {
+          "module": "e1_h1_control_cpu",
+          "name": "control_cpu",
+          "order": 10,
+          "replaceable": true
+        }
+      ],
+      "name": "cpu_subsystem"
+    },
+    {
+      "description": "Digital-only external IO boundary; E1-H1 starts with Ethernet/RGMII receive ingress.",
+      "ips": [
+        {
+          "module": "e1_h1_rgmii_ethernet_ingress",
+          "name": "rgmii_ethernet_ingress",
+          "order": 20,
+          "replaceable": true
+        }
+      ],
+      "name": "io_subsystem"
+    },
+    {
+      "description": "Configurable on-chip SRAM blocks for Ethernet staging, activations, and accumulators.",
+      "ips": [
+        {
+          "module": "e1_h1_stream_sram",
+          "name": "ingress_sram",
+          "order": 30,
+          "replaceable": true
+        },
+        {
+          "module": "e1_h1_config_sram",
+          "name": "activation_sram",
+          "order": 40,
+          "replaceable": true
+        },
+        {
+          "module": "e1_h1_config_sram",
+          "name": "accumulator_sram",
+          "order": 50,
+          "replaceable": true
+        }
+      ],
+      "name": "memory_subsystem"
+    },
+    {
+      "description": "Replaceable systolic-array tile engine programmed by the control CPU.",
+      "ips": [
+        {
+          "module": "e1_h1_systolic_array",
+          "name": "systolic_array",
+          "order": 60,
+          "replaceable": true
+        }
+      ],
+      "name": "accelerator_subsystem"
+    }
+  ],
+  "top": "e1_h1_soc_top",
+  "top_ports": [
+    {
+      "direction": "input",
+      "name": "clk_i",
+      "width": 1
+    },
+    {
+      "direction": "output",
+      "name": "debug_array_busy_o",
+      "width": 1
+    },
+    {
+      "direction": "output",
+      "name": "debug_halted_o",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "rgmii_rx_clk_i",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "rgmii_rx_ctl_i",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "rgmii_rxd_i",
+      "width": 4
+    },
+    {
+      "direction": "input",
+      "name": "rst_ni",
+      "width": 1
+    }
+  ]
+}

@@ -28,6 +28,12 @@ The hardware architecture is centered on linked systolic arrays with
 configurable SRAM resources, Ethernet/RGMII ingress, and configurable pipeline
 depths.
 
+Generated SoC tops must be assembled from per-IP manifests rather than
+hand-wired monolithic RTL. The first example, E1-H1, follows the Wujian100-style
+pattern of a visible SoC top composed from named CPU, IO, memory, and peripheral
+blocks, but its source of truth is `e1/e1-h1/ip/*.json` plus
+`e1/e1-h1/config/architecture.json`.
+
 Expected hierarchy:
 
 - `l1`: top-level accelerator composition, model/layer orchestration, host or
@@ -59,6 +65,16 @@ schema will evolve, but files should follow this shape:
 {
   "target": {
     "kind": "fpga"
+  },
+  "soc_top": {
+    "style_reference": {
+      "name": "wujian100_open",
+      "url": "https://github.com/XUANTIE-RV/wujian100_open"
+    },
+    "generation": {
+      "kind": "manifest_driven",
+      "source": "e1/e1-h1/ip/*.json"
+    }
   },
   "io": {
     "external_data_source": {

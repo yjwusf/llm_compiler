@@ -3,6 +3,7 @@
   "name": "accumulator_sram",
   "module": "e1_h1_config_sram",
   "layer": "l2",
+  "subsystem": "memory_subsystem",
   "order": 50,
   "description": "Configurable on-chip SRAM for accumulator and output tiles.",
   "replaceable": true,

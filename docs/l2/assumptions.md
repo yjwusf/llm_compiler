@@ -8,6 +8,8 @@ the stable project contract, move it into `docs/l1/`.
 
 - StableHLO-compatible MLIR is the first frontend target.
 - JSON is the first architecture configuration format.
+- Generated SoC tops are manifest-driven. The Wujian100-style reference means
+  a visible named-IP top-level composition, not importing Wujian100 RTL.
 - SystemVerilog source will eventually use a matching `rtl/l1/`, `rtl/l2/`,
   and `rtl/l3/` directory layout.
 - Initial SystemVerilog modules are allowed to be mocks if their interfaces,

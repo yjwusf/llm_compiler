@@ -5,6 +5,37 @@
     "kind": "fpga",
     "asic_flow": "openroad"
   },
+  "soc_top": {
+    "style_reference": {
+      "name": "wujian100_open",
+      "url": "https://github.com/XUANTIE-RV/wujian100_open",
+      "pattern": "visible MCU-style SoC top that assembles CPU, interconnect, memory, peripherals, simulation, and FPGA collateral from named RTL blocks"
+    },
+    "generation": {
+      "kind": "manifest_driven",
+      "source": "e1/e1-h1/ip/*.json",
+      "generated_top": "e1/e1-h1/generated/e1_h1_soc_top.sv",
+      "generated_manifest": "e1/e1-h1/generated/e1_h1_soc_top_manifest.json"
+    },
+    "subsystems": [
+      {
+        "name": "cpu_subsystem",
+        "description": "Bare-metal control island that owns command issue and accelerator status handling."
+      },
+      {
+        "name": "io_subsystem",
+        "description": "Digital-only external IO boundary; E1-H1 starts with Ethernet/RGMII receive ingress."
+      },
+      {
+        "name": "memory_subsystem",
+        "description": "Configurable on-chip SRAM blocks for Ethernet staging, activations, and accumulators."
+      },
+      {
+        "name": "accelerator_subsystem",
+        "description": "Replaceable systolic-array tile engine programmed by the control CPU."
+      }
+    ]
+  },
   "io": {
     "external_data_source": {
       "kind": "ethernet",

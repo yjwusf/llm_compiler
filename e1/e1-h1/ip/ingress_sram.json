@@ -3,6 +3,7 @@
   "name": "ingress_sram",
   "module": "e1_h1_stream_sram",
   "layer": "l2",
+  "subsystem": "memory_subsystem",
   "order": 30,
   "description": "Configurable on-chip SRAM stage for Ethernet-ingested payloads.",
   "replaceable": true,

@@ -14,6 +14,7 @@ import json
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from collections import Counter
 from pathlib import Path
@@ -53,6 +54,30 @@ def tensors(text: str) -> list[str]:
 
 def load_ip_manifests(ip_dir: Path) -> list[dict[str, Any]]:
     return [load_json(path) for path in sorted(ip_dir.glob("*.json"))]
+
+
+def load_soc_top_generator(e1_h1_dir: Path) -> Any:
+    generator_path = e1_h1_dir / "tools" / "generate_soc_top.py"
+    spec = importlib.util.spec_from_file_location("e1_h1_generate_soc_top", generator_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load {generator_path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def emit_soc_top_artifacts(e1_h1_dir: Path, architecture_path: Path) -> dict[str, str]:
+    generator = load_soc_top_generator(e1_h1_dir)
+    ip_dir = e1_h1_dir / "ip"
+    top_path = e1_h1_dir / "generated" / "e1_h1_soc_top.sv"
+    manifest_path = e1_h1_dir / "generated" / "e1_h1_soc_top_manifest.json"
+    write_text(top_path, generator.generate(architecture_path, ip_dir))
+    write_json(manifest_path, generator.generate_composition_manifest(architecture_path, ip_dir))
+    return {
+        "top": repo_rel(top_path),
+        "composition_manifest": repo_rel(manifest_path),
+    }
 
 
 def has_module(name: str) -> bool:
@@ -395,16 +420,20 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
     )
     passes.append({"pass": "e1_generate_l1_5_harnesses", "artifact": repo_rel(harness_out)})
 
+    soc_top_artifacts = emit_soc_top_artifacts(e1_h1_dir, architecture_path)
     graph_out = output_dir / "10_hardware_graph.json"
     write_json(
         graph_out,
         {
             "top": "e1_h1_soc_top",
             "generator": "e1/e1-h1/tools/generate_soc_top.py",
+            "composition_manifest": soc_top_artifacts["composition_manifest"],
+            "subsystems": [item["name"] for item in architecture["soc_top"]["subsystems"]],
             "ips": [
                 {
                     "name": ip["name"],
                     "module": ip["module"],
+                    "subsystem": ip["subsystem"],
                     "spec": ip["spec"],
                     "replaceable": ip["replaceable"],
                 }
@@ -418,7 +447,8 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
     write_json(
         sv_out,
         {
-            "generated_top": "e1/e1-h1/generated/e1_h1_soc_top.sv",
+            "generated_top": soc_top_artifacts["top"],
+            "generated_composition_manifest": soc_top_artifacts["composition_manifest"],
             "mock_rtl": sorted(repo_rel(path) for path in (e1_h1_dir / "rtl" / "ip").glob("*.sv")),
             "composition_source": "e1/e1-h1/ip/*.json",
         },

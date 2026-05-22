@@ -3,6 +3,7 @@
   "name": "control_cpu",
   "module": "e1_h1_control_cpu",
   "layer": "l1",
+  "subsystem": "cpu_subsystem",
   "order": 10,
   "description": "Barebones 3-wide control CPU placeholder that programs the systolic array through a stable command interface.",
   "reference": "https://github.com/openhwgroup/core-et",

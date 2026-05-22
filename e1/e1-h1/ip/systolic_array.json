@@ -3,6 +3,7 @@
   "name": "systolic_array",
   "module": "e1_h1_systolic_array",
   "layer": "l2",
+  "subsystem": "accelerator_subsystem",
   "order": 60,
   "description": "Gemmini-inspired systolic-array placeholder behind the E1-H1 stable command interface.",
   "reference": "https://github.com/ucb-bar/gemmini",

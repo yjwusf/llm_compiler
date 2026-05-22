@@ -20,6 +20,7 @@ E1_H1 = REPO_ROOT / "e1" / "e1-h1"
 ARCH = E1_H1 / "config" / "architecture.json"
 IP_DIR = E1_H1 / "ip"
 GENERATED_TOP = E1_H1 / "generated" / "e1_h1_soc_top.sv"
+GENERATED_TOP_MANIFEST = E1_H1 / "generated" / "e1_h1_soc_top_manifest.json"
 GENERATOR = E1_H1 / "tools" / "generate_soc_top.py"
 RTL_IP = E1_H1 / "rtl" / "ip"
 L1_5_DIR = E1_H1 / "l1_5"
@@ -61,6 +62,14 @@ class E1H1Tests(unittest.TestCase):
         arch = json.loads(ARCH.read_text(encoding="utf-8"))
         self.assertEqual(arch["example"], "e1")
         self.assertEqual(arch["architecture_id"], "e1-h1")
+        self.assertEqual(arch["soc_top"]["style_reference"]["name"], "wujian100_open")
+        self.assertEqual(arch["soc_top"]["style_reference"]["url"], "https://github.com/XUANTIE-RV/wujian100_open")
+        self.assertEqual(arch["soc_top"]["generation"]["kind"], "manifest_driven")
+        self.assertEqual(arch["soc_top"]["generation"]["source"], "e1/e1-h1/ip/*.json")
+        self.assertEqual(
+            {subsystem["name"] for subsystem in arch["soc_top"]["subsystems"]},
+            {"cpu_subsystem", "io_subsystem", "memory_subsystem", "accelerator_subsystem"},
+        )
         self.assertEqual(arch["cpu"]["issue_width"], 3)
         self.assertTrue(arch["cpu"]["bare_metal_only"])
         self.assertTrue(arch["cpu"]["strip_linux_boot_features"])
@@ -71,6 +80,8 @@ class E1H1Tests(unittest.TestCase):
         self.assertTrue(arch["replaceability"]["required_for_every_module"])
 
     def test_ip_manifests_are_replaceable_and_connected(self) -> None:
+        arch = json.loads(ARCH.read_text(encoding="utf-8"))
+        valid_subsystems = {subsystem["name"] for subsystem in arch["soc_top"]["subsystems"]}
         manifests = sorted(IP_DIR.glob("*.json"))
         self.assertGreaterEqual(len(manifests), 6)
         seen = {path.stem for path in manifests}
@@ -84,6 +95,7 @@ class E1H1Tests(unittest.TestCase):
             self.assertTrue(data["replaceable"], path)
             self.assertIn("module", data, path)
             self.assertIn("order", data, path)
+            self.assertIn(data["subsystem"], valid_subsystems, path)
             self.assertIn("spec", data, path)
             self.assertIn("cpp_model", data, path)
             self.assertIn("l1_5_hybrid", data, path)
@@ -158,12 +170,28 @@ class E1H1Tests(unittest.TestCase):
         expected = generator.generate(ARCH, IP_DIR)
         actual = GENERATED_TOP.read_text(encoding="utf-8")
         self.assertEqual(actual, expected)
+        expected_manifest = generator.generate_composition_manifest(ARCH, IP_DIR)
+        actual_manifest = json.loads(GENERATED_TOP_MANIFEST.read_text(encoding="utf-8"))
+        self.assertEqual(actual_manifest, expected_manifest)
         self.assertIn("module e1_h1_soc_top", actual)
+        self.assertIn("SoC top style: wujian100_open", actual)
+        self.assertIn("SoC top reference: https://github.com/XUANTIE-RV/wujian100_open", actual)
+        self.assertIn("Subsystem: cpu_subsystem", actual)
+        self.assertIn("Subsystem: io_subsystem", actual)
+        self.assertIn("Subsystem: memory_subsystem", actual)
+        self.assertIn("Subsystem: accelerator_subsystem", actual)
         self.assertIn("u_control_cpu", actual)
         self.assertIn("u_rgmii_ethernet_ingress", actual)
         self.assertIn("u_ingress_sram", actual)
         self.assertIn("u_systolic_array", actual)
         self.assertIn("Source of composition: e1/e1-h1/ip/*.json", actual)
+        self.assertEqual(actual_manifest["schema"], "e1-h1-soc-top-composition-v0")
+        self.assertEqual(actual_manifest["style_reference"]["name"], "wujian100_open")
+        self.assertEqual(
+            [subsystem["name"] for subsystem in actual_manifest["subsystems"]],
+            ["cpu_subsystem", "io_subsystem", "memory_subsystem", "accelerator_subsystem"],
+        )
+        self.assertIn("rgmii_rx_clk_i", {port["name"] for port in actual_manifest["top_ports"]})
 
     def test_e1_pipeline_generates_e1_h1_artifacts(self) -> None:
         result = run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])
@@ -206,7 +234,13 @@ class E1H1Tests(unittest.TestCase):
         hardware_graph = json.loads((E1_PIPELINE_OUT / "10_hardware_graph.json").read_text(encoding="utf-8"))
         self.assertEqual(hardware_graph["top"], "e1_h1_soc_top")
         self.assertEqual(hardware_graph["generator"], "e1/e1-h1/tools/generate_soc_top.py")
+        self.assertEqual(hardware_graph["composition_manifest"], "e1/e1-h1/generated/e1_h1_soc_top_manifest.json")
+        self.assertEqual(
+            hardware_graph["subsystems"],
+            ["cpu_subsystem", "io_subsystem", "memory_subsystem", "accelerator_subsystem"],
+        )
         self.assertIn("systolic_array", {ip["name"] for ip in hardware_graph["ips"]})
+        self.assertIn("accelerator_subsystem", {ip["subsystem"] for ip in hardware_graph["ips"]})
 
         fetch = json.loads((E1_PIPELINE_OUT / "01_fetch_model.json").read_text(encoding="utf-8"))
         self.assertEqual(fetch["schema"], "e1-fetch-model-report-v0")
@@ -242,6 +276,10 @@ class E1H1Tests(unittest.TestCase):
         self.assertTrue(target_plan["digital_only"])
         self.assertEqual(target_plan["fpga"]["top"], "e1_h1_soc_top")
         self.assertEqual(target_plan["asic_openroad"]["top"], "e1_h1_soc_top")
+
+        sv_plan = json.loads((E1_PIPELINE_OUT / "11_systemverilog_plan.json").read_text(encoding="utf-8"))
+        self.assertEqual(sv_plan["generated_top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
+        self.assertEqual(sv_plan["generated_composition_manifest"], "e1/e1-h1/generated/e1_h1_soc_top_manifest.json")
 
     def test_tinyllama_fetch_and_export_tools_have_offline_reports(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
