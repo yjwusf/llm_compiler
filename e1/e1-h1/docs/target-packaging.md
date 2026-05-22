@@ -37,3 +37,6 @@ The pipeline writes:
   source.
 
 The E1-H1 test suite regenerates and checks these package files.
+It also Verilates and runs the generated `e1_h1_soc_top` with the target
+manifest RTL filelist, drives the digital RGMII receive pins, and checks that
+the integrated CPU-to-array path reaches array-busy and halted debug states.

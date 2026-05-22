@@ -30,6 +30,7 @@ E1_FETCH = REPO_ROOT / "e1" / "tools" / "fetch_tinyllama.py"
 E1_EXPORT = REPO_ROOT / "e1" / "tools" / "export_stablehlo.py"
 E1_PIPELINE_OUT = REPO_ROOT / "e1" / "generated" / "pipeline"
 TARGETS = E1_H1 / "generated" / "targets"
+SOC_TOP_TB = E1_H1 / "tests" / "e1_h1_soc_top_tb.cpp"
 
 
 def load_generator():
@@ -788,6 +789,33 @@ class E1H1Tests(unittest.TestCase):
             *rtl_files,
         ]
         run(cmd)
+
+    def test_verilator_runs_generated_soc_top_smoke(self) -> None:
+        verilator = shutil.which("verilator")
+        self.assertIsNotNone(verilator, "verilator is required for E1-H1 SoC top smoke")
+        manifest = json.loads((TARGETS / "manifest.json").read_text(encoding="utf-8"))
+        rtl_files = manifest["rtl_files"]
+        with tempfile.TemporaryDirectory() as tmp:
+            obj_dir = Path(tmp) / "obj_dir"
+            run([
+                verilator,
+                "--cc",
+                "--exe",
+                "--build",
+                "--sv",
+                "-Wall",
+                "-Wno-DECLFILENAME",
+                "-Wno-UNUSEDSIGNAL",
+                "-Wno-UNUSEDPARAM",
+                "-Wno-MULTITOP",
+                "--top-module",
+                "e1_h1_soc_top",
+                "-Mdir",
+                str(obj_dir),
+                *rtl_files,
+                str(SOC_TOP_TB.relative_to(REPO_ROOT)),
+            ])
+            run([str(obj_dir / "Ve1_h1_soc_top")])
 
     def test_cpp_chip_model_compiles_and_runs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

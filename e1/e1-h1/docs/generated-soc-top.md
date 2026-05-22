@@ -103,6 +103,10 @@ The current generated top is:
 
 - `e1/e1-h1/generated/e1_h1_soc_top.sv`
 
+The integrated top smoke test is:
+
+- `e1/e1-h1/tests/e1_h1_soc_top_tb.cpp`
+
 It combines:
 
 - `cpu_subsystem`: `control_cpu`
