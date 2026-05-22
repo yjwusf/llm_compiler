@@ -120,6 +120,33 @@ def collect_nets(ips: list[Ip]) -> dict[str, int]:
     return nets
 
 
+def collect_net_ports(ips: list[Ip]) -> dict[str, list[Port]]:
+    net_ports: dict[str, list[Port]] = {}
+    for ip in ips:
+        for port in ip.ports:
+            if port.connect.startswith("net."):
+                net_ports.setdefault(signal_name(port.connect), []).append(port)
+    return net_ports
+
+
+def validate_net_connectivity(ips: list[Ip]) -> None:
+    for name, ports in sorted(collect_net_ports(ips).items()):
+        drivers = [port for port in ports if port.direction == "output"]
+        loads = [port for port in ports if port.direction == "input"]
+        inouts = [port for port in ports if port.direction == "inout"]
+
+        if inouts:
+            if drivers or loads or len(inouts) < 2:
+                raise ValueError(
+                    f"net {name}: inout nets must connect at least two inout ports and no input/output ports"
+                )
+            continue
+        if len(drivers) != 1:
+            raise ValueError(f"net {name}: expected exactly one output driver, found {len(drivers)}")
+        if not loads:
+            raise ValueError(f"net {name}: expected at least one input load")
+
+
 def module_name(arch: dict[str, Any]) -> str:
     return f"{arch['architecture_id'].replace('-', '_')}_soc_top"
 
@@ -157,6 +184,7 @@ def generate(architecture_path: Path, ip_dir: Path) -> str:
     ips = load_ips(ip_dir)
     top_ports = collect_top_ports(ips)
     nets = collect_nets(ips)
+    validate_net_connectivity(ips)
     subsystems = subsystem_descriptions(arch)
     style_reference = arch.get("soc_top", {}).get("style_reference", {})
 
@@ -209,6 +237,23 @@ def endpoint(port: Port) -> dict[str, Any]:
     }
 
 
+def endpoint_roles(ports: list[Port]) -> dict[str, list[dict[str, Any]]]:
+    return {
+        "drivers": sorted(
+            [endpoint(port) for port in ports if port.direction == "output"],
+            key=lambda item: (item["instance"], item["port"]),
+        ),
+        "loads": sorted(
+            [endpoint(port) for port in ports if port.direction == "input"],
+            key=lambda item: (item["instance"], item["port"]),
+        ),
+        "inouts": sorted(
+            [endpoint(port) for port in ports if port.direction == "inout"],
+            key=lambda item: (item["instance"], item["port"]),
+        ),
+    }
+
+
 def interface_payload(ip: Ip) -> dict[str, Any]:
     return {
         "name": ip.name,
@@ -238,6 +283,7 @@ def interface_signature(ip: Ip) -> str:
 def generate_interface_contracts(architecture_path: Path, ip_dir: Path) -> dict[str, Any]:
     arch = load_json(architecture_path)
     ips = load_ips(ip_dir)
+    validate_net_connectivity(ips)
     return {
         "schema": "e1-h1-interface-contracts-v0",
         "architecture_id": arch["architecture_id"],
@@ -262,6 +308,7 @@ def generate_composition_manifest(architecture_path: Path, ip_dir: Path) -> dict
     ips = load_ips(ip_dir)
     top_ports = collect_top_ports(ips)
     nets = collect_nets(ips)
+    validate_net_connectivity(ips)
     descriptions = subsystem_descriptions(arch)
     declared_subsystems = [
         item["name"]
@@ -278,11 +325,7 @@ def generate_composition_manifest(architecture_path: Path, ip_dir: Path) -> dict
             }
         )
 
-    net_endpoints: dict[str, list[dict[str, Any]]] = {name: [] for name in nets}
-    for ip in ips:
-        for port in ip.ports:
-            if port.connect.startswith("net."):
-                net_endpoints[signal_name(port.connect)].append(endpoint(port))
+    net_ports = collect_net_ports(ips)
 
     return {
         "schema": "e1-h1-soc-top-composition-v0",
@@ -298,7 +341,18 @@ def generate_composition_manifest(architecture_path: Path, ip_dir: Path) -> dict
             {
                 "name": name,
                 "width": width,
-                "endpoints": sorted(net_endpoints[name], key=lambda item: (item["instance"], item["port"])),
+                **endpoint_roles(net_ports[name]),
+                "endpoints": sorted(
+                    [endpoint(port) for port in net_ports[name]],
+                    key=lambda item: (item["instance"], item["port"]),
+                ),
+                "validation": {
+                    "single_driver": len([port for port in net_ports[name] if port.direction == "output"]) == 1,
+                    "has_load": any(port.direction == "input" for port in net_ports[name]),
+                    "inout_only": all(port.direction == "inout" for port in net_ports[name])
+                    if any(port.direction == "inout" for port in net_ports[name])
+                    else False,
+                },
             }
             for name, width in sorted(nets.items())
         ],

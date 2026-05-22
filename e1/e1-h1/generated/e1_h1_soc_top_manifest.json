@@ -9,6 +9,15 @@
   },
   "nets": [
     {
+      "drivers": [
+        {
+          "direction": "output",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "cmd_cols_o",
+          "width": 16
+        }
+      ],
       "endpoints": [
         {
           "direction": "output",
@@ -25,10 +34,34 @@
           "width": 16
         }
       ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "cmd_cols_i",
+          "width": 16
+        }
+      ],
       "name": "accel_cmd_cols",
+      "validation": {
+        "has_load": true,
+        "inout_only": false,
+        "single_driver": true
+      },
       "width": 16
     },
     {
+      "drivers": [
+        {
+          "direction": "output",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "cmd_depth_o",
+          "width": 16
+        }
+      ],
       "endpoints": [
         {
           "direction": "output",
@@ -45,10 +78,34 @@
           "width": 16
         }
       ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "cmd_depth_i",
+          "width": 16
+        }
+      ],
       "name": "accel_cmd_depth",
+      "validation": {
+        "has_load": true,
+        "inout_only": false,
+        "single_driver": true
+      },
       "width": 16
     },
     {
+      "drivers": [
+        {
+          "direction": "output",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "cmd_input_addr_o",
+          "width": 32
+        }
+      ],
       "endpoints": [
         {
           "direction": "output",
@@ -65,10 +122,34 @@
           "width": 32
         }
       ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "cmd_input_addr_i",
+          "width": 32
+        }
+      ],
       "name": "accel_cmd_input_addr",
+      "validation": {
+        "has_load": true,
+        "inout_only": false,
+        "single_driver": true
+      },
       "width": 32
     },
     {
+      "drivers": [
+        {
+          "direction": "output",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "cmd_output_addr_o",
+          "width": 32
+        }
+      ],
       "endpoints": [
         {
           "direction": "output",
@@ -85,10 +166,34 @@
           "width": 32
         }
       ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "cmd_output_addr_i",
+          "width": 32
+        }
+      ],
       "name": "accel_cmd_output_addr",
+      "validation": {
+        "has_load": true,
+        "inout_only": false,
+        "single_driver": true
+      },
       "width": 32
     },
     {
+      "drivers": [
+        {
+          "direction": "output",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "cmd_ready_o",
+          "width": 1
+        }
+      ],
       "endpoints": [
         {
           "direction": "input",
@@ -105,10 +210,34 @@
           "width": 1
         }
       ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "cmd_ready_i",
+          "width": 1
+        }
+      ],
       "name": "accel_cmd_ready",
+      "validation": {
+        "has_load": true,
+        "inout_only": false,
+        "single_driver": true
+      },
       "width": 1
     },
     {
+      "drivers": [
+        {
+          "direction": "output",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "cmd_rows_o",
+          "width": 16
+        }
+      ],
       "endpoints": [
         {
           "direction": "output",
@@ -125,10 +254,34 @@
           "width": 16
         }
       ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "cmd_rows_i",
+          "width": 16
+        }
+      ],
       "name": "accel_cmd_rows",
+      "validation": {
+        "has_load": true,
+        "inout_only": false,
+        "single_driver": true
+      },
       "width": 16
     },
     {
+      "drivers": [
+        {
+          "direction": "output",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "cmd_valid_o",
+          "width": 1
+        }
+      ],
       "endpoints": [
         {
           "direction": "output",
@@ -145,10 +298,34 @@
           "width": 1
         }
       ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "cmd_valid_i",
+          "width": 1
+        }
+      ],
       "name": "accel_cmd_valid",
+      "validation": {
+        "has_load": true,
+        "inout_only": false,
+        "single_driver": true
+      },
       "width": 1
     },
     {
+      "drivers": [
+        {
+          "direction": "output",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "cmd_weight_addr_o",
+          "width": 32
+        }
+      ],
       "endpoints": [
         {
           "direction": "output",
@@ -165,10 +342,34 @@
           "width": 32
         }
       ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "cmd_weight_addr_i",
+          "width": 32
+        }
+      ],
       "name": "accel_cmd_weight_addr",
+      "validation": {
+        "has_load": true,
+        "inout_only": false,
+        "single_driver": true
+      },
       "width": 32
     },
     {
+      "drivers": [
+        {
+          "direction": "output",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "done_o",
+          "width": 1
+        }
+      ],
       "endpoints": [
         {
           "direction": "input",
@@ -185,10 +386,34 @@
           "width": 1
         }
       ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "array_done_i",
+          "width": 1
+        }
+      ],
       "name": "array_done",
+      "validation": {
+        "has_load": true,
+        "inout_only": false,
+        "single_driver": true
+      },
       "width": 1
     },
     {
+      "drivers": [
+        {
+          "direction": "output",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "error_o",
+          "width": 1
+        }
+      ],
       "endpoints": [
         {
           "direction": "input",
@@ -205,10 +430,34 @@
           "width": 1
         }
       ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "array_error_i",
+          "width": 1
+        }
+      ],
       "name": "array_error",
+      "validation": {
+        "has_load": true,
+        "inout_only": false,
+        "single_driver": true
+      },
       "width": 1
     },
     {
+      "drivers": [
+        {
+          "direction": "output",
+          "instance": "ingress_sram",
+          "module": "e1_h1_stream_sram",
+          "port": "array_data_o",
+          "width": 64
+        }
+      ],
       "endpoints": [
         {
           "direction": "output",
@@ -225,10 +474,34 @@
           "width": 64
         }
       ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "input_data_i",
+          "width": 64
+        }
+      ],
       "name": "array_input_data",
+      "validation": {
+        "has_load": true,
+        "inout_only": false,
+        "single_driver": true
+      },
       "width": 64
     },
     {
+      "drivers": [
+        {
+          "direction": "output",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "input_ready_o",
+          "width": 1
+        }
+      ],
       "endpoints": [
         {
           "direction": "input",
@@ -245,10 +518,34 @@
           "width": 1
         }
       ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "ingress_sram",
+          "module": "e1_h1_stream_sram",
+          "port": "array_ready_i",
+          "width": 1
+        }
+      ],
       "name": "array_input_ready",
+      "validation": {
+        "has_load": true,
+        "inout_only": false,
+        "single_driver": true
+      },
       "width": 1
     },
     {
+      "drivers": [
+        {
+          "direction": "output",
+          "instance": "ingress_sram",
+          "module": "e1_h1_stream_sram",
+          "port": "array_valid_o",
+          "width": 1
+        }
+      ],
       "endpoints": [
         {
           "direction": "output",
@@ -265,10 +562,34 @@
           "width": 1
         }
       ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "input_valid_i",
+          "width": 1
+        }
+      ],
       "name": "array_input_valid",
+      "validation": {
+        "has_load": true,
+        "inout_only": false,
+        "single_driver": true
+      },
       "width": 1
     },
     {
+      "drivers": [
+        {
+          "direction": "output",
+          "instance": "rgmii_ethernet_ingress",
+          "module": "e1_h1_rgmii_ethernet_ingress",
+          "port": "stream_data_o",
+          "width": 64
+        }
+      ],
       "endpoints": [
         {
           "direction": "input",
@@ -285,10 +606,34 @@
           "width": 64
         }
       ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "ingress_sram",
+          "module": "e1_h1_stream_sram",
+          "port": "stream_data_i",
+          "width": 64
+        }
+      ],
       "name": "ingress_stream_data",
+      "validation": {
+        "has_load": true,
+        "inout_only": false,
+        "single_driver": true
+      },
       "width": 64
     },
     {
+      "drivers": [
+        {
+          "direction": "output",
+          "instance": "rgmii_ethernet_ingress",
+          "module": "e1_h1_rgmii_ethernet_ingress",
+          "port": "stream_error_o",
+          "width": 1
+        }
+      ],
       "endpoints": [
         {
           "direction": "input",
@@ -305,10 +650,34 @@
           "width": 1
         }
       ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "ingress_sram",
+          "module": "e1_h1_stream_sram",
+          "port": "stream_error_i",
+          "width": 1
+        }
+      ],
       "name": "ingress_stream_error",
+      "validation": {
+        "has_load": true,
+        "inout_only": false,
+        "single_driver": true
+      },
       "width": 1
     },
     {
+      "drivers": [
+        {
+          "direction": "output",
+          "instance": "rgmii_ethernet_ingress",
+          "module": "e1_h1_rgmii_ethernet_ingress",
+          "port": "stream_last_o",
+          "width": 1
+        }
+      ],
       "endpoints": [
         {
           "direction": "input",
@@ -325,10 +694,34 @@
           "width": 1
         }
       ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "ingress_sram",
+          "module": "e1_h1_stream_sram",
+          "port": "stream_last_i",
+          "width": 1
+        }
+      ],
       "name": "ingress_stream_last",
+      "validation": {
+        "has_load": true,
+        "inout_only": false,
+        "single_driver": true
+      },
       "width": 1
     },
     {
+      "drivers": [
+        {
+          "direction": "output",
+          "instance": "ingress_sram",
+          "module": "e1_h1_stream_sram",
+          "port": "stream_ready_o",
+          "width": 1
+        }
+      ],
       "endpoints": [
         {
           "direction": "output",
@@ -345,10 +738,34 @@
           "width": 1
         }
       ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "rgmii_ethernet_ingress",
+          "module": "e1_h1_rgmii_ethernet_ingress",
+          "port": "stream_ready_i",
+          "width": 1
+        }
+      ],
       "name": "ingress_stream_ready",
+      "validation": {
+        "has_load": true,
+        "inout_only": false,
+        "single_driver": true
+      },
       "width": 1
     },
     {
+      "drivers": [
+        {
+          "direction": "output",
+          "instance": "rgmii_ethernet_ingress",
+          "module": "e1_h1_rgmii_ethernet_ingress",
+          "port": "stream_valid_o",
+          "width": 1
+        }
+      ],
       "endpoints": [
         {
           "direction": "input",
@@ -365,7 +782,22 @@
           "width": 1
         }
       ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "ingress_sram",
+          "module": "e1_h1_stream_sram",
+          "port": "stream_valid_i",
+          "width": 1
+        }
+      ],
       "name": "ingress_stream_valid",
+      "validation": {
+        "has_load": true,
+        "inout_only": false,
+        "single_driver": true
+      },
       "width": 1
     }
   ],

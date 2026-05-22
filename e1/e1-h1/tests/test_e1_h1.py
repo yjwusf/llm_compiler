@@ -74,6 +74,24 @@ def interface_signature(interface: dict[str, object]) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+def minimal_ip(name: str, order: int, ports: list[dict[str, object]]) -> dict[str, object]:
+    return {
+        "schema": "e1-h1-ip-v0",
+        "name": name,
+        "module": f"test_{name}",
+        "subsystem": "cpu_subsystem",
+        "order": order,
+        "description": f"Test IP {name}.",
+        "replaceable": True,
+        "spec": "e1/e1-h1/docs/modules/control_cpu.md",
+        "cpp_model": "e1/code/chip_model/e1_chip_model.*",
+        "l1_5_hybrid": f"test_{name}_hybrid",
+        "l1_5_harness": "e1/e1-h1/l1_5/control_cpu.json",
+        "perf_counters": ["cycles"],
+        "ports": ports,
+    }
+
+
 class E1H1Tests(unittest.TestCase):
     def test_architecture_json_contract(self) -> None:
         arch = json.loads(ARCH.read_text(encoding="utf-8"))
@@ -216,6 +234,12 @@ class E1H1Tests(unittest.TestCase):
             ["cpu_subsystem", "io_subsystem", "memory_subsystem", "accelerator_subsystem"],
         )
         self.assertIn("rgmii_rx_clk_i", {port["name"] for port in actual_manifest["top_ports"]})
+        for net in actual_manifest["nets"]:
+            self.assertEqual(len(net["drivers"]), 1, net["name"])
+            self.assertGreaterEqual(len(net["loads"]), 1, net["name"])
+            self.assertEqual(net["inouts"], [], net["name"])
+            self.assertTrue(net["validation"]["single_driver"], net["name"])
+            self.assertTrue(net["validation"]["has_load"], net["name"])
         self.assertEqual(actual_interfaces["schema"], "e1-h1-interface-contracts-v0")
         self.assertEqual(actual_interfaces["source"], "e1/e1-h1/ip/*.json")
         self.assertEqual(
@@ -228,6 +252,51 @@ class E1H1Tests(unittest.TestCase):
             self.assertTrue((REPO_ROOT / interface["spec"]).exists())
             self.assertTrue((REPO_ROOT / interface["l1_5_harness"]).exists())
             self.assertNotIn("implementation_module", interface_signature_payload(interface))
+
+    def test_soc_top_generator_rejects_bad_net_roles(self) -> None:
+        generator = load_generator()
+        bad_cases = {
+            "multi_driver": [
+                minimal_ip(
+                    "driver_a",
+                    10,
+                    [{"name": "bus_o", "direction": "output", "width": 1, "connect": "net.bad_bus"}],
+                ),
+                minimal_ip(
+                    "driver_b",
+                    20,
+                    [{"name": "bus_o", "direction": "output", "width": 1, "connect": "net.bad_bus"}],
+                ),
+                minimal_ip(
+                    "sink",
+                    30,
+                    [{"name": "bus_i", "direction": "input", "width": 1, "connect": "net.bad_bus"}],
+                ),
+            ],
+            "no_load": [
+                minimal_ip(
+                    "driver",
+                    10,
+                    [{"name": "bus_o", "direction": "output", "width": 1, "connect": "net.bad_bus"}],
+                )
+            ],
+            "no_driver": [
+                minimal_ip(
+                    "sink",
+                    10,
+                    [{"name": "bus_i", "direction": "input", "width": 1, "connect": "net.bad_bus"}],
+                )
+            ],
+        }
+
+        for name, manifests in bad_cases.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                ip_dir = Path(tmp)
+                for manifest in manifests:
+                    path = ip_dir / f"{manifest['name']}.json"
+                    path.write_text(json.dumps(manifest), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "net bad_bus"):
+                    generator.generate(ARCH, ip_dir)
 
     def test_e1_pipeline_generates_e1_h1_artifacts(self) -> None:
         result = run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])
