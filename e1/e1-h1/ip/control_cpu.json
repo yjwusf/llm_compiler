@@ -7,6 +7,16 @@
   "description": "Barebones 3-wide control CPU placeholder that programs the systolic array through a stable command interface.",
   "reference": "https://github.com/openhwgroup/core-et",
   "replaceable": true,
+  "spec": "e1/e1-h1/docs/modules/control_cpu.md",
+  "cpp_model": "e1/code/chip_model/e1_chip_model.*",
+  "l1_5_hybrid": "e1_h1_control_cpu_hybrid",
+  "perf_counters": [
+    "cycles",
+    "instructions",
+    "array_commands",
+    "stall_cycles",
+    "error_events"
+  ],
   "ports": [
     {"name": "clk_i", "direction": "input", "width": 1, "connect": "top.clk_i"},
     {"name": "rst_ni", "direction": "input", "width": 1, "connect": "top.rst_ni"},

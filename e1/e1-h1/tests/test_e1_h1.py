@@ -78,11 +78,46 @@ class E1H1Tests(unittest.TestCase):
             self.assertTrue(data["replaceable"], path)
             self.assertIn("module", data, path)
             self.assertIn("order", data, path)
+            self.assertIn("spec", data, path)
+            self.assertIn("cpp_model", data, path)
+            self.assertIn("l1_5_hybrid", data, path)
+            self.assertIn("perf_counters", data, path)
+            self.assertGreater(len(data["perf_counters"]), 0, path)
             self.assertGreater(len(data["ports"]), 0, path)
             for port in data["ports"]:
                 self.assertIn(port["direction"], {"input", "output", "inout"}, path)
                 self.assertGreater(int(port["width"]), 0, path)
                 self.assertRegex(port["connect"], r"^(top|net)\.[a-zA-Z_][a-zA-Z0-9_]*$")
+
+    def test_ip_module_specs_cover_interfaces_and_hybrid_runs(self) -> None:
+        required_sections = [
+            "## Purpose",
+            "## Parameters",
+            "## Input Signals",
+            "## Output Signals",
+            "## Interface Protocol",
+            "## Replacement Compatibility",
+            "## Mock Behavior",
+            "## C++ Model Contract",
+            "## L1.5 Hybrid Execution",
+            "## C++ Performance Counters",
+            "## Tests",
+        ]
+
+        for manifest in sorted(IP_DIR.glob("*.json")):
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+            spec_path = REPO_ROOT / data["spec"]
+            self.assertTrue(spec_path.exists(), data["spec"])
+            text = spec_path.read_text(encoding="utf-8")
+            self.assertIn(data["module"], text, spec_path)
+            self.assertIn(data["cpp_model"], text, spec_path)
+            self.assertIn(data["l1_5_hybrid"], text, spec_path)
+            for section in required_sections:
+                self.assertIn(section, text, spec_path)
+            for port in data["ports"]:
+                self.assertIn(f"`{port['name']}`", text, spec_path)
+            for counter in data["perf_counters"]:
+                self.assertIn(f"`{counter}`", text, spec_path)
 
     def test_generated_soc_top_matches_manifests(self) -> None:
         generator = load_generator()

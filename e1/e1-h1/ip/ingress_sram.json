@@ -6,6 +6,16 @@
   "order": 30,
   "description": "Configurable on-chip SRAM stage for Ethernet-ingested payloads.",
   "replaceable": true,
+  "spec": "e1/e1-h1/docs/modules/ingress_sram.md",
+  "cpp_model": "e1/code/chip_model/e1_chip_model.*",
+  "l1_5_hybrid": "e1_h1_ingress_sram_hybrid",
+  "perf_counters": [
+    "cycles",
+    "input_transfers",
+    "output_transfers",
+    "stall_cycles",
+    "error_events"
+  ],
   "parameters": {
     "SIZE_BYTES": 262144,
     "DATA_WIDTH": 128,
