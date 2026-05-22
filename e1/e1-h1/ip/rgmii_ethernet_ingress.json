@@ -9,7 +9,7 @@
   "replaceable": true,
   "rtl": "e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv",
   "spec": "e1/e1-h1/docs/modules/rgmii_ethernet_ingress.md",
-  "cpp_model": "e1/code/chip_model/e1_chip_model.*",
+  "cpp_model": "e1/e1-h1/cmodels/rgmii_ethernet_ingress.json",
   "l1_5_hybrid": "e1_h1_rgmii_ethernet_ingress_hybrid",
   "l1_5_harness": "e1/e1-h1/l1_5/rgmii_ethernet_ingress.json",
   "module_vip": "e1/e1-h1/vip/rgmii_ethernet_ingress.json",

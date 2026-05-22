@@ -25,6 +25,11 @@ The VIP manifest is not a multi-module integration test: it must allow exactly
 one SystemVerilog DUT, and all neighbors must be supplied by the C++ L1.5
 environment.
 
+Each IP points at a C++ model manifest under `e1/e1-h1/cmodels/`. That manifest
+names the concrete C++ class, source, header, inputs, outputs, and performance
+counters for the behavioral model that surrounds or replaces the SystemVerilog
+module during L1.5 runs.
+
 ## Required Per-Module Interface Definition
 
 Each E1-H1 module must document:

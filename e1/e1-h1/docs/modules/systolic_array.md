@@ -8,7 +8,7 @@ SystemVerilog source: `e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv`
 
 IP manifest: `e1/e1-h1/ip/systolic_array.json`
 
-C++ model: `e1/code/chip_model/e1_chip_model.*`
+C++ model: `e1/e1-h1/cmodels/systolic_array.json`
 
 L1.5 hybrid run: `e1_h1_systolic_array_hybrid`
 
@@ -76,6 +76,9 @@ pulses done.
 
 The C++ model implements `SystolicArrayModel::submit` and `tick` as the
 behavioral reference for command acceptance and completion counters.
+
+C++ implementation: `e1::SystolicArrayModel` in
+`e1/code/chip_model/e1_chip_model.*`.
 
 ## L1.5 Hybrid Execution
 

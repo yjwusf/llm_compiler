@@ -51,7 +51,9 @@ int main() {
       << "    \"output_transfers\": " << counters.output_transfers << ",\n"
       << "    \"stall_cycles\": " << counters.stall_cycles << ",\n"
       << "    \"error_events\": " << counters.error_events << ",\n"
-      << "    \"array_commands\": " << counters.array_commands << "\n"
+      << "    \"array_commands\": " << counters.array_commands << ",\n"
+      << "    \"rgmii_rx_cycles\": " << counters.rgmii_rx_cycles << ",\n"
+      << "    \"frames_seen\": " << counters.frames_seen << "\n"
       << "  }\n"
       << "}\n";
 

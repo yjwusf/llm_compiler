@@ -1,0 +1,26 @@
+{
+  "schema": "e1-h1-cpp-model-v0",
+  "name": "control_cpu",
+  "ip_manifest": "e1/e1-h1/ip/control_cpu.json",
+  "header": "e1/code/chip_model/e1_chip_model.hpp",
+  "source": "e1/code/chip_model/e1_chip_model.cpp",
+  "class": "e1::ControlCpuModel",
+  "contract": "Issues the fixed mock systolic command, observes ready/done/error, and records instruction, command, stall, and error counters.",
+  "inputs": [
+    "cmd_ready",
+    "array_done",
+    "array_error"
+  ],
+  "outputs": [
+    "command_valid",
+    "command",
+    "halted"
+  ],
+  "perf_counters": [
+    "cycles",
+    "instructions",
+    "array_commands",
+    "stall_cycles",
+    "error_events"
+  ]
+}

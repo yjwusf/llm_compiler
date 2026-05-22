@@ -32,6 +32,7 @@ class Ip:
     replaceable: bool
     rtl: str
     spec: str
+    cpp_model: str
     l1_5_harness: str
     module_vip: str
     perf_counters: list[str]
@@ -128,6 +129,7 @@ def load_ips(ip_dir: Path) -> list[Ip]:
                 replaceable=bool(data["replaceable"]),
                 rtl=data["rtl"],
                 spec=data["spec"],
+                cpp_model=data["cpp_model"],
                 l1_5_harness=data["l1_5_harness"],
                 module_vip=data["module_vip"],
                 perf_counters=list(data["perf_counters"]),
@@ -846,6 +848,7 @@ def generate_interface_contracts(architecture_path: Path, ip_dir: Path) -> dict[
                 "rtl_validation": rtl_validation[ip.name],
                 "replaceable": ip.replaceable,
                 "spec": ip.spec,
+                "cpp_model": ip.cpp_model,
                 "l1_5_harness": ip.l1_5_harness,
                 "module_vip": ip.module_vip,
                 "signature_sha256": interface_signature(ip),

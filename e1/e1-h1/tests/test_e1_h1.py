@@ -84,7 +84,7 @@ def minimal_ip(name: str, order: int, ports: list[dict[str, object]]) -> dict[st
         "replaceable": True,
         "rtl": "e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv",
         "spec": "e1/e1-h1/docs/modules/control_cpu.md",
-        "cpp_model": "e1/code/chip_model/e1_chip_model.*",
+        "cpp_model": "e1/e1-h1/cmodels/control_cpu.json",
         "l1_5_hybrid": f"test_{name}_hybrid",
         "l1_5_harness": "e1/e1-h1/l1_5/control_cpu.json",
         "module_vip": "e1/e1-h1/vip/control_cpu.json",
@@ -144,6 +144,7 @@ class E1H1Tests(unittest.TestCase):
             self.assertIn("module_vip", data, path)
             self.assertIn("perf_counters", data, path)
             self.assertTrue((REPO_ROOT / data["rtl"]).exists(), data["rtl"])
+            self.assertTrue((REPO_ROOT / data["cpp_model"]).exists(), data["cpp_model"])
             self.assertTrue((REPO_ROOT / data["module_vip"]).exists(), data["module_vip"])
             self.assertGreater(len(data["perf_counters"]), 0, path)
             self.assertGreater(len(data["ports"]), 0, path)
@@ -219,6 +220,27 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual(vip["scope"]["kind"], "module_only", vip_path)
             self.assertEqual(vip["scope"]["allowed_systemverilog_modules"], [ip["module"]], vip_path)
             self.assertEqual(vip["scope"]["neighbors"], "cpp_environment", vip_path)
+
+    def test_cpp_models_match_ip_manifests(self) -> None:
+        for manifest in sorted(IP_DIR.glob("*.json")):
+            ip = json.loads(manifest.read_text(encoding="utf-8"))
+            cmodel_path = REPO_ROOT / ip["cpp_model"]
+            cmodel = json.loads(cmodel_path.read_text(encoding="utf-8"))
+            self.assertEqual(cmodel["schema"], "e1-h1-cpp-model-v0", cmodel_path)
+            self.assertEqual(cmodel["name"], ip["name"], cmodel_path)
+            self.assertEqual(cmodel["ip_manifest"], str(manifest.relative_to(REPO_ROOT)), cmodel_path)
+            self.assertTrue((REPO_ROOT / cmodel["header"]).exists(), cmodel_path)
+            self.assertTrue((REPO_ROOT / cmodel["source"]).exists(), cmodel_path)
+            self.assertGreater(len(cmodel["inputs"]), 0, cmodel_path)
+            self.assertGreater(len(cmodel["outputs"]), 0, cmodel_path)
+            self.assertEqual(cmodel["perf_counters"], ip["perf_counters"], cmodel_path)
+            header = (REPO_ROOT / cmodel["header"]).read_text(encoding="utf-8")
+            source = (REPO_ROOT / cmodel["source"]).read_text(encoding="utf-8")
+            class_name = cmodel["class"].split("::")[-1]
+            self.assertIn(class_name, header, cmodel_path)
+            self.assertIn(f"{class_name}::", source, cmodel_path)
+            for counter in cmodel["perf_counters"]:
+                self.assertIn(counter, header, cmodel_path)
 
     def test_l1_5_hybrid_runs_each_ip_individually(self) -> None:
         harnesses = sorted(L1_5_DIR.glob("*.json"))
@@ -324,6 +346,7 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual(interface["signature_sha256"], interface_signature(interface))
             self.assertRegex(interface["signature_sha256"], r"^[0-9a-f]{64}$")
             self.assertTrue((REPO_ROOT / interface["spec"]).exists())
+            self.assertTrue((REPO_ROOT / interface["cpp_model"]).exists())
             self.assertTrue((REPO_ROOT / interface["l1_5_harness"]).exists())
             self.assertTrue((REPO_ROOT / interface["module_vip"]).exists())
             self.assertEqual(interface["rtl_validation"]["status"], "pass")
@@ -600,6 +623,7 @@ class E1H1Tests(unittest.TestCase):
         self.assertIn("accelerator_subsystem", {ip["subsystem"] for ip in hardware_graph["ips"]})
         for ip in hardware_graph["ips"]:
             self.assertTrue((REPO_ROOT / ip["rtl"]).exists(), ip)
+            self.assertTrue((REPO_ROOT / ip["cpp_model"]).exists(), ip)
             self.assertTrue((REPO_ROOT / ip["module_vip"]).exists(), ip)
 
         harness_plan = json.loads((E1_PIPELINE_OUT / "09_l1_5_harness_plan.json").read_text(encoding="utf-8"))
@@ -625,6 +649,12 @@ class E1H1Tests(unittest.TestCase):
 
         chip_model_plan = json.loads((E1_PIPELINE_OUT / "08_chip_model_plan.json").read_text(encoding="utf-8"))
         self.assertIn("e1/code/chip_model/e1_chip_smoke.cpp", chip_model_plan["chip_model"])
+        self.assertEqual(
+            set(chip_model_plan["c_model_manifests"]),
+            {path.stem for path in IP_DIR.glob("*.json")},
+        )
+        for path in chip_model_plan["c_model_manifests"].values():
+            self.assertTrue((REPO_ROOT / path).exists(), path)
         self.assertEqual(chip_model_plan["run_report"], "e1/generated/pipeline/08_chip_model_run.json")
         self.assertEqual(chip_model_plan["run_status"], "pass")
 
@@ -638,6 +668,8 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(chip_model_run["counters"]["array_commands"], 1)
         self.assertEqual(chip_model_run["counters"]["output_transfers"], 1)
         self.assertEqual(chip_model_run["counters"]["error_events"], 0)
+        self.assertEqual(chip_model_run["counters"]["frames_seen"], 1)
+        self.assertGreater(chip_model_run["counters"]["rgmii_rx_cycles"], 0)
 
         target_plan = json.loads((E1_PIPELINE_OUT / "12_target_package_plan.json").read_text(encoding="utf-8"))
         self.assertEqual(target_plan["manifest"], "e1/e1-h1/generated/targets/manifest.json")
@@ -771,6 +803,34 @@ class E1H1Tests(unittest.TestCase):
                     #include <vector>
 
                     int main() {
+                      e1::PerfCounters module_counters;
+                      e1::ControlCpuModel cpu;
+                      cpu.reset();
+                      cpu.tick(false, false, false, module_counters);
+                      assert(cpu.command_valid());
+                      cpu.tick(true, false, false, module_counters);
+                      cpu.tick(false, true, false, module_counters);
+                      assert(cpu.halted());
+
+                      e1::StreamSramModel ingress_sram;
+                      e1::RgmiiEthernetIngressModel rgmii;
+                      ingress_sram.reset();
+                      rgmii.reset();
+                      rgmii.load_payload({0xaa, 0xbb}, module_counters);
+                      rgmii.tick(ingress_sram, module_counters);
+                      ingress_sram.tick(module_counters);
+
+                      e1::ConfigSramModel activation(524288, 128, 8);
+                      activation.reset();
+                      activation.tick(module_counters);
+                      assert(activation.initialized());
+                      assert(activation.data_width() == 128);
+
+                      e1::SystolicArrayModel array;
+                      array.submit({0x10000u, 0x40000u, 0x80000u, 16, 16, 16});
+                      array.tick(module_counters);
+                      assert(array.busy());
+
                       e1::ChipModel chip;
                       chip.reset();
                       chip.load_ethernet_payload({1, 2, 3, 4});

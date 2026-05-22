@@ -14,3 +14,5 @@ This directory contains the first C++ skeletons for E1.
 - The device program talks to stable interfaces, not implementation internals.
 - The chip model must allow one C++ module to be replaced by one
   SystemVerilog module for L1.5 runs.
+- Each E1-H1 SystemVerilog IP must point at an explicit C++ model manifest
+  under `e1/e1-h1/cmodels/`.

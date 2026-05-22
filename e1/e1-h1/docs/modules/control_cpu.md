@@ -8,7 +8,7 @@ SystemVerilog source: `e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv`
 
 IP manifest: `e1/e1-h1/ip/control_cpu.json`
 
-C++ model: `e1/code/chip_model/e1_chip_model.*`
+C++ model: `e1/e1-h1/cmodels/control_cpu.json`
 
 L1.5 hybrid run: `e1_h1_control_cpu_hybrid`
 
@@ -71,6 +71,9 @@ error.
 
 The C++ chip model represents this block by issuing `SystolicCommand` objects
 and counting `instructions` and `array_commands`.
+
+C++ implementation: `e1::ControlCpuModel` in
+`e1/code/chip_model/e1_chip_model.*`.
 
 ## L1.5 Hybrid Execution
 

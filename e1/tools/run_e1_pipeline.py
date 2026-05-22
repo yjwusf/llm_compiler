@@ -433,6 +433,10 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
                 "e1/code/chip_model/e1_chip_model.cpp",
                 "e1/code/chip_model/e1_chip_smoke.cpp",
             ],
+            "c_model_manifests": {
+                ip["name"]: ip["cpp_model"]
+                for ip in ip_manifests
+            },
             "run_report": "e1/generated/pipeline/08_chip_model_run.json",
             "run_status": chip_model_run["status"],
             "replaceable_blocks": [ip["name"] for ip in ip_manifests],
@@ -474,6 +478,7 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
                     "subsystem": ip["subsystem"],
                     "rtl": ip["rtl"],
                     "spec": ip["spec"],
+                    "cpp_model": ip["cpp_model"],
                     "module_vip": ip["module_vip"],
                     "replaceable": ip["replaceable"],
                 }

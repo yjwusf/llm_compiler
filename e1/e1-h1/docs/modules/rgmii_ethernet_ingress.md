@@ -8,7 +8,7 @@ SystemVerilog source: `e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv`
 
 IP manifest: `e1/e1-h1/ip/rgmii_ethernet_ingress.json`
 
-C++ model: `e1/code/chip_model/e1_chip_model.*`
+C++ model: `e1/e1-h1/cmodels/rgmii_ethernet_ingress.json`
 
 L1.5 hybrid run: `e1_h1_rgmii_ethernet_ingress_hybrid`
 
@@ -63,6 +63,9 @@ The mock shifts received nibbles into a 64-bit stream word while
 
 The C++ model supplies external PHY stimulus and checks stream beat ordering,
 backpressure, and error reporting.
+
+C++ implementation: `e1::RgmiiEthernetIngressModel` in
+`e1/code/chip_model/e1_chip_model.*`.
 
 ## L1.5 Hybrid Execution
 

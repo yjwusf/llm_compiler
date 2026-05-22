@@ -8,7 +8,7 @@ SystemVerilog source: `e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv`
 
 IP manifest: `e1/e1-h1/ip/ingress_sram.json`
 
-C++ model: `e1/code/chip_model/e1_chip_model.*`
+C++ model: `e1/e1-h1/cmodels/ingress_sram.json`
 
 L1.5 hybrid run: `e1_h1_ingress_sram_hybrid`
 
@@ -67,6 +67,9 @@ The mock forwards one non-error beat at a time and drops error-marked beats.
 
 The C++ model represents this block as on-chip staging storage between Ethernet
 ingress and array consumption.
+
+C++ implementation: `e1::StreamSramModel` in
+`e1/code/chip_model/e1_chip_model.*`.
 
 ## L1.5 Hybrid Execution
 

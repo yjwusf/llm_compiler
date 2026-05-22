@@ -1,0 +1,24 @@
+{
+  "schema": "e1-h1-cpp-model-v0",
+  "name": "ingress_sram",
+  "ip_manifest": "e1/e1-h1/ip/ingress_sram.json",
+  "header": "e1/code/chip_model/e1_chip_model.hpp",
+  "source": "e1/code/chip_model/e1_chip_model.cpp",
+  "class": "e1::StreamSramModel",
+  "contract": "Models the ingress SRAM staging boundary between Ethernet ingress and array input.",
+  "inputs": [
+    "stream_byte",
+    "array_ready"
+  ],
+  "outputs": [
+    "array_byte",
+    "idle"
+  ],
+  "perf_counters": [
+    "cycles",
+    "input_transfers",
+    "output_transfers",
+    "stall_cycles",
+    "error_events"
+  ]
+}

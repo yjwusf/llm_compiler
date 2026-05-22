@@ -1,0 +1,25 @@
+{
+  "schema": "e1-h1-cpp-model-v0",
+  "name": "activation_sram",
+  "ip_manifest": "e1/e1-h1/ip/activation_sram.json",
+  "header": "e1/code/chip_model/e1_chip_model.hpp",
+  "source": "e1/code/chip_model/e1_chip_model.cpp",
+  "class": "e1::ConfigSramModel",
+  "contract": "Models the activation SRAM configuration boundary until request/response ports are introduced.",
+  "inputs": [
+    "reset",
+    "configured_size_bytes",
+    "configured_data_width",
+    "configured_banks"
+  ],
+  "outputs": [
+    "initialized"
+  ],
+  "perf_counters": [
+    "cycles",
+    "input_transfers",
+    "output_transfers",
+    "stall_cycles",
+    "error_events"
+  ]
+}

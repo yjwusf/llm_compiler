@@ -9,7 +9,7 @@
   "replaceable": true,
   "rtl": "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv",
   "spec": "e1/e1-h1/docs/modules/activation_sram.md",
-  "cpp_model": "e1/code/chip_model/e1_chip_model.*",
+  "cpp_model": "e1/e1-h1/cmodels/activation_sram.json",
   "l1_5_hybrid": "e1_h1_activation_sram_hybrid",
   "l1_5_harness": "e1/e1-h1/l1_5/activation_sram.json",
   "module_vip": "e1/e1-h1/vip/activation_sram.json",

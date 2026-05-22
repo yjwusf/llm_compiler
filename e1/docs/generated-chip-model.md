@@ -39,8 +39,19 @@ The initial skeleton lives in:
 - `e1/code/chip_model/e1_chip_model.cpp`
 - `e1/code/chip_model/e1_chip_smoke.cpp`
 
-It is intentionally small. It records the first interface names and performance
-counters before detailed timing is implemented.
+It is intentionally small, but each current E1-H1 IP has a first-class C++
+model contract under `e1/e1-h1/cmodels/`. Those JSON files bind the IP manifest
+to the C++ class, source, header, inputs, outputs, and required performance
+counters. The system-level `ChipModel` composes these module models for the
+current smoke run.
+
+Current C++ model classes:
+
+- `e1::ControlCpuModel`
+- `e1::RgmiiEthernetIngressModel`
+- `e1::StreamSramModel`
+- `e1::ConfigSramModel`
+- `e1::SystolicArrayModel`
 
 Run:
 

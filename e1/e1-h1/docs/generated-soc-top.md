@@ -122,6 +122,8 @@ compatibility:
 - `implementation_module` names the current RTL module used by the top.
 - `rtl` names the current SystemVerilog source for that IP.
 - `ports` and `parameters` define the stable generated wiring boundary.
+- `cpp_model` names the per-module C++ model manifest used by the chip model
+  and L1.5 environment.
 - `architecture_validation` records architecture-owned SRAM and accelerator
   parameters that the manifests are required to mirror.
 - `pipeline_validation` records the architecture-owned pipeline depths and

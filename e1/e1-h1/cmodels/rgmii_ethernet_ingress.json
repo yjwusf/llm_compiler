@@ -1,0 +1,26 @@
+{
+  "schema": "e1-h1-cpp-model-v0",
+  "name": "rgmii_ethernet_ingress",
+  "ip_manifest": "e1/e1-h1/ip/rgmii_ethernet_ingress.json",
+  "header": "e1/code/chip_model/e1_chip_model.hpp",
+  "source": "e1/code/chip_model/e1_chip_model.cpp",
+  "class": "e1::RgmiiEthernetIngressModel",
+  "contract": "Models the digital Ethernet/RGMII data source as queued bytes that feed the ingress SRAM C++ model.",
+  "inputs": [
+    "payload_bytes",
+    "downstream_ready"
+  ],
+  "outputs": [
+    "stream_byte",
+    "idle"
+  ],
+  "perf_counters": [
+    "cycles",
+    "rgmii_rx_cycles",
+    "input_transfers",
+    "output_transfers",
+    "stall_cycles",
+    "error_events",
+    "frames_seen"
+  ]
+}

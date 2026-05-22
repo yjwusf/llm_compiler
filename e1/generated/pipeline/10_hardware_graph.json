@@ -4,6 +4,7 @@
   "interface_contracts": "e1/e1-h1/generated/e1_h1_interface_contracts.json",
   "ips": [
     {
+      "cpp_model": "e1/e1-h1/cmodels/control_cpu.json",
       "module": "e1_h1_control_cpu",
       "module_vip": "e1/e1-h1/vip/control_cpu.json",
       "name": "control_cpu",
@@ -13,6 +14,7 @@
       "subsystem": "cpu_subsystem"
     },
     {
+      "cpp_model": "e1/e1-h1/cmodels/rgmii_ethernet_ingress.json",
       "module": "e1_h1_rgmii_ethernet_ingress",
       "module_vip": "e1/e1-h1/vip/rgmii_ethernet_ingress.json",
       "name": "rgmii_ethernet_ingress",
@@ -22,6 +24,7 @@
       "subsystem": "io_subsystem"
     },
     {
+      "cpp_model": "e1/e1-h1/cmodels/ingress_sram.json",
       "module": "e1_h1_stream_sram",
       "module_vip": "e1/e1-h1/vip/ingress_sram.json",
       "name": "ingress_sram",
@@ -31,6 +34,7 @@
       "subsystem": "memory_subsystem"
     },
     {
+      "cpp_model": "e1/e1-h1/cmodels/activation_sram.json",
       "module": "e1_h1_config_sram",
       "module_vip": "e1/e1-h1/vip/activation_sram.json",
       "name": "activation_sram",
@@ -40,6 +44,7 @@
       "subsystem": "memory_subsystem"
     },
     {
+      "cpp_model": "e1/e1-h1/cmodels/accumulator_sram.json",
       "module": "e1_h1_config_sram",
       "module_vip": "e1/e1-h1/vip/accumulator_sram.json",
       "name": "accumulator_sram",
@@ -49,6 +54,7 @@
       "subsystem": "memory_subsystem"
     },
     {
+      "cpp_model": "e1/e1-h1/cmodels/systolic_array.json",
       "module": "e1_h1_systolic_array",
       "module_vip": "e1/e1-h1/vip/systolic_array.json",
       "name": "systolic_array",

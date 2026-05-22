@@ -8,7 +8,7 @@ SystemVerilog source: `e1/e1-h1/rtl/ip/e1_h1_config_sram.sv`
 
 IP manifest: `e1/e1-h1/ip/activation_sram.json`
 
-C++ model: `e1/code/chip_model/e1_chip_model.*`
+C++ model: `e1/e1-h1/cmodels/activation_sram.json`
 
 L1.5 hybrid run: `e1_h1_activation_sram_hybrid`
 
@@ -59,6 +59,9 @@ functional memory ports yet.
 
 The C++ chip model owns activation storage behavior until RTL ports are
 introduced.
+
+C++ implementation: `e1::ConfigSramModel` in
+`e1/code/chip_model/e1_chip_model.*`.
 
 ## L1.5 Hybrid Execution
 
