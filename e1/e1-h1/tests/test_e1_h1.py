@@ -233,6 +233,10 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(actual_manifest["schema"], "e1-h1-soc-top-composition-v0")
         self.assertEqual(actual_manifest["style_reference"]["name"], "wujian100_open")
         self.assertEqual(
+            {entry["status"] for entry in actual_manifest["rtl_validation"]},
+            {"pass"},
+        )
+        self.assertEqual(
             [subsystem["name"] for subsystem in actual_manifest["subsystems"]],
             ["cpu_subsystem", "io_subsystem", "memory_subsystem", "accelerator_subsystem"],
         )
@@ -264,6 +268,7 @@ class E1H1Tests(unittest.TestCase):
             self.assertRegex(interface["signature_sha256"], r"^[0-9a-f]{64}$")
             self.assertTrue((REPO_ROOT / interface["spec"]).exists())
             self.assertTrue((REPO_ROOT / interface["l1_5_harness"]).exists())
+            self.assertEqual(interface["rtl_validation"]["status"], "pass")
             self.assertNotIn("implementation_module", interface_signature_payload(interface))
 
     def test_soc_top_generator_cli_emits_all_review_artifacts(self) -> None:
@@ -363,6 +368,21 @@ class E1H1Tests(unittest.TestCase):
                 path = ip_dir / f"{manifest['name']}.json"
                 path.write_text(json.dumps(manifest), encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "top port debug_o"):
+                generator.generate(ARCH, ip_dir)
+
+    def test_soc_top_generator_rejects_rtl_manifest_mismatch(self) -> None:
+        generator = load_generator()
+        manifest = minimal_ip(
+            "bad_cpu",
+            10,
+            [{"name": "missing_i", "direction": "input", "width": 1, "connect": "top.missing_i"}],
+        )
+        manifest["module"] = "e1_h1_control_cpu"
+        manifest["rtl"] = "e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv"
+        with tempfile.TemporaryDirectory() as tmp:
+            ip_dir = Path(tmp)
+            (ip_dir / "bad_cpu.json").write_text(json.dumps(manifest), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "missing ports"):
                 generator.generate(ARCH, ip_dir)
 
     def test_e1_pipeline_generates_e1_h1_artifacts(self) -> None:

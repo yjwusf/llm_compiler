@@ -801,6 +801,56 @@
       "width": 1
     }
   ],
+  "rtl_validation": [
+    {
+      "module": "e1_h1_config_sram",
+      "name": "accumulator_sram",
+      "parameter_count": 3,
+      "port_count": 2,
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv",
+      "status": "pass"
+    },
+    {
+      "module": "e1_h1_config_sram",
+      "name": "activation_sram",
+      "parameter_count": 3,
+      "port_count": 2,
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv",
+      "status": "pass"
+    },
+    {
+      "module": "e1_h1_control_cpu",
+      "name": "control_cpu",
+      "parameter_count": 0,
+      "port_count": 13,
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv",
+      "status": "pass"
+    },
+    {
+      "module": "e1_h1_stream_sram",
+      "name": "ingress_sram",
+      "parameter_count": 3,
+      "port_count": 10,
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv",
+      "status": "pass"
+    },
+    {
+      "module": "e1_h1_rgmii_ethernet_ingress",
+      "name": "rgmii_ethernet_ingress",
+      "parameter_count": 0,
+      "port_count": 10,
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv",
+      "status": "pass"
+    },
+    {
+      "module": "e1_h1_systolic_array",
+      "name": "systolic_array",
+      "parameter_count": 4,
+      "port_count": 16,
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv",
+      "status": "pass"
+    }
+  ],
   "schema": "e1-h1-soc-top-composition-v0",
   "style_reference": {
     "name": "wujian100_open",

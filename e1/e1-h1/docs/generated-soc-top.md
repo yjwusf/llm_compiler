@@ -38,10 +38,10 @@ The generator also emits:
 
 That JSON manifest records the same generated composition in reviewable data:
 top ports, internal nets, net endpoints, top/internal driver and load roles,
-subsystem grouping, and the Wujian100 style reference that the top is following.
-The interface contracts file records the stable replacement boundary for each
-IP and hashes the ports, parameters, connections, and performance counters that
-must remain compatible.
+RTL interface validation, subsystem grouping, and the Wujian100 style reference
+that the top is following. The interface contracts file records the stable
+replacement boundary for each IP and hashes the ports, parameters, connections,
+and performance counters that must remain compatible.
 
 ## IP Manifests
 
@@ -67,6 +67,11 @@ output has exactly one output driver, and that each internal `net.*` connection
 has exactly one output driver and at least one input load. Inout top ports and
 internal nets are reserved for later bidirectional interfaces and must be
 declared as inout-only when introduced.
+
+The generator also validates each IP manifest against its `rtl` file. The
+referenced SystemVerilog module must exist, every manifest parameter must be
+declared in the module parameter list, and every manifest port must exist with
+the same direction and bit width.
 
 ## Current Generated Top
 

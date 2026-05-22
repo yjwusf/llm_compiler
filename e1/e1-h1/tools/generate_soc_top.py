@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -35,6 +36,20 @@ class Ip:
     perf_counters: list[str]
     parameters: dict[str, int]
     ports: list[Port]
+
+
+@dataclass(frozen=True)
+class RtlPort:
+    name: str
+    direction: str
+    width: int
+
+
+@dataclass(frozen=True)
+class RtlModule:
+    name: str
+    parameters: set[str]
+    ports: dict[str, RtlPort]
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -91,6 +106,153 @@ def signal_name(connect: str) -> str:
     if prefix not in {"top", "net"}:
         raise ValueError(f"unsupported connection prefix in {connect!r}")
     return name
+
+
+def repo_root_from_architecture(architecture_path: Path) -> Path:
+    return architecture_path.resolve().parents[3]
+
+
+def strip_sv_comments(text: str) -> str:
+    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+    return re.sub(r"//.*", "", text)
+
+
+def find_matching_paren(text: str, open_index: int) -> int:
+    depth = 0
+    for index in range(open_index, len(text)):
+        char = text[index]
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                return index
+    raise ValueError("unbalanced SystemVerilog module header")
+
+
+def split_sv_comma_list(text: str) -> list[str]:
+    parts: list[str] = []
+    depth = 0
+    start = 0
+    for index, char in enumerate(text):
+        if char in "([":
+            depth += 1
+        elif char in ")]":
+            depth -= 1
+        elif char == "," and depth == 0:
+            parts.append(text[start:index].strip())
+            start = index + 1
+    tail = text[start:].strip()
+    if tail:
+        parts.append(tail)
+    return parts
+
+
+def parse_sv_width(range_text: str | None) -> int:
+    if range_text is None:
+        return 1
+    match = re.fullmatch(r"\[\s*(\d+)\s*:\s*(\d+)\s*\]", range_text.strip())
+    if match is None:
+        raise ValueError(f"unsupported SystemVerilog port range {range_text!r}")
+    left = int(match.group(1))
+    right = int(match.group(2))
+    return abs(left - right) + 1
+
+
+def parse_rtl_module(path: Path, module_name: str) -> RtlModule:
+    text = strip_sv_comments(path.read_text(encoding="utf-8"))
+    match = re.search(rf"\bmodule\s+{re.escape(module_name)}\b", text)
+    if match is None:
+        raise ValueError(f"{path}: missing module {module_name}")
+
+    cursor = match.end()
+    while cursor < len(text) and text[cursor].isspace():
+        cursor += 1
+
+    parameters: set[str] = set()
+    if text.startswith("#", cursor):
+        cursor += 1
+        while cursor < len(text) and text[cursor].isspace():
+            cursor += 1
+        if cursor >= len(text) or text[cursor] != "(":
+            raise ValueError(f"{path}: malformed parameter block for {module_name}")
+        end = find_matching_paren(text, cursor)
+        parameter_body = text[cursor + 1:end]
+        for declaration in split_sv_comma_list(parameter_body):
+            param_match = re.search(r"\bparameter\b\s+(?:\w+\s+)*([A-Za-z_][A-Za-z0-9_]*)\s*=", declaration)
+            if param_match is not None:
+                parameters.add(param_match.group(1))
+        cursor = end + 1
+        while cursor < len(text) and text[cursor].isspace():
+            cursor += 1
+
+    if cursor >= len(text) or text[cursor] != "(":
+        raise ValueError(f"{path}: missing ANSI port list for {module_name}")
+    end = find_matching_paren(text, cursor)
+    port_body = text[cursor + 1:end]
+    ports: dict[str, RtlPort] = {}
+    for declaration in split_sv_comma_list(port_body):
+        port_match = re.search(
+            r"\b(input|output|inout)\b\s+"
+            r"(?:(?:wire|logic|reg)\s+)?"
+            r"(?:(?:signed|unsigned)\s+)?"
+            r"(\[[^\]]+\])?\s*"
+            r"([A-Za-z_][A-Za-z0-9_]*)\s*$",
+            declaration,
+        )
+        if port_match is None:
+            raise ValueError(f"{path}: unsupported port declaration {declaration!r}")
+        direction = port_match.group(1)
+        width = parse_sv_width(port_match.group(2))
+        name = port_match.group(3)
+        ports[name] = RtlPort(name=name, direction=direction, width=width)
+
+    return RtlModule(name=module_name, parameters=parameters, ports=ports)
+
+
+def validate_rtl_interfaces(repo_root: Path, ips: list[Ip]) -> dict[str, dict[str, Any]]:
+    cache: dict[tuple[str, str], RtlModule] = {}
+    validation: dict[str, dict[str, Any]] = {}
+    for ip in ips:
+        rtl_path = repo_root / ip.rtl
+        if not rtl_path.exists():
+            raise ValueError(f"{ip.name}: missing RTL file {ip.rtl}")
+        cache_key = (ip.rtl, ip.module)
+        if cache_key not in cache:
+            cache[cache_key] = parse_rtl_module(rtl_path, ip.module)
+        rtl_module = cache[cache_key]
+
+        missing_parameters = sorted(set(ip.parameters) - rtl_module.parameters)
+        missing_ports = sorted(port.name for port in ip.ports if port.name not in rtl_module.ports)
+        mismatched_ports = []
+        for port in ip.ports:
+            rtl_port = rtl_module.ports.get(port.name)
+            if rtl_port is None:
+                continue
+            if rtl_port.direction != port.direction or rtl_port.width != port.width:
+                mismatched_ports.append(
+                    {
+                        "name": port.name,
+                        "manifest": {"direction": port.direction, "width": port.width},
+                        "rtl": {"direction": rtl_port.direction, "width": rtl_port.width},
+                    }
+                )
+
+        if missing_parameters:
+            raise ValueError(f"{ip.name}: RTL module {ip.module} missing parameters {missing_parameters}")
+        if missing_ports:
+            raise ValueError(f"{ip.name}: RTL module {ip.module} missing ports {missing_ports}")
+        if mismatched_ports:
+            raise ValueError(f"{ip.name}: RTL module {ip.module} has mismatched ports {mismatched_ports}")
+
+        validation[ip.name] = {
+            "status": "pass",
+            "rtl": ip.rtl,
+            "module": ip.module,
+            "parameter_count": len(ip.parameters),
+            "port_count": len(ip.ports),
+        }
+    return validation
 
 
 def collect_top_ports(ips: list[Ip]) -> dict[str, tuple[str, int]]:
@@ -215,6 +377,7 @@ def generate(architecture_path: Path, ip_dir: Path) -> str:
     nets = collect_nets(ips)
     validate_top_port_connectivity(ips)
     validate_net_connectivity(ips)
+    validate_rtl_interfaces(repo_root_from_architecture(architecture_path), ips)
     subsystems = subsystem_descriptions(arch)
     style_reference = arch.get("soc_top", {}).get("style_reference", {})
 
@@ -315,6 +478,7 @@ def generate_interface_contracts(architecture_path: Path, ip_dir: Path) -> dict[
     ips = load_ips(ip_dir)
     validate_top_port_connectivity(ips)
     validate_net_connectivity(ips)
+    rtl_validation = validate_rtl_interfaces(repo_root_from_architecture(architecture_path), ips)
     return {
         "schema": "e1-h1-interface-contracts-v0",
         "architecture_id": arch["architecture_id"],
@@ -325,6 +489,7 @@ def generate_interface_contracts(architecture_path: Path, ip_dir: Path) -> dict[
                 **interface_payload(ip),
                 "implementation_module": ip.module,
                 "rtl": ip.rtl,
+                "rtl_validation": rtl_validation[ip.name],
                 "replaceable": ip.replaceable,
                 "spec": ip.spec,
                 "l1_5_harness": ip.l1_5_harness,
@@ -342,6 +507,7 @@ def generate_composition_manifest(architecture_path: Path, ip_dir: Path) -> dict
     nets = collect_nets(ips)
     validate_top_port_connectivity(ips)
     validate_net_connectivity(ips)
+    rtl_validation = validate_rtl_interfaces(repo_root_from_architecture(architecture_path), ips)
     descriptions = subsystem_descriptions(arch)
     declared_subsystems = [
         item["name"]
@@ -368,6 +534,13 @@ def generate_composition_manifest(architecture_path: Path, ip_dir: Path) -> dict
         "architecture_id": arch["architecture_id"],
         "style_reference": arch.get("soc_top", {}).get("style_reference", {}),
         "generation": arch.get("soc_top", {}).get("generation", {}),
+        "rtl_validation": [
+            {
+                "name": name,
+                **payload,
+            }
+            for name, payload in sorted(rtl_validation.items())
+        ],
         "top_ports": [
             {
                 "name": name,
