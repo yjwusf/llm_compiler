@@ -1,11 +1,22 @@
 {
   "asic_openroad": {
+    "package": {
+      "config": "e1/e1-h1/generated/targets/openroad/config.mk",
+      "constraints": "e1/e1-h1/generated/targets/openroad/constraints.sdc",
+      "filelist": "e1/e1-h1/generated/targets/openroad/rtl.filelist"
+    },
     "status": "smoke",
     "top": "e1_h1_soc_top"
   },
   "digital_only": true,
   "fpga": {
+    "package": {
+      "constraints": "e1/e1-h1/generated/targets/fpga/constraints.xdc",
+      "filelist": "e1/e1-h1/generated/targets/fpga/rtl.filelist",
+      "script": "e1/e1-h1/generated/targets/fpga/run_synth.tcl"
+    },
     "status": "smoke",
     "top": "e1_h1_soc_top"
-  }
+  },
+  "manifest": "e1/e1-h1/generated/targets/manifest.json"
 }

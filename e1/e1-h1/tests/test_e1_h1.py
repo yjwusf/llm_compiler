@@ -25,6 +25,7 @@ RTL_IP = E1_H1 / "rtl" / "ip"
 L1_5_DIR = E1_H1 / "l1_5"
 E1_PIPELINE = REPO_ROOT / "e1" / "tools" / "run_e1_pipeline.py"
 E1_PIPELINE_OUT = REPO_ROOT / "e1" / "generated" / "pipeline"
+TARGETS = E1_H1 / "generated" / "targets"
 
 
 def load_generator():
@@ -204,6 +205,41 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(hardware_graph["top"], "e1_h1_soc_top")
         self.assertEqual(hardware_graph["generator"], "e1/e1-h1/tools/generate_soc_top.py")
         self.assertIn("systolic_array", {ip["name"] for ip in hardware_graph["ips"]})
+
+        target_plan = json.loads((E1_PIPELINE_OUT / "12_target_package_plan.json").read_text(encoding="utf-8"))
+        self.assertEqual(target_plan["manifest"], "e1/e1-h1/generated/targets/manifest.json")
+        self.assertTrue(target_plan["digital_only"])
+        self.assertEqual(target_plan["fpga"]["top"], "e1_h1_soc_top")
+        self.assertEqual(target_plan["asic_openroad"]["top"], "e1_h1_soc_top")
+
+    def test_target_packages_cover_fpga_and_openroad(self) -> None:
+        run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])
+        manifest_path = TARGETS / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        self.assertEqual(manifest["schema"], "e1-h1-target-package-v0")
+        self.assertEqual(manifest["top"], "e1_h1_soc_top")
+        self.assertTrue(manifest["digital_only"])
+        self.assertEqual(manifest["external_data_source"]["kind"], "ethernet")
+        self.assertEqual(manifest["external_data_source"]["mac_interface"], "rgmii")
+
+        rtl_files = manifest["rtl_files"]
+        self.assertIn("e1/e1-h1/generated/e1_h1_soc_top.sv", rtl_files)
+        self.assertIn("e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv", rtl_files)
+        for rtl_file in rtl_files:
+            self.assertTrue((REPO_ROOT / rtl_file).exists(), rtl_file)
+
+        fpga_filelist = (REPO_ROOT / manifest["fpga"]["filelist"]).read_text(encoding="utf-8").splitlines()
+        openroad_filelist = (REPO_ROOT / manifest["openroad"]["filelist"]).read_text(encoding="utf-8").splitlines()
+        self.assertEqual(fpga_filelist, rtl_files)
+        self.assertEqual(openroad_filelist, rtl_files)
+
+        fpga_constraints = (REPO_ROOT / manifest["fpga"]["constraints"]).read_text(encoding="utf-8")
+        openroad_constraints = (REPO_ROOT / manifest["openroad"]["constraints"]).read_text(encoding="utf-8")
+        openroad_config = (REPO_ROOT / manifest["openroad"]["config"]).read_text(encoding="utf-8")
+        self.assertIn("rgmii_rx_clk_i", fpga_constraints)
+        self.assertIn("Digital-only RGMII", fpga_constraints)
+        self.assertIn("No mixed-signal PHY", openroad_constraints)
+        self.assertIn("DESIGN_NAME := e1_h1_soc_top", openroad_config)
 
     def test_verilator_lints_generated_top_and_mock_ips(self) -> None:
         verilator = shutil.which("verilator")

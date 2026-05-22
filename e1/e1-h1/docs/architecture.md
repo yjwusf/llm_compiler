@@ -66,3 +66,9 @@ top matches the manifest-driven output.
 This follows the Wujian100-style idea of a visible SoC top that connects IP
 blocks, while avoiding a hand-maintained monolithic top. See
 [generated-soc-top.md](generated-soc-top.md).
+
+## Target Packages
+
+E1-H1 emits initial FPGA and ASIC/OpenROAD smoke packages from the same
+manifest-driven SoC top and IP RTL list. See
+[target-packaging.md](target-packaging.md).

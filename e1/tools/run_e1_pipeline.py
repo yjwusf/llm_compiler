@@ -52,14 +52,116 @@ def load_ip_manifests(ip_dir: Path) -> list[dict[str, Any]]:
     return [load_json(path) for path in sorted(ip_dir.glob("*.json"))]
 
 
+def emit_target_packages(e1_h1_dir: Path, architecture: dict[str, Any]) -> dict[str, Any]:
+    target_dir = e1_h1_dir / "generated" / "targets"
+    fpga_dir = target_dir / "fpga"
+    openroad_dir = target_dir / "openroad"
+    rtl_files = [
+        e1_h1_dir / "generated" / "e1_h1_soc_top.sv",
+        *sorted((e1_h1_dir / "rtl" / "ip").glob("*.sv")),
+    ]
+    rtl_rel = [repo_rel(path) for path in rtl_files]
+    top = "e1_h1_soc_top"
+    rgmii = architecture["io"]["external_data_source"]
+
+    write_text(
+        fpga_dir / "rtl.filelist",
+        "\n".join(rtl_rel) + "\n",
+    )
+    write_text(
+        fpga_dir / "constraints.xdc",
+        "\n".join(
+            [
+                "# E1-H1 FPGA smoke constraints.",
+                "# Digital-only RGMII boundary. External PHY owns analog signaling.",
+                "create_clock -name clk_i -period 10.000 [get_ports clk_i]",
+                "create_clock -name rgmii_rx_clk_i -period 8.000 [get_ports rgmii_rx_clk_i]",
+                "set_property IOSTANDARD LVCMOS33 [get_ports {rgmii_rxd_i[*] rgmii_rx_ctl_i rgmii_rx_clk_i}]",
+                "set_false_path -from [get_ports rgmii_rx_clk_i] -to [get_ports clk_i]",
+                "",
+            ]
+        ),
+    )
+    write_text(
+        fpga_dir / "run_synth.tcl",
+        "\n".join(
+            [
+                "# Smoke synthesis script fragment for E1-H1.",
+                f"set top {top}",
+                "set rtl_files [split [read [open rtl.filelist r]] \"\\n\"]",
+                "foreach f $rtl_files { if {$f ne \"\"} { read_verilog -sv $f } }",
+                "synth_design -top $top",
+                "",
+            ]
+        ),
+    )
+
+    write_text(
+        openroad_dir / "rtl.filelist",
+        "\n".join(rtl_rel) + "\n",
+    )
+    write_text(
+        openroad_dir / "constraints.sdc",
+        "\n".join(
+            [
+                "# E1-H1 OpenROAD smoke constraints.",
+                "# Digital-only RGMII boundary. No mixed-signal PHY macro is required.",
+                "create_clock -name clk_i -period 10.000 [get_ports clk_i]",
+                "create_clock -name rgmii_rx_clk_i -period 8.000 [get_ports rgmii_rx_clk_i]",
+                "set_input_delay 1.000 -clock rgmii_rx_clk_i [get_ports {rgmii_rxd_i[*] rgmii_rx_ctl_i}]",
+                "set_false_path -from [get_ports rgmii_rx_clk_i] -to [get_ports clk_i]",
+                "",
+            ]
+        ),
+    )
+    write_text(
+        openroad_dir / "config.mk",
+        "\n".join(
+            [
+                "# E1-H1 OpenROAD smoke package.",
+                f"DESIGN_NAME := {top}",
+                "VERILOG_FILES := $(shell cat rtl.filelist)",
+                "SDC_FILE := constraints.sdc",
+                "PLATFORM ?= sky130hd",
+                "",
+            ]
+        ),
+    )
+
+    manifest = {
+        "schema": "e1-h1-target-package-v0",
+        "top": top,
+        "digital_only": True,
+        "external_data_source": {
+            "kind": rgmii["kind"],
+            "mac_interface": rgmii["mac_interface"],
+            "phy_boundary": rgmii["phy_boundary"],
+        },
+        "rtl_files": rtl_rel,
+        "fpga": {
+            "filelist": repo_rel(fpga_dir / "rtl.filelist"),
+            "constraints": repo_rel(fpga_dir / "constraints.xdc"),
+            "script": repo_rel(fpga_dir / "run_synth.tcl"),
+        },
+        "openroad": {
+            "filelist": repo_rel(openroad_dir / "rtl.filelist"),
+            "constraints": repo_rel(openroad_dir / "constraints.sdc"),
+            "config": repo_rel(openroad_dir / "config.mk"),
+        },
+    }
+    write_json(target_dir / "manifest.json", manifest)
+    return manifest
+
+
 def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path) -> dict[str, Any]:
     manifest = load_json(manifest_path)
     architecture = load_json(architecture_path)
+    e1_h1_dir = architecture_path.parent.parent
     fixture_path = REPO_ROOT / manifest["frontend"]["fixture"]
     fixture_text = fixture_path.read_text(encoding="utf-8")
     ops = stablehlo_ops(fixture_text)
     tensor_types = tensors(fixture_text)
-    ip_manifests = load_ip_manifests(architecture_path.parent.parent / "ip")
+    ip_manifests = load_ip_manifests(e1_h1_dir / "ip")
 
     if architecture["io"]["external_data_source"]["kind"] != "ethernet":
         raise ValueError("E1-H1 external data source must be ethernet")
@@ -215,18 +317,20 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
         sv_out,
         {
             "generated_top": "e1/e1-h1/generated/e1_h1_soc_top.sv",
-            "mock_rtl": sorted(repo_rel(path) for path in (architecture_path.parent.parent / "rtl" / "ip").glob("*.sv")),
+            "mock_rtl": sorted(repo_rel(path) for path in (e1_h1_dir / "rtl" / "ip").glob("*.sv")),
             "composition_source": "e1/e1-h1/ip/*.json",
         },
     )
     passes.append({"pass": "e1_emit_systemverilog", "artifact": repo_rel(sv_out)})
 
+    target_manifest = emit_target_packages(e1_h1_dir, architecture)
     target_out = output_dir / "12_target_package_plan.json"
     write_json(
         target_out,
         {
-            "fpga": {"status": "smoke", "top": "e1_h1_soc_top"},
-            "asic_openroad": {"status": "smoke", "top": "e1_h1_soc_top"},
+            "fpga": {"status": "smoke", "top": "e1_h1_soc_top", "package": target_manifest["fpga"]},
+            "asic_openroad": {"status": "smoke", "top": "e1_h1_soc_top", "package": target_manifest["openroad"]},
+            "manifest": "e1/e1-h1/generated/targets/manifest.json",
             "digital_only": True,
         },
     )
