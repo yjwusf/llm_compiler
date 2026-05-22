@@ -237,6 +237,16 @@ class E1H1Tests(unittest.TestCase):
             ["cpu_subsystem", "io_subsystem", "memory_subsystem", "accelerator_subsystem"],
         )
         self.assertIn("rgmii_rx_clk_i", {port["name"] for port in actual_manifest["top_ports"]})
+        for port in actual_manifest["top_ports"]:
+            if port["direction"] == "input":
+                self.assertEqual(port["drivers"], [], port["name"])
+                self.assertGreaterEqual(len(port["loads"]), 1, port["name"])
+                self.assertTrue(port["validation"]["has_input_load"], port["name"])
+            elif port["direction"] == "output":
+                self.assertEqual(len(port["drivers"]), 1, port["name"])
+                self.assertEqual(port["loads"], [], port["name"])
+                self.assertTrue(port["validation"]["single_output_driver"], port["name"])
+            self.assertEqual(port["inouts"], [], port["name"])
         for net in actual_manifest["nets"]:
             self.assertEqual(len(net["drivers"]), 1, net["name"])
             self.assertGreaterEqual(len(net["loads"]), 1, net["name"])
@@ -332,6 +342,28 @@ class E1H1Tests(unittest.TestCase):
                     path.write_text(json.dumps(manifest), encoding="utf-8")
                 with self.assertRaisesRegex(ValueError, "net bad_bus"):
                     generator.generate(ARCH, ip_dir)
+
+    def test_soc_top_generator_rejects_bad_top_port_roles(self) -> None:
+        generator = load_generator()
+        manifests = [
+            minimal_ip(
+                "driver_a",
+                10,
+                [{"name": "debug_o", "direction": "output", "width": 1, "connect": "top.debug_o"}],
+            ),
+            minimal_ip(
+                "driver_b",
+                20,
+                [{"name": "debug_o", "direction": "output", "width": 1, "connect": "top.debug_o"}],
+            ),
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            ip_dir = Path(tmp)
+            for manifest in manifests:
+                path = ip_dir / f"{manifest['name']}.json"
+                path.write_text(json.dumps(manifest), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "top port debug_o"):
+                generator.generate(ARCH, ip_dir)
 
     def test_e1_pipeline_generates_e1_h1_artifacts(self) -> None:
         result = run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])

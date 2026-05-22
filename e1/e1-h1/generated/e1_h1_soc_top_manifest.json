@@ -879,37 +879,352 @@
   "top_ports": [
     {
       "direction": "input",
+      "drivers": [],
+      "endpoints": [
+        {
+          "direction": "input",
+          "instance": "accumulator_sram",
+          "module": "e1_h1_config_sram",
+          "port": "clk_i",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "activation_sram",
+          "module": "e1_h1_config_sram",
+          "port": "clk_i",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "clk_i",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "ingress_sram",
+          "module": "e1_h1_stream_sram",
+          "port": "clk_i",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "rgmii_ethernet_ingress",
+          "module": "e1_h1_rgmii_ethernet_ingress",
+          "port": "clk_i",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "clk_i",
+          "width": 1
+        }
+      ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "accumulator_sram",
+          "module": "e1_h1_config_sram",
+          "port": "clk_i",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "activation_sram",
+          "module": "e1_h1_config_sram",
+          "port": "clk_i",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "clk_i",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "ingress_sram",
+          "module": "e1_h1_stream_sram",
+          "port": "clk_i",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "rgmii_ethernet_ingress",
+          "module": "e1_h1_rgmii_ethernet_ingress",
+          "port": "clk_i",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "clk_i",
+          "width": 1
+        }
+      ],
       "name": "clk_i",
+      "validation": {
+        "has_input_load": true,
+        "inout_only": false,
+        "single_output_driver": false
+      },
       "width": 1
     },
     {
       "direction": "output",
+      "drivers": [
+        {
+          "direction": "output",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "debug_busy_o",
+          "width": 1
+        }
+      ],
+      "endpoints": [
+        {
+          "direction": "output",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "debug_busy_o",
+          "width": 1
+        }
+      ],
+      "inouts": [],
+      "loads": [],
       "name": "debug_array_busy_o",
+      "validation": {
+        "has_input_load": false,
+        "inout_only": false,
+        "single_output_driver": true
+      },
       "width": 1
     },
     {
       "direction": "output",
+      "drivers": [
+        {
+          "direction": "output",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "debug_halted_o",
+          "width": 1
+        }
+      ],
+      "endpoints": [
+        {
+          "direction": "output",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "debug_halted_o",
+          "width": 1
+        }
+      ],
+      "inouts": [],
+      "loads": [],
       "name": "debug_halted_o",
+      "validation": {
+        "has_input_load": false,
+        "inout_only": false,
+        "single_output_driver": true
+      },
       "width": 1
     },
     {
       "direction": "input",
+      "drivers": [],
+      "endpoints": [
+        {
+          "direction": "input",
+          "instance": "rgmii_ethernet_ingress",
+          "module": "e1_h1_rgmii_ethernet_ingress",
+          "port": "rgmii_rx_clk_i",
+          "width": 1
+        }
+      ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "rgmii_ethernet_ingress",
+          "module": "e1_h1_rgmii_ethernet_ingress",
+          "port": "rgmii_rx_clk_i",
+          "width": 1
+        }
+      ],
       "name": "rgmii_rx_clk_i",
+      "validation": {
+        "has_input_load": true,
+        "inout_only": false,
+        "single_output_driver": false
+      },
       "width": 1
     },
     {
       "direction": "input",
+      "drivers": [],
+      "endpoints": [
+        {
+          "direction": "input",
+          "instance": "rgmii_ethernet_ingress",
+          "module": "e1_h1_rgmii_ethernet_ingress",
+          "port": "rgmii_rx_ctl_i",
+          "width": 1
+        }
+      ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "rgmii_ethernet_ingress",
+          "module": "e1_h1_rgmii_ethernet_ingress",
+          "port": "rgmii_rx_ctl_i",
+          "width": 1
+        }
+      ],
       "name": "rgmii_rx_ctl_i",
+      "validation": {
+        "has_input_load": true,
+        "inout_only": false,
+        "single_output_driver": false
+      },
       "width": 1
     },
     {
       "direction": "input",
+      "drivers": [],
+      "endpoints": [
+        {
+          "direction": "input",
+          "instance": "rgmii_ethernet_ingress",
+          "module": "e1_h1_rgmii_ethernet_ingress",
+          "port": "rgmii_rxd_i",
+          "width": 4
+        }
+      ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "rgmii_ethernet_ingress",
+          "module": "e1_h1_rgmii_ethernet_ingress",
+          "port": "rgmii_rxd_i",
+          "width": 4
+        }
+      ],
       "name": "rgmii_rxd_i",
+      "validation": {
+        "has_input_load": true,
+        "inout_only": false,
+        "single_output_driver": false
+      },
       "width": 4
     },
     {
       "direction": "input",
+      "drivers": [],
+      "endpoints": [
+        {
+          "direction": "input",
+          "instance": "accumulator_sram",
+          "module": "e1_h1_config_sram",
+          "port": "rst_ni",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "activation_sram",
+          "module": "e1_h1_config_sram",
+          "port": "rst_ni",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "rst_ni",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "ingress_sram",
+          "module": "e1_h1_stream_sram",
+          "port": "rst_ni",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "rgmii_ethernet_ingress",
+          "module": "e1_h1_rgmii_ethernet_ingress",
+          "port": "rst_ni",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "rst_ni",
+          "width": 1
+        }
+      ],
+      "inouts": [],
+      "loads": [
+        {
+          "direction": "input",
+          "instance": "accumulator_sram",
+          "module": "e1_h1_config_sram",
+          "port": "rst_ni",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "activation_sram",
+          "module": "e1_h1_config_sram",
+          "port": "rst_ni",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "control_cpu",
+          "module": "e1_h1_control_cpu",
+          "port": "rst_ni",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "ingress_sram",
+          "module": "e1_h1_stream_sram",
+          "port": "rst_ni",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "rgmii_ethernet_ingress",
+          "module": "e1_h1_rgmii_ethernet_ingress",
+          "port": "rst_ni",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "rst_ni",
+          "width": 1
+        }
+      ],
       "name": "rst_ni",
+      "validation": {
+        "has_input_load": true,
+        "inout_only": false,
+        "single_output_driver": false
+      },
       "width": 1
     }
   ]

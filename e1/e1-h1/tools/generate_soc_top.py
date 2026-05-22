@@ -108,6 +108,33 @@ def collect_top_ports(ips: list[Ip]) -> dict[str, tuple[str, int]]:
     return top_ports
 
 
+def collect_top_port_ports(ips: list[Ip]) -> dict[str, list[Port]]:
+    top_port_ports: dict[str, list[Port]] = {}
+    for ip in ips:
+        for port in ip.ports:
+            if port.connect.startswith("top."):
+                top_port_ports.setdefault(signal_name(port.connect), []).append(port)
+    return top_port_ports
+
+
+def validate_top_port_connectivity(ips: list[Ip]) -> None:
+    for name, ports in sorted(collect_top_port_ports(ips).items()):
+        drivers = [port for port in ports if port.direction == "output"]
+        loads = [port for port in ports if port.direction == "input"]
+        inouts = [port for port in ports if port.direction == "inout"]
+
+        if inouts:
+            if drivers or loads:
+                raise ValueError(f"top port {name}: inout top ports must not mix with input/output ports")
+            continue
+        if drivers and loads:
+            raise ValueError(f"top port {name}: cannot mix input loads and output drivers")
+        if drivers and len(drivers) != 1:
+            raise ValueError(f"top port {name}: expected exactly one output driver, found {len(drivers)}")
+        if not drivers and not loads:
+            raise ValueError(f"top port {name}: expected at least one connected endpoint")
+
+
 def collect_nets(ips: list[Ip]) -> dict[str, int]:
     nets: dict[str, int] = {}
     for ip in ips:
@@ -186,6 +213,7 @@ def generate(architecture_path: Path, ip_dir: Path) -> str:
     ips = load_ips(ip_dir)
     top_ports = collect_top_ports(ips)
     nets = collect_nets(ips)
+    validate_top_port_connectivity(ips)
     validate_net_connectivity(ips)
     subsystems = subsystem_descriptions(arch)
     style_reference = arch.get("soc_top", {}).get("style_reference", {})
@@ -285,6 +313,7 @@ def interface_signature(ip: Ip) -> str:
 def generate_interface_contracts(architecture_path: Path, ip_dir: Path) -> dict[str, Any]:
     arch = load_json(architecture_path)
     ips = load_ips(ip_dir)
+    validate_top_port_connectivity(ips)
     validate_net_connectivity(ips)
     return {
         "schema": "e1-h1-interface-contracts-v0",
@@ -311,6 +340,7 @@ def generate_composition_manifest(architecture_path: Path, ip_dir: Path) -> dict
     ips = load_ips(ip_dir)
     top_ports = collect_top_ports(ips)
     nets = collect_nets(ips)
+    validate_top_port_connectivity(ips)
     validate_net_connectivity(ips)
     descriptions = subsystem_descriptions(arch)
     declared_subsystems = [
@@ -330,6 +360,7 @@ def generate_composition_manifest(architecture_path: Path, ip_dir: Path) -> dict
         )
 
     net_ports = collect_net_ports(ips)
+    top_port_ports = collect_top_port_ports(ips)
 
     return {
         "schema": "e1-h1-soc-top-composition-v0",
@@ -338,7 +369,28 @@ def generate_composition_manifest(architecture_path: Path, ip_dir: Path) -> dict
         "style_reference": arch.get("soc_top", {}).get("style_reference", {}),
         "generation": arch.get("soc_top", {}).get("generation", {}),
         "top_ports": [
-            {"name": name, "direction": direction, "width": width}
+            {
+                "name": name,
+                "direction": direction,
+                "width": width,
+                **endpoint_roles(top_port_ports[name]),
+                "endpoints": sorted(
+                    [endpoint(port) for port in top_port_ports[name]],
+                    key=lambda item: (item["instance"], item["port"]),
+                ),
+                "validation": {
+                    "single_output_driver": len(
+                        [port for port in top_port_ports[name] if port.direction == "output"]
+                    )
+                    == 1
+                    if direction == "output"
+                    else False,
+                    "has_input_load": any(port.direction == "input" for port in top_port_ports[name]),
+                    "inout_only": all(port.direction == "inout" for port in top_port_ports[name])
+                    if any(port.direction == "inout" for port in top_port_ports[name])
+                    else False,
+                },
+            }
             for name, (direction, width) in sorted(top_ports.items())
         ],
         "nets": [

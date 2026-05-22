@@ -37,11 +37,11 @@ The generator also emits:
 - `e1/e1-h1/generated/e1_h1_interface_contracts.json`
 
 That JSON manifest records the same generated composition in reviewable data:
-top ports, internal nets, net endpoints, driver/load roles, subsystem grouping,
-and the Wujian100 style reference that the top is following. The interface
-contracts file records the stable replacement boundary for each IP and hashes
-the ports, parameters, connections, and performance counters that must remain
-compatible.
+top ports, internal nets, net endpoints, top/internal driver and load roles,
+subsystem grouping, and the Wujian100 style reference that the top is following.
+The interface contracts file records the stable replacement boundary for each
+IP and hashes the ports, parameters, connections, and performance counters that
+must remain compatible.
 
 ## IP Manifests
 
@@ -62,9 +62,10 @@ Connections use two namespaces:
 - `net.<name>` creates or connects an internal SoC net.
 
 The generator validates that every shared connection has a consistent width,
-that top-level ports do not conflict on direction or width, and that each
-internal `net.*` connection has exactly one output driver and at least one input
-load. Inout nets are reserved for later bidirectional interfaces and must be
+that top-level ports do not conflict on direction or width, that each top-level
+output has exactly one output driver, and that each internal `net.*` connection
+has exactly one output driver and at least one input load. Inout top ports and
+internal nets are reserved for later bidirectional interfaces and must be
 declared as inout-only when introduced.
 
 ## Current Generated Top
