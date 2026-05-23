@@ -50,7 +50,13 @@ hardware and device code.
 13. `e1_package_targets`
     - Input: SystemVerilog, C++ models, tests, and target config.
     - Output: FPGA package and ASIC/OpenROAD package.
-14. `e1_end_to_end_smoke`
+14. `e1_check_tinyllama_imp2_coverage`
+    - Input: TinyLlama StableHLO fixture, binding, active implementation
+      matrix, device-program smoke, and C++ chip-model smoke.
+    - Output: proof that every StableHLO op in the reduced TinyLlama fixture is
+      bound to active `imp2` RTL, plus an explicit non-claim for full checkpoint
+      execution.
+15. `e1_end_to_end_smoke`
     - Input: all prior pass artifacts.
     - Output: one evidence report tying StableHLO, E1-H1 binding, device code,
       C++ chip model, generated SystemVerilog top, and target packages together.
@@ -61,6 +67,7 @@ E1 is complete when TinyLlama-derived reduced workloads can run through:
 
 - StableHLO inspection.
 - E1-H1 architecture binding.
+- TinyLlama fixture operation coverage through active `imp2` RTL.
 - C++ chip model execution.
 - Legible device program execution.
 - L1.5 hybrid runs for every module.

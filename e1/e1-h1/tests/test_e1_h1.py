@@ -690,17 +690,17 @@ class E1H1Tests(unittest.TestCase):
 
     def test_e1_pipeline_generates_e1_h1_artifacts(self) -> None:
         result = run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])
-        self.assertIn("PASS e1_pipeline 14 passes", result.stdout)
+        self.assertIn("PASS e1_pipeline 15 passes", result.stdout)
 
         summary = json.loads((E1_PIPELINE_OUT / "summary.json").read_text(encoding="utf-8"))
         self.assertEqual(summary["schema"], "e1-pipeline-summary-v0")
         self.assertEqual(summary["model_id"], "tinyllama-1.1b-chat-v1.0")
         self.assertEqual(summary["architecture_id"], "e1-h1")
-        self.assertEqual(summary["pass_count"], 14)
+        self.assertEqual(summary["pass_count"], 15)
         self.assertEqual(summary["operation_counts"]["dot_general"], 6)
         self.assertTrue(summary["all_current_modules_have_l1_5_harnesses"])
         self.assertEqual(summary["generated_top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
-        self.assertEqual(summary["end_to_end_smoke"], "e1/generated/pipeline/13_end_to_end_smoke.json")
+        self.assertEqual(summary["end_to_end_smoke"], "e1/generated/pipeline/14_end_to_end_smoke.json")
         self.assertEqual(summary["end_to_end_status"], "pass")
         self.assertEqual(summary["pipeline"]["cpu_to_accelerator_depth"], 1)
         self.assertEqual(summary["pipeline"]["array_input_depth"], 2)
@@ -720,6 +720,7 @@ class E1H1Tests(unittest.TestCase):
             "e1_select_implementations",
             "e1_emit_systemverilog",
             "e1_package_targets",
+            "e1_check_tinyllama_imp2_coverage",
             "e1_end_to_end_smoke",
         ]
         self.assertEqual([entry["pass"] for entry in summary["passes"]], expected_passes)
@@ -730,6 +731,7 @@ class E1H1Tests(unittest.TestCase):
         self.assertIn("Ethernet/RGMII", inspection["answers"]["external_data_source"])
 
         binding = json.loads((E1_PIPELINE_OUT / "05_e1_h1_binding.json").read_text(encoding="utf-8"))
+        self.assertEqual(binding["bindings"]["stablehlo.constant"], "control_cpu")
         self.assertEqual(binding["bindings"]["stablehlo.dot_general"], "systolic_array")
         self.assertEqual(binding["bindings"]["external_data"], "rgmii_ethernet_ingress")
 
@@ -829,6 +831,49 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(implementation_matrix["active_implementation"], "imp2")
         self.assertEqual(implementation_matrix["imp2_acceptance"], "verilator_dpi_vip_equivalent_to_imp1")
 
+        tinyllama_coverage = json.loads((E1_PIPELINE_OUT / "13_tinyllama_imp2_coverage.json").read_text(encoding="utf-8"))
+        self.assertEqual(tinyllama_coverage["schema"], "e1-tinyllama-imp2-coverage-v0")
+        self.assertEqual(tinyllama_coverage["status"], "pass")
+        self.assertEqual(tinyllama_coverage["model_id"], summary["model_id"])
+        self.assertEqual(tinyllama_coverage["scope"]["kind"], "reduced_stablehlo_fixture")
+        self.assertEqual(tinyllama_coverage["scope"]["fixture"], "e1/fixtures/stablehlo/tinyllama_block.mlir")
+        self.assertEqual(tinyllama_coverage["scope"]["function"], "tinyllama_block")
+        self.assertTrue(tinyllama_coverage["tinyllama_fixture_implemented"])
+        self.assertFalse(tinyllama_coverage["full_tinyllama_checkpoint_implemented"])
+        self.assertFalse(tinyllama_coverage["scope"]["full_checkpoint_execution"])
+        self.assertEqual(tinyllama_coverage["operation_counts"], summary["operation_counts"])
+        self.assertEqual(
+            {entry["operation"] for entry in tinyllama_coverage["operation_coverage"]},
+            {f"stablehlo.{name}" for name in summary["operation_counts"]},
+        )
+        self.assertEqual(
+            {entry["operation"]: entry["ip"] for entry in tinyllama_coverage["operation_coverage"]},
+            {
+                "stablehlo.add": "control_cpu",
+                "stablehlo.constant": "control_cpu",
+                "stablehlo.dot_general": "systolic_array",
+                "stablehlo.gather": "control_cpu",
+                "stablehlo.multiply": "control_cpu",
+                "stablehlo.tanh": "control_cpu",
+            },
+        )
+        self.assertEqual({entry["status"] for entry in tinyllama_coverage["operation_coverage"]}, {"pass"})
+        self.assertEqual({entry["active_implementation"] for entry in tinyllama_coverage["operation_coverage"]}, {"imp2"})
+        self.assertEqual(set(tinyllama_coverage["required_imp2_ips"]), {"control_cpu", "systolic_array"})
+        self.assertEqual(tinyllama_coverage["implementation_matrix"], "e1/e1-h1/generated/implementation_matrix.json")
+        self.assertEqual(tinyllama_coverage["active_flist"], implementation_matrix["flists"]["active"])
+        self.assertEqual(tinyllama_coverage["target_rtl_files"], implementation_matrix["active_rtl_files"])
+        self.assertEqual(tinyllama_coverage["device_program_run_status"], "pass")
+        self.assertEqual(tinyllama_coverage["chip_model_run_status"], "pass")
+        self.assertEqual({check["status"] for check in tinyllama_coverage["checks"]}, {"pass"})
+        for entry in tinyllama_coverage["operation_coverage"]:
+            self.assertIsNotNone(entry["flist"], entry)
+            self.assertTrue((REPO_ROOT / entry["flist"]).exists(), entry)
+            self.assertGreater(len(entry["rtl_files"]), 0, entry)
+            self.assertTrue(all("/rtl/imp2/" in path for path in entry["rtl_files"]), entry)
+            for rtl in entry["rtl_files"]:
+                self.assertTrue((REPO_ROOT / rtl).exists(), rtl)
+
         sv_plan = json.loads((E1_PIPELINE_OUT / "11_systemverilog_plan.json").read_text(encoding="utf-8"))
         self.assertEqual(sv_plan["generated_top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
         self.assertEqual(sv_plan["generated_composition_manifest"], "e1/e1-h1/generated/e1_h1_soc_top_manifest.json")
@@ -836,7 +881,7 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(sv_plan["pipeline_source"], "e1/e1-h1/config/architecture.json")
         self.assertEqual(sv_plan["pipeline"], summary["pipeline"])
 
-        e2e = json.loads((E1_PIPELINE_OUT / "13_end_to_end_smoke.json").read_text(encoding="utf-8"))
+        e2e = json.loads((E1_PIPELINE_OUT / "14_end_to_end_smoke.json").read_text(encoding="utf-8"))
         self.assertEqual(e2e["schema"], "e1-end-to-end-smoke-v0")
         self.assertEqual(e2e["status"], "pass")
         self.assertEqual(e2e["model_id"], summary["model_id"])
@@ -852,6 +897,7 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(e2e["generated_soc_top"]["top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
         self.assertEqual(e2e["implementation_matrix"], "e1/e1-h1/generated/implementation_matrix.json")
         self.assertEqual(e2e["implementation_flists"], implementation_matrix["flists"])
+        self.assertEqual(e2e["tinyllama_imp2_coverage"], "e1/generated/pipeline/13_tinyllama_imp2_coverage.json")
         self.assertEqual(e2e["target_package"], "e1/e1-h1/generated/targets/manifest.json")
         self.assertEqual({check["status"] for check in e2e["checks"]}, {"pass"})
         self.assertEqual(
@@ -863,6 +909,7 @@ class E1H1Tests(unittest.TestCase):
                 "chip_model_run",
                 "generated_soc_top",
                 "implementation_flists",
+                "tinyllama_imp2_coverage",
                 "target_package",
             },
         )
@@ -881,6 +928,7 @@ class E1H1Tests(unittest.TestCase):
             e2e["hardware_graph"],
             e2e["implementation_matrix"],
             e2e["implementation_flists"]["active"],
+            e2e["tinyllama_imp2_coverage"],
             e2e["systemverilog_plan"],
             e2e["target_package_plan"],
             e2e["target_package"],

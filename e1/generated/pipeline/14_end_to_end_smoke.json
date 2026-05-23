@@ -27,6 +27,10 @@
       "status": "pass"
     },
     {
+      "name": "tinyllama_imp2_coverage",
+      "status": "pass"
+    },
+    {
       "name": "target_package",
       "status": "pass"
     }
@@ -83,5 +87,6 @@
   "status": "pass",
   "systemverilog_plan": "e1/generated/pipeline/11_systemverilog_plan.json",
   "target_package": "e1/e1-h1/generated/targets/manifest.json",
-  "target_package_plan": "e1/generated/pipeline/12_target_package_plan.json"
+  "target_package_plan": "e1/generated/pipeline/12_target_package_plan.json",
+  "tinyllama_imp2_coverage": "e1/generated/pipeline/13_tinyllama_imp2_coverage.json"
 }

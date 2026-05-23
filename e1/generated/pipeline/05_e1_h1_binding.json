@@ -3,6 +3,7 @@
   "bindings": {
     "external_data": "rgmii_ethernet_ingress",
     "stablehlo.add": "control_cpu",
+    "stablehlo.constant": "control_cpu",
     "stablehlo.dot_general": "systolic_array",
     "stablehlo.gather": "control_cpu",
     "stablehlo.multiply": "control_cpu",

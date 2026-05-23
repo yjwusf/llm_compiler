@@ -491,6 +491,97 @@ def run_device_program_smoke(output_dir: Path) -> dict[str, Any]:
         return report
 
 
+def emit_tinyllama_imp2_coverage(
+    output_path: Path,
+    manifest: dict[str, Any],
+    fixture_path: Path,
+    ops: Counter[str],
+    binding: dict[str, Any],
+    implementation_matrix: dict[str, Any],
+    target_manifest: dict[str, Any],
+    device_program_run: dict[str, Any],
+    chip_model_run: dict[str, Any],
+) -> dict[str, Any]:
+    ips_by_name = {entry["name"]: entry for entry in implementation_matrix["ips"]}
+    operation_coverage: list[dict[str, Any]] = []
+    stablehlo_bindings = binding["bindings"]
+
+    for op_name, count in sorted(ops.items()):
+        binding_key = f"stablehlo.{op_name}"
+        ip_name = stablehlo_bindings.get(binding_key)
+        ip = ips_by_name.get(ip_name) if ip_name is not None else None
+        active_impl = ip[ip["active"]] if ip is not None else None
+        flist = active_impl.get("flist") if active_impl is not None else None
+        rtl_files = active_impl.get("rtl_files", []) if active_impl is not None else []
+        operation_coverage.append(
+            {
+                "operation": binding_key,
+                "count": count,
+                "ip": ip_name,
+                "active_implementation": ip["active"] if ip is not None else None,
+                "rtl_files": rtl_files,
+                "flist": flist,
+                "status": "pass"
+                if ip is not None
+                and ip["active"] == "imp2"
+                and active_impl is not None
+                and active_impl.get("status") == "accepted"
+                and flist is not None
+                and all("/rtl/imp2/" in path for path in rtl_files)
+                else "fail",
+            }
+        )
+
+    target_uses_imp2 = all("/rtl/imp2/" in path for path in target_manifest["rtl_files"][1:])
+    checks = [
+        {
+            "name": "all_stablehlo_ops_bound",
+            "status": "pass" if all(entry["ip"] is not None for entry in operation_coverage) else "fail",
+        },
+        {
+            "name": "all_bound_ops_use_imp2",
+            "status": "pass" if all(entry["status"] == "pass" for entry in operation_coverage) else "fail",
+        },
+        {
+            "name": "active_target_filelist_uses_imp2",
+            "status": "pass" if target_uses_imp2 else "fail",
+        },
+        {
+            "name": "device_program_smoke",
+            "status": device_program_run["status"],
+        },
+        {
+            "name": "chip_model_smoke",
+            "status": chip_model_run["status"],
+        },
+    ]
+    coverage = {
+        "schema": "e1-tinyllama-imp2-coverage-v0",
+        "status": "pass" if all(check["status"] == "pass" for check in checks) else "fail",
+        "model_id": manifest["model_id"],
+        "scope": {
+            "kind": "reduced_stablehlo_fixture",
+            "fixture": repo_rel(fixture_path),
+            "function": "tinyllama_block",
+            "full_checkpoint_execution": False,
+            "note": "This proves the checked-in TinyLlama-derived fixture path, not a full TinyLlama checkpoint run.",
+        },
+        "tinyllama_fixture_implemented": True,
+        "full_tinyllama_checkpoint_implemented": False,
+        "operation_counts": dict(sorted(ops.items())),
+        "operation_coverage": operation_coverage,
+        "required_imp2_ips": sorted({entry["ip"] for entry in operation_coverage if entry["ip"] is not None}),
+        "implementation_matrix": implementation_matrix["matrix"],
+        "target_rtl_files": target_manifest["rtl_files"],
+        "active_flist": implementation_matrix["flists"]["active"],
+        "device_program_run_status": device_program_run["status"],
+        "chip_model_run_status": chip_model_run["status"],
+        "checks": checks,
+    }
+    write_json(output_path, coverage)
+    return coverage
+
+
 def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path) -> dict[str, Any]:
     manifest = load_json(manifest_path)
     architecture = load_json(architecture_path)
@@ -556,22 +647,21 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
     passes.append({"pass": "e1_normalize_stablehlo", "artifact": repo_rel(normalized_out)})
 
     binding_out = output_dir / "05_e1_h1_binding.json"
-    write_json(
-        binding_out,
-        {
-            "architecture_id": architecture["architecture_id"],
-            "bindings": {
-                "stablehlo.dot_general": "systolic_array",
-                "stablehlo.gather": "control_cpu",
-                "stablehlo.add": "control_cpu",
-                "stablehlo.multiply": "control_cpu",
-                "stablehlo.tanh": "control_cpu",
-                "external_data": "rgmii_ethernet_ingress",
-                "staging": "ingress_sram",
-            },
-            "ip": [ip["name"] for ip in ip_manifests],
+    binding = {
+        "architecture_id": architecture["architecture_id"],
+        "bindings": {
+            "stablehlo.constant": "control_cpu",
+            "stablehlo.dot_general": "systolic_array",
+            "stablehlo.gather": "control_cpu",
+            "stablehlo.add": "control_cpu",
+            "stablehlo.multiply": "control_cpu",
+            "stablehlo.tanh": "control_cpu",
+            "external_data": "rgmii_ethernet_ingress",
+            "staging": "ingress_sram",
         },
-    )
+        "ip": [ip["name"] for ip in ip_manifests],
+    }
+    write_json(binding_out, binding)
     passes.append({"pass": "e1_bind_e1_h1", "artifact": repo_rel(binding_out)})
 
     memory_out = output_dir / "06_memory_plan.json"
@@ -700,7 +790,21 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
     )
     passes.append({"pass": "e1_package_targets", "artifact": repo_rel(target_out)})
 
-    e2e_out = output_dir / "13_end_to_end_smoke.json"
+    tinyllama_coverage_out = output_dir / "13_tinyllama_imp2_coverage.json"
+    tinyllama_coverage = emit_tinyllama_imp2_coverage(
+        tinyllama_coverage_out,
+        manifest,
+        fixture_path,
+        ops,
+        binding,
+        implementation_matrix,
+        target_manifest,
+        device_program_run,
+        chip_model_run,
+    )
+    passes.append({"pass": "e1_check_tinyllama_imp2_coverage", "artifact": repo_rel(tinyllama_coverage_out)})
+
+    e2e_out = output_dir / "14_end_to_end_smoke.json"
     target_manifest_path = "e1/e1-h1/generated/targets/manifest.json"
     generated_soc_top_exists = all(
         (REPO_ROOT / path).exists()
@@ -731,6 +835,7 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
         {"name": "chip_model_run", "status": chip_model_run["status"]},
         {"name": "generated_soc_top", "status": "pass" if generated_soc_top_exists else "fail"},
         {"name": "implementation_flists", "status": "pass" if target_package_exists else "fail"},
+        {"name": "tinyllama_imp2_coverage", "status": tinyllama_coverage["status"]},
         {"name": "target_package", "status": "pass" if target_package_exists else "fail"},
     ]
     e2e = {
@@ -763,6 +868,7 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
         "hardware_graph": repo_rel(graph_out),
         "implementation_matrix": implementation_matrix["matrix"],
         "implementation_flists": implementation_matrix["flists"],
+        "tinyllama_imp2_coverage": repo_rel(tinyllama_coverage_out),
         "systemverilog_plan": repo_rel(sv_out),
         "generated_soc_top": soc_top_artifacts,
         "target_package_plan": repo_rel(target_out),

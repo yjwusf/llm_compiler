@@ -68,3 +68,17 @@ python3 e1/tools/export_stablehlo.py --mode preflight \
 The current environment used by tests does not require network or large model
 files. Live mode is intentionally gated on the Hugging Face CLI and frontend
 dependencies.
+
+## Current Implementation Check
+
+The executable E1-H1 path currently proves the checked-in reduced TinyLlama
+StableHLO fixture, not the full TinyLlama checkpoint. The pipeline emits:
+
+- `e1/generated/pipeline/13_tinyllama_imp2_coverage.json`
+- `e1/generated/pipeline/14_end_to_end_smoke.json`
+
+The coverage artifact requires every StableHLO operation in
+`tinyllama_block.mlir` to bind to an accepted active `imp2` implementation and
+requires the target RTL filelist to use `e1/e1-h1/rtl/imp2/*.sv`. It also
+records `full_tinyllama_checkpoint_implemented: false` until live checkpoint
+export and execution are added.

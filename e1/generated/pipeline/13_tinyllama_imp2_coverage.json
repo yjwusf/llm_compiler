@@ -1,0 +1,128 @@
+{
+  "active_flist": "e1/e1-h1/generated/flists/active.f",
+  "checks": [
+    {
+      "name": "all_stablehlo_ops_bound",
+      "status": "pass"
+    },
+    {
+      "name": "all_bound_ops_use_imp2",
+      "status": "pass"
+    },
+    {
+      "name": "active_target_filelist_uses_imp2",
+      "status": "pass"
+    },
+    {
+      "name": "device_program_smoke",
+      "status": "pass"
+    },
+    {
+      "name": "chip_model_smoke",
+      "status": "pass"
+    }
+  ],
+  "chip_model_run_status": "pass",
+  "device_program_run_status": "pass",
+  "full_tinyllama_checkpoint_implemented": false,
+  "implementation_matrix": "e1/e1-h1/generated/implementation_matrix.json",
+  "model_id": "tinyllama-1.1b-chat-v1.0",
+  "operation_counts": {
+    "add": 2,
+    "constant": 1,
+    "dot_general": 6,
+    "gather": 1,
+    "multiply": 2,
+    "tanh": 1
+  },
+  "operation_coverage": [
+    {
+      "active_implementation": "imp2",
+      "count": 2,
+      "flist": "e1/e1-h1/generated/flists/imp2/control_cpu.f",
+      "ip": "control_cpu",
+      "operation": "stablehlo.add",
+      "rtl_files": [
+        "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+      ],
+      "status": "pass"
+    },
+    {
+      "active_implementation": "imp2",
+      "count": 1,
+      "flist": "e1/e1-h1/generated/flists/imp2/control_cpu.f",
+      "ip": "control_cpu",
+      "operation": "stablehlo.constant",
+      "rtl_files": [
+        "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+      ],
+      "status": "pass"
+    },
+    {
+      "active_implementation": "imp2",
+      "count": 6,
+      "flist": "e1/e1-h1/generated/flists/imp2/systolic_array.f",
+      "ip": "systolic_array",
+      "operation": "stablehlo.dot_general",
+      "rtl_files": [
+        "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+      ],
+      "status": "pass"
+    },
+    {
+      "active_implementation": "imp2",
+      "count": 1,
+      "flist": "e1/e1-h1/generated/flists/imp2/control_cpu.f",
+      "ip": "control_cpu",
+      "operation": "stablehlo.gather",
+      "rtl_files": [
+        "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+      ],
+      "status": "pass"
+    },
+    {
+      "active_implementation": "imp2",
+      "count": 2,
+      "flist": "e1/e1-h1/generated/flists/imp2/control_cpu.f",
+      "ip": "control_cpu",
+      "operation": "stablehlo.multiply",
+      "rtl_files": [
+        "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+      ],
+      "status": "pass"
+    },
+    {
+      "active_implementation": "imp2",
+      "count": 1,
+      "flist": "e1/e1-h1/generated/flists/imp2/control_cpu.f",
+      "ip": "control_cpu",
+      "operation": "stablehlo.tanh",
+      "rtl_files": [
+        "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+      ],
+      "status": "pass"
+    }
+  ],
+  "required_imp2_ips": [
+    "control_cpu",
+    "systolic_array"
+  ],
+  "schema": "e1-tinyllama-imp2-coverage-v0",
+  "scope": {
+    "fixture": "e1/fixtures/stablehlo/tinyllama_block.mlir",
+    "full_checkpoint_execution": false,
+    "function": "tinyllama_block",
+    "kind": "reduced_stablehlo_fixture",
+    "note": "This proves the checked-in TinyLlama-derived fixture path, not a full TinyLlama checkpoint run."
+  },
+  "status": "pass",
+  "target_rtl_files": [
+    "e1/e1-h1/generated/e1_h1_soc_top.sv",
+    "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv",
+    "e1/e1-h1/rtl/imp2/e1_h1_rgmii_ethernet_ingress.sv",
+    "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv",
+    "e1/e1-h1/rtl/imp2/e1_h1_config_sram.sv",
+    "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+  ],
+  "tinyllama_fixture_implemented": true
+}
