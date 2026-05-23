@@ -9,7 +9,7 @@
   "reference": "https://github.com/ucb-bar/gemmini",
   "replaceable": true,
   "implementation_scheme": {
-    "active": "imp1",
+    "active": "imp2",
     "reference": "imp1",
     "implementations": {
       "imp1": {
@@ -23,18 +23,21 @@
       },
       "imp2": {
         "kind": "candidate_rtl",
-        "status": "reserved",
+        "status": "accepted",
         "allowed_sources": [
           "https://github.com/ucb-bar/gemmini",
           "new_systolic_array"
         ],
-        "module": null,
-        "rtl_files": [],
+        "module": "e1_h1_systolic_array",
+        "rtl": "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
+        "rtl_files": [
+          "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+        ],
         "acceptance": "verilator_dpi_vip_equivalent_to_imp1"
       }
     }
   },
-  "rtl": "e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv",
+  "rtl": "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
   "spec": "e1/e1-h1/docs/modules/systolic_array.md",
   "cpp_model": "e1/e1-h1/cmodels/systolic_array.json",
   "l1_5_hybrid": "e1_h1_systolic_array_hybrid",

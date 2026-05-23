@@ -3,7 +3,7 @@
   "name": "control_cpu",
   "ip_manifest": "e1/e1-h1/ip/control_cpu.json",
   "top_module": "e1_h1_control_cpu",
-  "rtl": "e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv",
+  "rtl": "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv",
   "cpp_testbench": "e1/e1-h1/l1_5/control_cpu_tb.cpp",
   "module_vip": "e1/e1-h1/vip/control_cpu.json",
   "cpp_environment": [

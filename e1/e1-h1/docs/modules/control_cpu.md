@@ -4,7 +4,7 @@ Status: mock
 
 Layer: l1
 
-SystemVerilog source: `e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv`
+SystemVerilog source: `e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv`
 
 IP manifest: `e1/e1-h1/ip/control_cpu.json`
 
@@ -90,10 +90,10 @@ completion, and error behavior are provided by C++ environment models.
 ## Implementation Versions
 
 `imp1` is the current accepted mock RTL in
-`e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv`. `imp2` is the reserved real
-implementation slot, expected to evaluate CORE-ET-derived or new bare-metal CPU
-RTL. `imp2` is not selectable until Verilator+DPI VIP equivalence proves it
-matches `imp1` on all sensible control-CPU streams and its flist is gathered.
+`e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv`. `imp2` is the active candidate RTL in
+`e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv`. It is accepted because
+Verilator+DPI VIP equivalence proves it matches `imp1` on sensible control-CPU
+streams and its flist is gathered.
 
 ## C++ Performance Counters
 

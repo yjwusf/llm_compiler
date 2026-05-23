@@ -59,7 +59,14 @@
       "rgmii_ethernet_ingress": "e1/e1-h1/generated/flists/imp1/rgmii_ethernet_ingress.f",
       "systolic_array": "e1/e1-h1/generated/flists/imp1/systolic_array.f"
     },
-    "imp2": {}
+    "imp2": {
+      "accumulator_sram": "e1/e1-h1/generated/flists/imp2/accumulator_sram.f",
+      "activation_sram": "e1/e1-h1/generated/flists/imp2/activation_sram.f",
+      "control_cpu": "e1/e1-h1/generated/flists/imp2/control_cpu.f",
+      "ingress_sram": "e1/e1-h1/generated/flists/imp2/ingress_sram.f",
+      "rgmii_ethernet_ingress": "e1/e1-h1/generated/flists/imp2/rgmii_ethernet_ingress.f",
+      "systolic_array": "e1/e1-h1/generated/flists/imp2/systolic_array.f"
+    }
   },
   "implementation_matrix": "e1/e1-h1/generated/implementation_matrix.json",
   "l1_5_harness_plan": "e1/generated/pipeline/09_l1_5_harness_plan.json",

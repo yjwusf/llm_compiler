@@ -4,7 +4,7 @@ Status: mock
 
 Layer: l2
 
-SystemVerilog source: `e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv`
+SystemVerilog source: `e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv`
 
 IP manifest: `e1/e1-h1/ip/ingress_sram.json`
 
@@ -86,10 +86,10 @@ consumer behavior are supplied by C++ environment models.
 ## Implementation Versions
 
 `imp1` is the current accepted mock RTL in
-`e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv`. `imp2` is the reserved real stream SRAM
-implementation slot. `imp2` is not selectable until Verilator+DPI VIP
-equivalence proves it matches `imp1` on all sensible ingress-stream cases and
-its flist is gathered.
+`e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv`. `imp2` is the active candidate RTL in
+`e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv`. It is accepted because
+Verilator+DPI VIP equivalence proves it matches `imp1` on sensible
+ingress-stream cases and its flist is gathered.
 
 ## C++ Performance Counters
 

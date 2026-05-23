@@ -35,8 +35,8 @@ Each IP also owns an `implementation_scheme`:
 - `imp1` is the accepted mock RTL and is the current reference for executable
   behavior.
 - `imp2` is the candidate real RTL extension. It may be derived from upstream IP
-  such as CORE-ET or Gemmini, or from new RTL, but it is reserved until it is
-  proven equivalent.
+  such as CORE-ET or Gemmini, or from new RTL, but it is selectable only after
+  it is proven equivalent.
 
 `imp2` becomes selectable only when Verilator+DPI VIP equivalence shows that it
 matches `imp1` for every sensible VIP-generated input and output stream. The
@@ -48,6 +48,7 @@ The generated implementation files are:
 - `e1/e1-h1/generated/implementation_matrix.json`
 - `e1/e1-h1/generated/flists/active.f`
 - `e1/e1-h1/generated/flists/imp1/*.f`
+- `e1/e1-h1/generated/flists/imp2/*.f`
 
 ## Required Per-Module Interface Definition
 

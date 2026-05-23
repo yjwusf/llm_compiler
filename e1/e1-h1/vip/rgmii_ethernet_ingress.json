@@ -3,7 +3,7 @@
   "name": "rgmii_ethernet_ingress",
   "ip_manifest": "e1/e1-h1/ip/rgmii_ethernet_ingress.json",
   "top_module": "e1_h1_rgmii_ethernet_ingress",
-  "rtl": "e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv",
+  "rtl": "e1/e1-h1/rtl/imp2/e1_h1_rgmii_ethernet_ingress.sv",
   "cpp_testbench": "e1/e1-h1/l1_5/rgmii_ethernet_ingress_tb.cpp",
   "scope": {
     "kind": "module_only",

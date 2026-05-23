@@ -3,8 +3,12 @@
 #include "verilated.h"
 
 int main(int argc, char** argv) {
-  Verilated::commandArgs(argc, argv);
-  Ve1_h1_imp_equiv_probe top;
-  top.eval();
+  VerilatedContext context;
+  context.commandArgs(argc, argv);
+  Ve1_h1_imp_equiv_probe top{&context};
+  while (!context.gotFinish() && context.time() < 1000) {
+    top.eval();
+    context.timeInc(1);
+  }
   return 0;
 }

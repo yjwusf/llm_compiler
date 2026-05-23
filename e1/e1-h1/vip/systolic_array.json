@@ -3,7 +3,7 @@
   "name": "systolic_array",
   "ip_manifest": "e1/e1-h1/ip/systolic_array.json",
   "top_module": "e1_h1_systolic_array",
-  "rtl": "e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv",
+  "rtl": "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
   "cpp_testbench": "e1/e1-h1/l1_5/systolic_array_tb.cpp",
   "scope": {
     "kind": "module_only",

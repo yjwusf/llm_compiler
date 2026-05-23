@@ -4,7 +4,7 @@ Status: mock
 
 Layer: l2
 
-SystemVerilog source: `e1/e1-h1/rtl/ip/e1_h1_config_sram.sv`
+SystemVerilog source: `e1/e1-h1/rtl/imp2/e1_h1_config_sram.sv`
 
 IP manifest: `e1/e1-h1/ip/accumulator_sram.json`
 
@@ -77,10 +77,10 @@ reset and future accumulator memory behavior are C++ environment roles.
 ## Implementation Versions
 
 `imp1` is the current accepted mock RTL in
-`e1/e1-h1/rtl/ip/e1_h1_config_sram.sv`. `imp2` is the reserved real accumulator
-SRAM implementation slot. `imp2` is not selectable until Verilator+DPI VIP
-equivalence proves it matches `imp1` on all sensible accumulator-memory cases
-and its flist is gathered.
+`e1/e1-h1/rtl/ip/e1_h1_config_sram.sv`. `imp2` is the active candidate RTL in
+`e1/e1-h1/rtl/imp2/e1_h1_config_sram.sv`. It is accepted because
+Verilator+DPI VIP equivalence proves it matches `imp1` on sensible
+accumulator-memory cases and its flist is gathered.
 
 ## C++ Performance Counters
 

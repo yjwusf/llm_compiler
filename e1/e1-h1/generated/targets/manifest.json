@@ -20,7 +20,14 @@
       "rgmii_ethernet_ingress": "e1/e1-h1/generated/flists/imp1/rgmii_ethernet_ingress.f",
       "systolic_array": "e1/e1-h1/generated/flists/imp1/systolic_array.f"
     },
-    "imp2": {}
+    "imp2": {
+      "accumulator_sram": "e1/e1-h1/generated/flists/imp2/accumulator_sram.f",
+      "activation_sram": "e1/e1-h1/generated/flists/imp2/activation_sram.f",
+      "control_cpu": "e1/e1-h1/generated/flists/imp2/control_cpu.f",
+      "ingress_sram": "e1/e1-h1/generated/flists/imp2/ingress_sram.f",
+      "rgmii_ethernet_ingress": "e1/e1-h1/generated/flists/imp2/rgmii_ethernet_ingress.f",
+      "systolic_array": "e1/e1-h1/generated/flists/imp2/systolic_array.f"
+    }
   },
   "implementation_matrix": "e1/e1-h1/generated/implementation_matrix.json",
   "ip_rtl": [
@@ -29,42 +36,42 @@
       "module": "e1_h1_control_cpu",
       "name": "control_cpu",
       "order": 10,
-      "rtl": "e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv"
+      "rtl": "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
     },
     {
       "manifest": "e1/e1-h1/ip/rgmii_ethernet_ingress.json",
       "module": "e1_h1_rgmii_ethernet_ingress",
       "name": "rgmii_ethernet_ingress",
       "order": 20,
-      "rtl": "e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv"
+      "rtl": "e1/e1-h1/rtl/imp2/e1_h1_rgmii_ethernet_ingress.sv"
     },
     {
       "manifest": "e1/e1-h1/ip/ingress_sram.json",
       "module": "e1_h1_stream_sram",
       "name": "ingress_sram",
       "order": 30,
-      "rtl": "e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv"
+      "rtl": "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv"
     },
     {
       "manifest": "e1/e1-h1/ip/activation_sram.json",
       "module": "e1_h1_config_sram",
       "name": "activation_sram",
       "order": 40,
-      "rtl": "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv"
+      "rtl": "e1/e1-h1/rtl/imp2/e1_h1_config_sram.sv"
     },
     {
       "manifest": "e1/e1-h1/ip/accumulator_sram.json",
       "module": "e1_h1_config_sram",
       "name": "accumulator_sram",
       "order": 50,
-      "rtl": "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv"
+      "rtl": "e1/e1-h1/rtl/imp2/e1_h1_config_sram.sv"
     },
     {
       "manifest": "e1/e1-h1/ip/systolic_array.json",
       "module": "e1_h1_systolic_array",
       "name": "systolic_array",
       "order": 60,
-      "rtl": "e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv"
+      "rtl": "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
     }
   ],
   "openroad": {
@@ -74,11 +81,11 @@
   },
   "rtl_files": [
     "e1/e1-h1/generated/e1_h1_soc_top.sv",
-    "e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv",
-    "e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv",
-    "e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv",
-    "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv",
-    "e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv"
+    "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv",
+    "e1/e1-h1/rtl/imp2/e1_h1_rgmii_ethernet_ingress.sv",
+    "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv",
+    "e1/e1-h1/rtl/imp2/e1_h1_config_sram.sv",
+    "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
   ],
   "rtl_source": "e1/e1-h1/ip/*.json",
   "schema": "e1-h1-target-package-v0",

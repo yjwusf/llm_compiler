@@ -3,7 +3,7 @@
   "name": "activation_sram",
   "ip_manifest": "e1/e1-h1/ip/activation_sram.json",
   "top_module": "e1_h1_config_sram",
-  "rtl": "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv",
+  "rtl": "e1/e1-h1/rtl/imp2/e1_h1_config_sram.sv",
   "cpp_testbench": "e1/e1-h1/l1_5/config_sram_tb.cpp",
   "scope": {
     "kind": "module_only",

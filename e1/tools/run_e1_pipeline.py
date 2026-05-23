@@ -95,22 +95,25 @@ def emit_implementation_matrix(
     imp1_flists: dict[str, str] = {}
     imp2_flists: dict[str, str] = {}
     entries: list[dict[str, Any]] = []
+    active_implementations: list[str] = []
 
     for ip in ip_manifests:
         scheme = implementation_scheme(ip)
         implementations = scheme["implementations"]
         imp1 = implementations.get("imp1")
         imp2 = implementations.get("imp2")
+        active_name = scheme["active"]
+        active = implementations[active_name]
+        active_implementations.append(active_name)
         if not isinstance(imp1, dict) or not isinstance(imp2, dict):
             raise ValueError(f"{ip['name']}: imp1 and imp2 must be defined")
         if imp1.get("kind") != "mock" or imp1.get("status") != "accepted":
             raise ValueError(f"{ip['name']}: imp1 must be the accepted mock implementation")
-        if imp1.get("module") != ip["module"] or imp1.get("rtl") != ip["rtl"]:
-            raise ValueError(f"{ip['name']}: imp1 must match the current IP module and RTL")
+        if active.get("module") != ip["module"] or active.get("rtl") != ip["rtl"]:
+            raise ValueError(f"{ip['name']}: active implementation must match the current IP module and RTL")
         if imp2.get("acceptance") != "verilator_dpi_vip_equivalent_to_imp1":
             raise ValueError(f"{ip['name']}: imp2 acceptance must require Verilator+DPI VIP equivalence")
 
-        active = implementations[scheme["active"]]
         active_rtl.extend(active.get("rtl_files", [active["rtl"]]))
 
         imp1_flist = imp1_dir / f"{ip['name']}.f"
@@ -156,7 +159,7 @@ def emit_implementation_matrix(
                     "candidate": "imp2",
                     "probe": "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv",
                     "scoreboard": "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp",
-                    "status": "imp2_reserved" if imp2["status"] == "reserved" else "required",
+                    "status": imp2["status"],
                 },
             }
         )
@@ -164,11 +167,16 @@ def emit_implementation_matrix(
     active_flist = flist_dir / "active.f"
     active_files = unique_ordered(active_rtl)
     write_text(active_flist, "\n".join(active_files) + "\n")
+    active_implementation = (
+        active_implementations[0]
+        if len(set(active_implementations)) == 1
+        else "mixed"
+    )
 
     matrix = {
         "schema": "e1-h1-implementation-matrix-v0",
         "reference_implementation": "imp1",
-        "active_implementation": "imp1",
+        "active_implementation": active_implementation,
         "imp1_meaning": "mock contract implementation",
         "imp2_acceptance": "verilator_dpi_vip_equivalent_to_imp1",
         "dpi": {

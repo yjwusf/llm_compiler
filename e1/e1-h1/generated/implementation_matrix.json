@@ -1,12 +1,12 @@
 {
-  "active_implementation": "imp1",
+  "active_implementation": "imp2",
   "active_rtl_files": [
     "e1/e1-h1/generated/e1_h1_soc_top.sv",
-    "e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv",
-    "e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv",
-    "e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv",
-    "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv",
-    "e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv"
+    "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv",
+    "e1/e1-h1/rtl/imp2/e1_h1_rgmii_ethernet_ingress.sv",
+    "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv",
+    "e1/e1-h1/rtl/imp2/e1_h1_config_sram.sv",
+    "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
   ],
   "dpi": {
     "main": "e1/e1-h1/dpi/e1_h1_imp_equiv_main.cpp",
@@ -23,19 +23,26 @@
       "rgmii_ethernet_ingress": "e1/e1-h1/generated/flists/imp1/rgmii_ethernet_ingress.f",
       "systolic_array": "e1/e1-h1/generated/flists/imp1/systolic_array.f"
     },
-    "imp2": {}
+    "imp2": {
+      "accumulator_sram": "e1/e1-h1/generated/flists/imp2/accumulator_sram.f",
+      "activation_sram": "e1/e1-h1/generated/flists/imp2/activation_sram.f",
+      "control_cpu": "e1/e1-h1/generated/flists/imp2/control_cpu.f",
+      "ingress_sram": "e1/e1-h1/generated/flists/imp2/ingress_sram.f",
+      "rgmii_ethernet_ingress": "e1/e1-h1/generated/flists/imp2/rgmii_ethernet_ingress.f",
+      "systolic_array": "e1/e1-h1/generated/flists/imp2/systolic_array.f"
+    }
   },
   "imp1_meaning": "mock contract implementation",
   "imp2_acceptance": "verilator_dpi_vip_equivalent_to_imp1",
   "ips": [
     {
-      "active": "imp1",
+      "active": "imp2",
       "dpi_equivalence": {
         "candidate": "imp2",
         "probe": "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv",
         "reference": "imp1",
         "scoreboard": "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp",
-        "status": "imp2_reserved"
+        "status": "accepted"
       },
       "imp1": {
         "flist": "e1/e1-h1/generated/flists/imp1/control_cpu.f",
@@ -46,11 +53,13 @@
       },
       "imp2": {
         "acceptance": "verilator_dpi_vip_equivalent_to_imp1",
-        "flist": null,
+        "flist": "e1/e1-h1/generated/flists/imp2/control_cpu.f",
         "kind": "candidate_rtl",
-        "module": null,
-        "rtl_files": [],
-        "status": "reserved"
+        "module": "e1_h1_control_cpu",
+        "rtl_files": [
+          "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+        ],
+        "status": "accepted"
       },
       "interface_source": "e1/e1-h1/ip/control_cpu.json",
       "l1_5_harness": "e1/e1-h1/l1_5/control_cpu.json",
@@ -60,13 +69,13 @@
       "vip": "e1/e1-h1/vip/control_cpu.json"
     },
     {
-      "active": "imp1",
+      "active": "imp2",
       "dpi_equivalence": {
         "candidate": "imp2",
         "probe": "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv",
         "reference": "imp1",
         "scoreboard": "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp",
-        "status": "imp2_reserved"
+        "status": "accepted"
       },
       "imp1": {
         "flist": "e1/e1-h1/generated/flists/imp1/rgmii_ethernet_ingress.f",
@@ -77,11 +86,13 @@
       },
       "imp2": {
         "acceptance": "verilator_dpi_vip_equivalent_to_imp1",
-        "flist": null,
+        "flist": "e1/e1-h1/generated/flists/imp2/rgmii_ethernet_ingress.f",
         "kind": "candidate_rtl",
-        "module": null,
-        "rtl_files": [],
-        "status": "reserved"
+        "module": "e1_h1_rgmii_ethernet_ingress",
+        "rtl_files": [
+          "e1/e1-h1/rtl/imp2/e1_h1_rgmii_ethernet_ingress.sv"
+        ],
+        "status": "accepted"
       },
       "interface_source": "e1/e1-h1/ip/rgmii_ethernet_ingress.json",
       "l1_5_harness": "e1/e1-h1/l1_5/rgmii_ethernet_ingress.json",
@@ -91,13 +102,13 @@
       "vip": "e1/e1-h1/vip/rgmii_ethernet_ingress.json"
     },
     {
-      "active": "imp1",
+      "active": "imp2",
       "dpi_equivalence": {
         "candidate": "imp2",
         "probe": "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv",
         "reference": "imp1",
         "scoreboard": "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp",
-        "status": "imp2_reserved"
+        "status": "accepted"
       },
       "imp1": {
         "flist": "e1/e1-h1/generated/flists/imp1/ingress_sram.f",
@@ -108,11 +119,13 @@
       },
       "imp2": {
         "acceptance": "verilator_dpi_vip_equivalent_to_imp1",
-        "flist": null,
+        "flist": "e1/e1-h1/generated/flists/imp2/ingress_sram.f",
         "kind": "candidate_rtl",
-        "module": null,
-        "rtl_files": [],
-        "status": "reserved"
+        "module": "e1_h1_stream_sram",
+        "rtl_files": [
+          "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv"
+        ],
+        "status": "accepted"
       },
       "interface_source": "e1/e1-h1/ip/ingress_sram.json",
       "l1_5_harness": "e1/e1-h1/l1_5/ingress_sram.json",
@@ -122,13 +135,13 @@
       "vip": "e1/e1-h1/vip/ingress_sram.json"
     },
     {
-      "active": "imp1",
+      "active": "imp2",
       "dpi_equivalence": {
         "candidate": "imp2",
         "probe": "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv",
         "reference": "imp1",
         "scoreboard": "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp",
-        "status": "imp2_reserved"
+        "status": "accepted"
       },
       "imp1": {
         "flist": "e1/e1-h1/generated/flists/imp1/activation_sram.f",
@@ -139,11 +152,13 @@
       },
       "imp2": {
         "acceptance": "verilator_dpi_vip_equivalent_to_imp1",
-        "flist": null,
+        "flist": "e1/e1-h1/generated/flists/imp2/activation_sram.f",
         "kind": "candidate_rtl",
-        "module": null,
-        "rtl_files": [],
-        "status": "reserved"
+        "module": "e1_h1_config_sram",
+        "rtl_files": [
+          "e1/e1-h1/rtl/imp2/e1_h1_config_sram.sv"
+        ],
+        "status": "accepted"
       },
       "interface_source": "e1/e1-h1/ip/activation_sram.json",
       "l1_5_harness": "e1/e1-h1/l1_5/activation_sram.json",
@@ -153,13 +168,13 @@
       "vip": "e1/e1-h1/vip/activation_sram.json"
     },
     {
-      "active": "imp1",
+      "active": "imp2",
       "dpi_equivalence": {
         "candidate": "imp2",
         "probe": "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv",
         "reference": "imp1",
         "scoreboard": "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp",
-        "status": "imp2_reserved"
+        "status": "accepted"
       },
       "imp1": {
         "flist": "e1/e1-h1/generated/flists/imp1/accumulator_sram.f",
@@ -170,11 +185,13 @@
       },
       "imp2": {
         "acceptance": "verilator_dpi_vip_equivalent_to_imp1",
-        "flist": null,
+        "flist": "e1/e1-h1/generated/flists/imp2/accumulator_sram.f",
         "kind": "candidate_rtl",
-        "module": null,
-        "rtl_files": [],
-        "status": "reserved"
+        "module": "e1_h1_config_sram",
+        "rtl_files": [
+          "e1/e1-h1/rtl/imp2/e1_h1_config_sram.sv"
+        ],
+        "status": "accepted"
       },
       "interface_source": "e1/e1-h1/ip/accumulator_sram.json",
       "l1_5_harness": "e1/e1-h1/l1_5/accumulator_sram.json",
@@ -184,13 +201,13 @@
       "vip": "e1/e1-h1/vip/accumulator_sram.json"
     },
     {
-      "active": "imp1",
+      "active": "imp2",
       "dpi_equivalence": {
         "candidate": "imp2",
         "probe": "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv",
         "reference": "imp1",
         "scoreboard": "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp",
-        "status": "imp2_reserved"
+        "status": "accepted"
       },
       "imp1": {
         "flist": "e1/e1-h1/generated/flists/imp1/systolic_array.f",
@@ -201,11 +218,13 @@
       },
       "imp2": {
         "acceptance": "verilator_dpi_vip_equivalent_to_imp1",
-        "flist": null,
+        "flist": "e1/e1-h1/generated/flists/imp2/systolic_array.f",
         "kind": "candidate_rtl",
-        "module": null,
-        "rtl_files": [],
-        "status": "reserved"
+        "module": "e1_h1_systolic_array",
+        "rtl_files": [
+          "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+        ],
+        "status": "accepted"
       },
       "interface_source": "e1/e1-h1/ip/systolic_array.json",
       "l1_5_harness": "e1/e1-h1/l1_5/systolic_array.json",

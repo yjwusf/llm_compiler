@@ -34,8 +34,8 @@ The pipeline writes:
 - Both targets include every current E1-H1 mock IP RTL file through the `rtl`
   field in `e1/e1-h1/ip/*.json`.
 - The active target filelists must match the active implementation flist. Today
-  active is `imp1`, the accepted mock implementation set.
-- `imp2` implementation flists are emitted only after candidate RTL passes the
+  active is `imp2`, the accepted candidate RTL implementation set.
+- `imp2` implementation flists are emitted after candidate RTL passes the
   Verilator+DPI VIP equivalence gate against `imp1`.
 - Shared implementation RTL, such as `e1_h1_config_sram.sv`, appears only once
   in target filelists even when multiple IP manifests use it.

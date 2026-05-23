@@ -61,9 +61,9 @@ between module-local verification and later end-to-end hardware tests.
 
 Each replaceable module starts with `imp1`, the accepted mock RTL. Candidate
 real RTL is introduced as `imp2`. The `imp2` slot may point at adapted upstream
-IP, such as a CPU or systolic array, but it remains reserved until
-Verilator+DPI VIP equivalence proves it matches `imp1` on the documented
-module interface and the candidate flist has been gathered.
+IP, such as a CPU or systolic array. It is selectable only after Verilator+DPI
+VIP equivalence proves it matches `imp1` on the documented module interface and
+the candidate flist has been gathered.
 
 ## Architecture JSON
 

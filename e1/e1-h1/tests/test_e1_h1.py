@@ -34,6 +34,7 @@ IMPLEMENTATION_MATRIX = E1_H1 / "generated" / "implementation_matrix.json"
 IMPLEMENTATION_FLISTS = E1_H1 / "generated" / "flists"
 SOC_TOP_TB = E1_H1 / "tests" / "e1_h1_soc_top_tb.cpp"
 DPI_PROBE = E1_H1 / "dpi" / "e1_h1_imp_equiv_probe.sv"
+DPI_REF = E1_H1 / "dpi" / "e1_h1_imp1_reference.sv"
 DPI_SCOREBOARD = E1_H1 / "dpi" / "e1_h1_imp_equiv_dpi.cpp"
 DPI_MAIN = E1_H1 / "dpi" / "e1_h1_imp_equiv_main.cpp"
 
@@ -154,7 +155,7 @@ class E1H1Tests(unittest.TestCase):
             self.assertTrue((REPO_ROOT / data["cpp_model"]).exists(), data["cpp_model"])
             self.assertTrue((REPO_ROOT / data["module_vip"]).exists(), data["module_vip"])
             scheme = data["implementation_scheme"]
-            self.assertEqual(scheme["active"], "imp1", path)
+            self.assertEqual(scheme["active"], "imp2", path)
             self.assertEqual(scheme["reference"], "imp1", path)
             self.assertEqual(set(scheme["implementations"]), {"imp1", "imp2"}, path)
             imp1 = scheme["implementations"]["imp1"]
@@ -162,11 +163,15 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual(imp1["kind"], "mock", path)
             self.assertEqual(imp1["status"], "accepted", path)
             self.assertEqual(imp1["module"], data["module"], path)
-            self.assertEqual(imp1["rtl"], data["rtl"], path)
-            self.assertEqual(imp1["rtl_files"], [data["rtl"]], path)
+            self.assertIn("/rtl/ip/", imp1["rtl"], path)
+            self.assertEqual(imp1["rtl_files"], [imp1["rtl"]], path)
+            self.assertTrue((REPO_ROOT / imp1["rtl"]).exists(), path)
             self.assertEqual(imp2["kind"], "candidate_rtl", path)
-            self.assertEqual(imp2["status"], "reserved", path)
-            self.assertEqual(imp2["rtl_files"], [], path)
+            self.assertEqual(imp2["status"], "accepted", path)
+            self.assertEqual(imp2["module"], data["module"], path)
+            self.assertEqual(imp2["rtl"], data["rtl"], path)
+            self.assertEqual(imp2["rtl_files"], [data["rtl"]], path)
+            self.assertIn("/rtl/imp2/", data["rtl"], path)
             self.assertEqual(imp2["acceptance"], "verilator_dpi_vip_equivalent_to_imp1", path)
             self.assertGreater(len(data["perf_counters"]), 0, path)
             self.assertGreater(len(data["ports"]), 0, path)
@@ -303,10 +308,20 @@ class E1H1Tests(unittest.TestCase):
                 "--sv",
                 "-Wall",
                 "-Wno-DECLFILENAME",
+                "-Wno-UNUSEDSIGNAL",
+                "-Wno-UNUSEDPARAM",
+                "-Wno-WIDTHEXPAND",
+                "--timing",
                 "--top-module",
                 "e1_h1_imp_equiv_probe",
                 "-Mdir",
                 str(obj_dir),
+                str(DPI_REF.relative_to(REPO_ROOT)),
+                "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv",
+                "e1/e1-h1/rtl/imp2/e1_h1_rgmii_ethernet_ingress.sv",
+                "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv",
+                "e1/e1-h1/rtl/imp2/e1_h1_config_sram.sv",
+                "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
                 str(DPI_PROBE.relative_to(REPO_ROOT)),
                 str(DPI_SCOREBOARD.relative_to(REPO_ROOT)),
                 str(DPI_MAIN.relative_to(REPO_ROOT)),
@@ -318,7 +333,7 @@ class E1H1Tests(unittest.TestCase):
         matrix = json.loads(IMPLEMENTATION_MATRIX.read_text(encoding="utf-8"))
         self.assertEqual(matrix["schema"], "e1-h1-implementation-matrix-v0")
         self.assertEqual(matrix["reference_implementation"], "imp1")
-        self.assertEqual(matrix["active_implementation"], "imp1")
+        self.assertEqual(matrix["active_implementation"], "imp2")
         self.assertEqual(matrix["imp2_acceptance"], "verilator_dpi_vip_equivalent_to_imp1")
         self.assertEqual(matrix["dpi"]["probe"], "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv")
         self.assertEqual(matrix["dpi"]["scoreboard"], "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp")
@@ -336,24 +351,31 @@ class E1H1Tests(unittest.TestCase):
         ip_names = {path.stem for path in IP_DIR.glob("*.json")}
         self.assertEqual({entry["name"] for entry in matrix["ips"]}, ip_names)
         self.assertEqual(set(matrix["flists"]["imp1"]), ip_names)
-        self.assertEqual(matrix["flists"]["imp2"], {})
+        self.assertEqual(set(matrix["flists"]["imp2"]), ip_names)
         for entry in matrix["ips"]:
             ip = json.loads((REPO_ROOT / entry["interface_source"]).read_text(encoding="utf-8"))
-            self.assertEqual(entry["active"], "imp1")
+            self.assertEqual(entry["active"], "imp2")
             self.assertEqual(entry["reference"], "imp1")
             self.assertEqual(entry["vip"], ip["module_vip"])
             self.assertEqual(entry["l1_5_harness"], ip["l1_5_harness"])
             self.assertEqual(entry["imp1"]["kind"], "mock")
             self.assertEqual(entry["imp1"]["status"], "accepted")
             self.assertEqual(entry["imp1"]["module"], ip["module"])
-            self.assertEqual(entry["imp1"]["rtl"], ip["rtl"])
-            self.assertEqual(entry["imp2"]["status"], "reserved")
+            self.assertIn("/rtl/ip/", entry["imp1"]["rtl"])
+            self.assertEqual(entry["imp2"]["status"], "accepted")
+            self.assertEqual(entry["imp2"]["module"], ip["module"])
+            self.assertEqual(entry["imp2"]["rtl_files"], [ip["rtl"]])
+            self.assertIsNotNone(entry["imp2"]["flist"])
             self.assertEqual(entry["imp2"]["acceptance"], "verilator_dpi_vip_equivalent_to_imp1")
             self.assertEqual(entry["dpi_equivalence"]["reference"], "imp1")
             self.assertEqual(entry["dpi_equivalence"]["candidate"], "imp2")
+            self.assertEqual(entry["dpi_equivalence"]["status"], "accepted")
             imp1_flist = REPO_ROOT / entry["imp1"]["flist"]
             self.assertTrue(imp1_flist.exists(), imp1_flist)
-            self.assertEqual(imp1_flist.read_text(encoding="utf-8").splitlines(), [ip["rtl"]])
+            self.assertEqual(imp1_flist.read_text(encoding="utf-8").splitlines(), [entry["imp1"]["rtl"]])
+            imp2_flist = REPO_ROOT / entry["imp2"]["flist"]
+            self.assertTrue(imp2_flist.exists(), imp2_flist)
+            self.assertEqual(imp2_flist.read_text(encoding="utf-8").splitlines(), [ip["rtl"]])
 
     def test_generated_soc_top_matches_manifests(self) -> None:
         generator = load_generator()
@@ -804,7 +826,7 @@ class E1H1Tests(unittest.TestCase):
         implementation_matrix = json.loads(IMPLEMENTATION_MATRIX.read_text(encoding="utf-8"))
         self.assertEqual(implementation_matrix["schema"], "e1-h1-implementation-matrix-v0")
         self.assertEqual(implementation_matrix["reference_implementation"], "imp1")
-        self.assertEqual(implementation_matrix["active_implementation"], "imp1")
+        self.assertEqual(implementation_matrix["active_implementation"], "imp2")
         self.assertEqual(implementation_matrix["imp2_acceptance"], "verilator_dpi_vip_equivalent_to_imp1")
 
         sv_plan = json.loads((E1_PIPELINE_OUT / "11_systemverilog_plan.json").read_text(encoding="utf-8"))
@@ -931,7 +953,7 @@ class E1H1Tests(unittest.TestCase):
             [entry["rtl"] for entry in manifest["ip_rtl"]],
             [ip["rtl"] for ip in sorted(ip_manifests, key=lambda item: (item["order"], item["name"]))],
         )
-        self.assertIn("e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv", rtl_files)
+        self.assertIn("e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv", rtl_files)
         self.assertEqual(len(rtl_files), len(set(rtl_files)))
         for rtl_file in rtl_files:
             self.assertTrue((REPO_ROOT / rtl_file).exists(), rtl_file)
@@ -943,7 +965,8 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(openroad_filelist, rtl_files)
         self.assertEqual(active_flist, rtl_files)
         self.assertEqual(set(manifest["implementation_flists"]["imp1"]), {path.stem for path in IP_DIR.glob("*.json")})
-        self.assertEqual(manifest["implementation_flists"]["imp2"], {})
+        self.assertEqual(set(manifest["implementation_flists"]["imp2"]), {path.stem for path in IP_DIR.glob("*.json")})
+        self.assertTrue(all("/rtl/imp2/" in rtl_file for rtl_file in rtl_files[1:]))
 
         fpga_constraints = (REPO_ROOT / manifest["fpga"]["constraints"]).read_text(encoding="utf-8")
         openroad_constraints = (REPO_ROOT / manifest["openroad"]["constraints"]).read_text(encoding="utf-8")
