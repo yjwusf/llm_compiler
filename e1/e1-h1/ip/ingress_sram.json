@@ -7,6 +7,31 @@
   "order": 30,
   "description": "Configurable on-chip SRAM stage for Ethernet-ingested payloads.",
   "replaceable": true,
+  "implementation_scheme": {
+    "active": "imp1",
+    "reference": "imp1",
+    "implementations": {
+      "imp1": {
+        "kind": "mock",
+        "status": "accepted",
+        "module": "e1_h1_stream_sram",
+        "rtl": "e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv",
+        "rtl_files": [
+          "e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv"
+        ]
+      },
+      "imp2": {
+        "kind": "candidate_rtl",
+        "status": "reserved",
+        "allowed_sources": [
+          "new_stream_sram"
+        ],
+        "module": null,
+        "rtl_files": [],
+        "acceptance": "verilator_dpi_vip_equivalent_to_imp1"
+      }
+    }
+  },
   "rtl": "e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv",
   "spec": "e1/e1-h1/docs/modules/ingress_sram.md",
   "cpp_model": "e1/e1-h1/cmodels/ingress_sram.json",

@@ -59,6 +59,15 @@ Describe which parts of this module are stable compatibility boundaries. List
 the ports, parameters, C++ model behavior, L1.5 harness behavior, performance
 counters, and VIP expectations that a replacement implementation must preserve.
 
+## Implementation Versions
+
+Document each implementation slot:
+
+- `imp1`: accepted mock RTL that defines the current contract behavior.
+- `imp2`: candidate RTL extension. It is selectable only after Verilator+DPI VIP
+  equivalence proves it matches `imp1` for every sensible VIP-generated input
+  and output stream, and after its filelist is gathered into generated flists.
+
 ## Mock Behavior
 
 If this is a mock, describe exactly what the mock implements and what final

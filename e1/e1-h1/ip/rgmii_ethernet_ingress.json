@@ -7,6 +7,31 @@
   "order": 20,
   "description": "Digital-only RGMII receive ingress block that converts Ethernet payloads into an internal stream.",
   "replaceable": true,
+  "implementation_scheme": {
+    "active": "imp1",
+    "reference": "imp1",
+    "implementations": {
+      "imp1": {
+        "kind": "mock",
+        "status": "accepted",
+        "module": "e1_h1_rgmii_ethernet_ingress",
+        "rtl": "e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv",
+        "rtl_files": [
+          "e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv"
+        ]
+      },
+      "imp2": {
+        "kind": "candidate_rtl",
+        "status": "reserved",
+        "allowed_sources": [
+          "new_digital_rgmii_ingress"
+        ],
+        "module": null,
+        "rtl_files": [],
+        "acceptance": "verilator_dpi_vip_equivalent_to_imp1"
+      }
+    }
+  },
   "rtl": "e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv",
   "spec": "e1/e1-h1/docs/modules/rgmii_ethernet_ingress.md",
   "cpp_model": "e1/e1-h1/cmodels/rgmii_ethernet_ingress.json",

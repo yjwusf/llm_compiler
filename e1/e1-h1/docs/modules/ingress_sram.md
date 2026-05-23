@@ -83,6 +83,14 @@ The module-local VIP is `e1/e1-h1/vip/ingress_sram.json`. It allows only
 `e1_h1_stream_sram` as the SystemVerilog DUT; Ethernet producer and array
 consumer behavior are supplied by C++ environment models.
 
+## Implementation Versions
+
+`imp1` is the current accepted mock RTL in
+`e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv`. `imp2` is the reserved real stream SRAM
+implementation slot. `imp2` is not selectable until Verilator+DPI VIP
+equivalence proves it matches `imp1` on all sensible ingress-stream cases and
+its flist is gathered.
+
 ## C++ Performance Counters
 
 | Counter | Description | Required |

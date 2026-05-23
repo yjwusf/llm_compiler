@@ -10,6 +10,19 @@
     "filelist": "e1/e1-h1/generated/targets/fpga/rtl.filelist",
     "script": "e1/e1-h1/generated/targets/fpga/run_synth.tcl"
   },
+  "implementation_flists": {
+    "active": "e1/e1-h1/generated/flists/active.f",
+    "imp1": {
+      "accumulator_sram": "e1/e1-h1/generated/flists/imp1/accumulator_sram.f",
+      "activation_sram": "e1/e1-h1/generated/flists/imp1/activation_sram.f",
+      "control_cpu": "e1/e1-h1/generated/flists/imp1/control_cpu.f",
+      "ingress_sram": "e1/e1-h1/generated/flists/imp1/ingress_sram.f",
+      "rgmii_ethernet_ingress": "e1/e1-h1/generated/flists/imp1/rgmii_ethernet_ingress.f",
+      "systolic_array": "e1/e1-h1/generated/flists/imp1/systolic_array.f"
+    },
+    "imp2": {}
+  },
+  "implementation_matrix": "e1/e1-h1/generated/implementation_matrix.json",
   "ip_rtl": [
     {
       "manifest": "e1/e1-h1/ip/control_cpu.json",

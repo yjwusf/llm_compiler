@@ -68,6 +68,128 @@ def unique_ordered(values: list[str]) -> list[str]:
     return ordered
 
 
+def implementation_scheme(ip: dict[str, Any]) -> dict[str, Any]:
+    scheme = ip.get("implementation_scheme")
+    if not isinstance(scheme, dict):
+        raise ValueError(f"{ip['name']}: missing implementation_scheme")
+    implementations = scheme.get("implementations", {})
+    if scheme.get("reference") != "imp1":
+        raise ValueError(f"{ip['name']}: implementation reference must be imp1")
+    if scheme.get("active") not in implementations:
+        raise ValueError(f"{ip['name']}: active implementation is not defined")
+    return scheme
+
+
+def emit_implementation_matrix(
+    e1_h1_dir: Path,
+    ip_manifests: list[dict[str, Any]],
+) -> dict[str, Any]:
+    generated_dir = e1_h1_dir / "generated"
+    flist_dir = generated_dir / "flists"
+    imp1_dir = flist_dir / "imp1"
+    imp2_dir = flist_dir / "imp2"
+    imp1_dir.mkdir(parents=True, exist_ok=True)
+    imp2_dir.mkdir(parents=True, exist_ok=True)
+
+    active_rtl = ["e1/e1-h1/generated/e1_h1_soc_top.sv"]
+    imp1_flists: dict[str, str] = {}
+    imp2_flists: dict[str, str] = {}
+    entries: list[dict[str, Any]] = []
+
+    for ip in ip_manifests:
+        scheme = implementation_scheme(ip)
+        implementations = scheme["implementations"]
+        imp1 = implementations.get("imp1")
+        imp2 = implementations.get("imp2")
+        if not isinstance(imp1, dict) or not isinstance(imp2, dict):
+            raise ValueError(f"{ip['name']}: imp1 and imp2 must be defined")
+        if imp1.get("kind") != "mock" or imp1.get("status") != "accepted":
+            raise ValueError(f"{ip['name']}: imp1 must be the accepted mock implementation")
+        if imp1.get("module") != ip["module"] or imp1.get("rtl") != ip["rtl"]:
+            raise ValueError(f"{ip['name']}: imp1 must match the current IP module and RTL")
+        if imp2.get("acceptance") != "verilator_dpi_vip_equivalent_to_imp1":
+            raise ValueError(f"{ip['name']}: imp2 acceptance must require Verilator+DPI VIP equivalence")
+
+        active = implementations[scheme["active"]]
+        active_rtl.extend(active.get("rtl_files", [active["rtl"]]))
+
+        imp1_flist = imp1_dir / f"{ip['name']}.f"
+        write_text(imp1_flist, "\n".join(imp1.get("rtl_files", [imp1["rtl"]])) + "\n")
+        imp1_flists[ip["name"]] = repo_rel(imp1_flist)
+
+        imp2_flist: str | None = None
+        if imp2.get("status") == "accepted":
+            rtl_files = imp2.get("rtl_files", [])
+            if not rtl_files:
+                raise ValueError(f"{ip['name']}: accepted imp2 must list RTL files")
+            imp2_flist_path = imp2_dir / f"{ip['name']}.f"
+            write_text(imp2_flist_path, "\n".join(rtl_files) + "\n")
+            imp2_flist = repo_rel(imp2_flist_path)
+            imp2_flists[ip["name"]] = imp2_flist
+
+        entries.append(
+            {
+                "name": ip["name"],
+                "active": scheme["active"],
+                "reference": scheme["reference"],
+                "module": ip["module"],
+                "interface_source": f"e1/e1-h1/ip/{ip['name']}.json",
+                "vip": ip["module_vip"],
+                "l1_5_harness": ip["l1_5_harness"],
+                "imp1": {
+                    "status": imp1["status"],
+                    "kind": imp1["kind"],
+                    "module": imp1["module"],
+                    "rtl": imp1["rtl"],
+                    "flist": imp1_flists[ip["name"]],
+                },
+                "imp2": {
+                    "status": imp2["status"],
+                    "kind": imp2["kind"],
+                    "module": imp2.get("module"),
+                    "rtl_files": imp2.get("rtl_files", []),
+                    "flist": imp2_flist,
+                    "acceptance": imp2["acceptance"],
+                },
+                "dpi_equivalence": {
+                    "reference": "imp1",
+                    "candidate": "imp2",
+                    "probe": "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv",
+                    "scoreboard": "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp",
+                    "status": "imp2_reserved" if imp2["status"] == "reserved" else "required",
+                },
+            }
+        )
+
+    active_flist = flist_dir / "active.f"
+    active_files = unique_ordered(active_rtl)
+    write_text(active_flist, "\n".join(active_files) + "\n")
+
+    matrix = {
+        "schema": "e1-h1-implementation-matrix-v0",
+        "reference_implementation": "imp1",
+        "active_implementation": "imp1",
+        "imp1_meaning": "mock contract implementation",
+        "imp2_acceptance": "verilator_dpi_vip_equivalent_to_imp1",
+        "dpi": {
+            "probe": "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv",
+            "scoreboard": "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp",
+            "main": "e1/e1-h1/dpi/e1_h1_imp_equiv_main.cpp",
+        },
+        "flists": {
+            "active": repo_rel(active_flist),
+            "imp1": imp1_flists,
+            "imp2": imp2_flists,
+        },
+        "active_rtl_files": active_files,
+        "ips": entries,
+    }
+    matrix_path = generated_dir / "implementation_matrix.json"
+    write_json(matrix_path, matrix)
+    matrix["matrix"] = repo_rel(matrix_path)
+    return matrix
+
+
 def load_soc_top_generator(e1_h1_dir: Path) -> Any:
     generator_path = e1_h1_dir / "tools" / "generate_soc_top.py"
     spec = importlib.util.spec_from_file_location("e1_h1_generate_soc_top", generator_path)
@@ -153,6 +275,7 @@ def emit_target_packages(
     e1_h1_dir: Path,
     architecture: dict[str, Any],
     ip_manifests: list[dict[str, Any]],
+    implementation_matrix: dict[str, Any],
 ) -> dict[str, Any]:
     target_dir = e1_h1_dir / "generated" / "targets"
     fpga_dir = target_dir / "fpga"
@@ -249,6 +372,8 @@ def emit_target_packages(
             "phy_boundary": rgmii["phy_boundary"],
         },
         "rtl_source": "e1/e1-h1/ip/*.json",
+        "implementation_matrix": implementation_matrix["matrix"],
+        "implementation_flists": implementation_matrix["flists"],
         "ip_rtl": ip_rtl,
         "rtl_files": rtl_rel,
         "fpga": {
@@ -510,6 +635,7 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
     passes.append({"pass": "e1_generate_l1_5_harnesses", "artifact": repo_rel(harness_out)})
 
     soc_top_artifacts = emit_soc_top_artifacts(e1_h1_dir, architecture_path)
+    implementation_matrix = emit_implementation_matrix(e1_h1_dir, ip_manifests)
     graph_out = output_dir / "10_hardware_graph.json"
     write_json(
         graph_out,
@@ -536,6 +662,7 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
         },
     )
     passes.append({"pass": "e1_lower_to_hardware_graph", "artifact": repo_rel(graph_out)})
+    passes.append({"pass": "e1_select_implementations", "artifact": implementation_matrix["matrix"]})
 
     sv_out = output_dir / "11_systemverilog_plan.json"
     write_json(
@@ -552,7 +679,7 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
     )
     passes.append({"pass": "e1_emit_systemverilog", "artifact": repo_rel(sv_out)})
 
-    target_manifest = emit_target_packages(e1_h1_dir, architecture, ip_manifests)
+    target_manifest = emit_target_packages(e1_h1_dir, architecture, ip_manifests, implementation_matrix)
     target_out = output_dir / "12_target_package_plan.json"
     write_json(
         target_out,
@@ -579,6 +706,8 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
         (REPO_ROOT / path).exists()
         for path in [
             target_manifest_path,
+            implementation_matrix["matrix"],
+            implementation_matrix["flists"]["active"],
             target_manifest["fpga"]["filelist"],
             target_manifest["fpga"]["constraints"],
             target_manifest["fpga"]["script"],
@@ -593,6 +722,7 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
         {"name": "device_program_run", "status": device_program_run["status"]},
         {"name": "chip_model_run", "status": chip_model_run["status"]},
         {"name": "generated_soc_top", "status": "pass" if generated_soc_top_exists else "fail"},
+        {"name": "implementation_flists", "status": "pass" if target_package_exists else "fail"},
         {"name": "target_package", "status": "pass" if target_package_exists else "fail"},
     ]
     e2e = {
@@ -623,6 +753,8 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
         },
         "l1_5_harness_plan": repo_rel(harness_out),
         "hardware_graph": repo_rel(graph_out),
+        "implementation_matrix": implementation_matrix["matrix"],
+        "implementation_flists": implementation_matrix["flists"],
         "systemverilog_plan": repo_rel(sv_out),
         "generated_soc_top": soc_top_artifacts,
         "target_package_plan": repo_rel(target_out),

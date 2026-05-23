@@ -92,6 +92,15 @@ The module-local VIP is `e1/e1-h1/vip/systolic_array.json`. It allows only
 `e1_h1_systolic_array` as the SystemVerilog DUT; CPU command, input stream, and
 completion scoreboarding behavior are supplied by C++ environment models.
 
+## Implementation Versions
+
+`imp1` is the current accepted mock RTL in
+`e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv`. `imp2` is the reserved real
+implementation slot, expected to evaluate Gemmini-derived or new systolic-array
+RTL. `imp2` is not selectable until Verilator+DPI VIP equivalence proves it
+matches `imp1` on all sensible command/input/completion streams and its flist
+is gathered.
+
 ## C++ Performance Counters
 
 | Counter | Description | Required |

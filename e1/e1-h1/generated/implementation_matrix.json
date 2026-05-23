@@ -1,0 +1,220 @@
+{
+  "active_implementation": "imp1",
+  "active_rtl_files": [
+    "e1/e1-h1/generated/e1_h1_soc_top.sv",
+    "e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv",
+    "e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv",
+    "e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv",
+    "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv",
+    "e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv"
+  ],
+  "dpi": {
+    "main": "e1/e1-h1/dpi/e1_h1_imp_equiv_main.cpp",
+    "probe": "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv",
+    "scoreboard": "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp"
+  },
+  "flists": {
+    "active": "e1/e1-h1/generated/flists/active.f",
+    "imp1": {
+      "accumulator_sram": "e1/e1-h1/generated/flists/imp1/accumulator_sram.f",
+      "activation_sram": "e1/e1-h1/generated/flists/imp1/activation_sram.f",
+      "control_cpu": "e1/e1-h1/generated/flists/imp1/control_cpu.f",
+      "ingress_sram": "e1/e1-h1/generated/flists/imp1/ingress_sram.f",
+      "rgmii_ethernet_ingress": "e1/e1-h1/generated/flists/imp1/rgmii_ethernet_ingress.f",
+      "systolic_array": "e1/e1-h1/generated/flists/imp1/systolic_array.f"
+    },
+    "imp2": {}
+  },
+  "imp1_meaning": "mock contract implementation",
+  "imp2_acceptance": "verilator_dpi_vip_equivalent_to_imp1",
+  "ips": [
+    {
+      "active": "imp1",
+      "dpi_equivalence": {
+        "candidate": "imp2",
+        "probe": "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv",
+        "reference": "imp1",
+        "scoreboard": "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp",
+        "status": "imp2_reserved"
+      },
+      "imp1": {
+        "flist": "e1/e1-h1/generated/flists/imp1/control_cpu.f",
+        "kind": "mock",
+        "module": "e1_h1_control_cpu",
+        "rtl": "e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv",
+        "status": "accepted"
+      },
+      "imp2": {
+        "acceptance": "verilator_dpi_vip_equivalent_to_imp1",
+        "flist": null,
+        "kind": "candidate_rtl",
+        "module": null,
+        "rtl_files": [],
+        "status": "reserved"
+      },
+      "interface_source": "e1/e1-h1/ip/control_cpu.json",
+      "l1_5_harness": "e1/e1-h1/l1_5/control_cpu.json",
+      "module": "e1_h1_control_cpu",
+      "name": "control_cpu",
+      "reference": "imp1",
+      "vip": "e1/e1-h1/vip/control_cpu.json"
+    },
+    {
+      "active": "imp1",
+      "dpi_equivalence": {
+        "candidate": "imp2",
+        "probe": "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv",
+        "reference": "imp1",
+        "scoreboard": "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp",
+        "status": "imp2_reserved"
+      },
+      "imp1": {
+        "flist": "e1/e1-h1/generated/flists/imp1/rgmii_ethernet_ingress.f",
+        "kind": "mock",
+        "module": "e1_h1_rgmii_ethernet_ingress",
+        "rtl": "e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv",
+        "status": "accepted"
+      },
+      "imp2": {
+        "acceptance": "verilator_dpi_vip_equivalent_to_imp1",
+        "flist": null,
+        "kind": "candidate_rtl",
+        "module": null,
+        "rtl_files": [],
+        "status": "reserved"
+      },
+      "interface_source": "e1/e1-h1/ip/rgmii_ethernet_ingress.json",
+      "l1_5_harness": "e1/e1-h1/l1_5/rgmii_ethernet_ingress.json",
+      "module": "e1_h1_rgmii_ethernet_ingress",
+      "name": "rgmii_ethernet_ingress",
+      "reference": "imp1",
+      "vip": "e1/e1-h1/vip/rgmii_ethernet_ingress.json"
+    },
+    {
+      "active": "imp1",
+      "dpi_equivalence": {
+        "candidate": "imp2",
+        "probe": "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv",
+        "reference": "imp1",
+        "scoreboard": "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp",
+        "status": "imp2_reserved"
+      },
+      "imp1": {
+        "flist": "e1/e1-h1/generated/flists/imp1/ingress_sram.f",
+        "kind": "mock",
+        "module": "e1_h1_stream_sram",
+        "rtl": "e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv",
+        "status": "accepted"
+      },
+      "imp2": {
+        "acceptance": "verilator_dpi_vip_equivalent_to_imp1",
+        "flist": null,
+        "kind": "candidate_rtl",
+        "module": null,
+        "rtl_files": [],
+        "status": "reserved"
+      },
+      "interface_source": "e1/e1-h1/ip/ingress_sram.json",
+      "l1_5_harness": "e1/e1-h1/l1_5/ingress_sram.json",
+      "module": "e1_h1_stream_sram",
+      "name": "ingress_sram",
+      "reference": "imp1",
+      "vip": "e1/e1-h1/vip/ingress_sram.json"
+    },
+    {
+      "active": "imp1",
+      "dpi_equivalence": {
+        "candidate": "imp2",
+        "probe": "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv",
+        "reference": "imp1",
+        "scoreboard": "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp",
+        "status": "imp2_reserved"
+      },
+      "imp1": {
+        "flist": "e1/e1-h1/generated/flists/imp1/activation_sram.f",
+        "kind": "mock",
+        "module": "e1_h1_config_sram",
+        "rtl": "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv",
+        "status": "accepted"
+      },
+      "imp2": {
+        "acceptance": "verilator_dpi_vip_equivalent_to_imp1",
+        "flist": null,
+        "kind": "candidate_rtl",
+        "module": null,
+        "rtl_files": [],
+        "status": "reserved"
+      },
+      "interface_source": "e1/e1-h1/ip/activation_sram.json",
+      "l1_5_harness": "e1/e1-h1/l1_5/activation_sram.json",
+      "module": "e1_h1_config_sram",
+      "name": "activation_sram",
+      "reference": "imp1",
+      "vip": "e1/e1-h1/vip/activation_sram.json"
+    },
+    {
+      "active": "imp1",
+      "dpi_equivalence": {
+        "candidate": "imp2",
+        "probe": "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv",
+        "reference": "imp1",
+        "scoreboard": "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp",
+        "status": "imp2_reserved"
+      },
+      "imp1": {
+        "flist": "e1/e1-h1/generated/flists/imp1/accumulator_sram.f",
+        "kind": "mock",
+        "module": "e1_h1_config_sram",
+        "rtl": "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv",
+        "status": "accepted"
+      },
+      "imp2": {
+        "acceptance": "verilator_dpi_vip_equivalent_to_imp1",
+        "flist": null,
+        "kind": "candidate_rtl",
+        "module": null,
+        "rtl_files": [],
+        "status": "reserved"
+      },
+      "interface_source": "e1/e1-h1/ip/accumulator_sram.json",
+      "l1_5_harness": "e1/e1-h1/l1_5/accumulator_sram.json",
+      "module": "e1_h1_config_sram",
+      "name": "accumulator_sram",
+      "reference": "imp1",
+      "vip": "e1/e1-h1/vip/accumulator_sram.json"
+    },
+    {
+      "active": "imp1",
+      "dpi_equivalence": {
+        "candidate": "imp2",
+        "probe": "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv",
+        "reference": "imp1",
+        "scoreboard": "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp",
+        "status": "imp2_reserved"
+      },
+      "imp1": {
+        "flist": "e1/e1-h1/generated/flists/imp1/systolic_array.f",
+        "kind": "mock",
+        "module": "e1_h1_systolic_array",
+        "rtl": "e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv",
+        "status": "accepted"
+      },
+      "imp2": {
+        "acceptance": "verilator_dpi_vip_equivalent_to_imp1",
+        "flist": null,
+        "kind": "candidate_rtl",
+        "module": null,
+        "rtl_files": [],
+        "status": "reserved"
+      },
+      "interface_source": "e1/e1-h1/ip/systolic_array.json",
+      "l1_5_harness": "e1/e1-h1/l1_5/systolic_array.json",
+      "module": "e1_h1_systolic_array",
+      "name": "systolic_array",
+      "reference": "imp1",
+      "vip": "e1/e1-h1/vip/systolic_array.json"
+    }
+  ],
+  "reference_implementation": "imp1",
+  "schema": "e1-h1-implementation-matrix-v0"
+}

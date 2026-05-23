@@ -23,6 +23,10 @@
       "status": "pass"
     },
     {
+      "name": "implementation_flists",
+      "status": "pass"
+    },
+    {
       "name": "target_package",
       "status": "pass"
     }
@@ -45,6 +49,19 @@
     "top": "e1/e1-h1/generated/e1_h1_soc_top.sv"
   },
   "hardware_graph": "e1/generated/pipeline/10_hardware_graph.json",
+  "implementation_flists": {
+    "active": "e1/e1-h1/generated/flists/active.f",
+    "imp1": {
+      "accumulator_sram": "e1/e1-h1/generated/flists/imp1/accumulator_sram.f",
+      "activation_sram": "e1/e1-h1/generated/flists/imp1/activation_sram.f",
+      "control_cpu": "e1/e1-h1/generated/flists/imp1/control_cpu.f",
+      "ingress_sram": "e1/e1-h1/generated/flists/imp1/ingress_sram.f",
+      "rgmii_ethernet_ingress": "e1/e1-h1/generated/flists/imp1/rgmii_ethernet_ingress.f",
+      "systolic_array": "e1/e1-h1/generated/flists/imp1/systolic_array.f"
+    },
+    "imp2": {}
+  },
+  "implementation_matrix": "e1/e1-h1/generated/implementation_matrix.json",
   "l1_5_harness_plan": "e1/generated/pipeline/09_l1_5_harness_plan.json",
   "memory_plan": "e1/generated/pipeline/06_memory_plan.json",
   "model_id": "tinyllama-1.1b-chat-v1.0",

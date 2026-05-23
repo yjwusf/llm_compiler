@@ -112,6 +112,22 @@ def validate_vip(harness: dict[str, Any]) -> None:
     if scope.get("neighbors") != "cpp_environment":
         raise ValueError(f"{vip_path}: VIP neighbors must be supplied by cpp_environment")
 
+    dpi = vip.get("dpi_equivalence", {})
+    if dpi.get("schema") != "e1-h1-dpi-equivalence-v0":
+        raise ValueError(f"{vip_path}: missing DPI equivalence contract")
+    if dpi.get("reference_implementation") != "imp1":
+        raise ValueError(f"{vip_path}: DPI reference implementation must be imp1")
+    if dpi.get("candidate_implementation") != "imp2":
+        raise ValueError(f"{vip_path}: DPI candidate implementation must be imp2")
+    for key in ["probe", "scoreboard"]:
+        if not repo_path(dpi[key]).exists():
+            raise FileNotFoundError(repo_path(dpi[key]))
+    stream_space = dpi.get("stream_space", {})
+    if stream_space.get("kind") != "sensible_bounded":
+        raise ValueError(f"{vip_path}: VIP stream space must be sensible_bounded")
+    if not stream_space.get("cases"):
+        raise ValueError(f"{vip_path}: VIP stream space must define at least one case")
+
 
 def validate_harness(harness: dict[str, Any]) -> None:
     required = [

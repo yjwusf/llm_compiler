@@ -7,6 +7,31 @@
   "order": 50,
   "description": "Configurable on-chip SRAM for accumulator and output tiles.",
   "replaceable": true,
+  "implementation_scheme": {
+    "active": "imp1",
+    "reference": "imp1",
+    "implementations": {
+      "imp1": {
+        "kind": "mock",
+        "status": "accepted",
+        "module": "e1_h1_config_sram",
+        "rtl": "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv",
+        "rtl_files": [
+          "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv"
+        ]
+      },
+      "imp2": {
+        "kind": "candidate_rtl",
+        "status": "reserved",
+        "allowed_sources": [
+          "new_config_sram"
+        ],
+        "module": null,
+        "rtl_files": [],
+        "acceptance": "verilator_dpi_vip_equivalent_to_imp1"
+      }
+    }
+  },
   "rtl": "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv",
   "spec": "e1/e1-h1/docs/modules/accumulator_sram.md",
   "cpp_model": "e1/e1-h1/cmodels/accumulator_sram.json",

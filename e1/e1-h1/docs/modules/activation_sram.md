@@ -75,6 +75,14 @@ The module-local VIP is `e1/e1-h1/vip/activation_sram.json`. It allows only
 `e1_h1_config_sram` as the SystemVerilog DUT for this activation instance; reset
 and future activation memory behavior are C++ environment roles.
 
+## Implementation Versions
+
+`imp1` is the current accepted mock RTL in
+`e1/e1-h1/rtl/ip/e1_h1_config_sram.sv`. `imp2` is the reserved real activation
+SRAM implementation slot. `imp2` is not selectable until Verilator+DPI VIP
+equivalence proves it matches `imp1` on all sensible activation-memory cases
+and its flist is gathered.
+
 ## C++ Performance Counters
 
 | Counter | Description | Required |

@@ -79,6 +79,14 @@ The module-local VIP is `e1/e1-h1/vip/rgmii_ethernet_ingress.json`. It allows
 only `e1_h1_rgmii_ethernet_ingress` as the SystemVerilog DUT; external PHY
 stimulus and downstream stream consumption are C++ environment roles.
 
+## Implementation Versions
+
+`imp1` is the current accepted mock RTL in
+`e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv`. `imp2` is the reserved real
+digital RGMII ingress implementation slot. `imp2` is not selectable until
+Verilator+DPI VIP equivalence proves it matches `imp1` on all sensible RGMII
+and internal-stream cases and its flist is gathered.
+
 ## C++ Performance Counters
 
 | Counter | Description | Required |

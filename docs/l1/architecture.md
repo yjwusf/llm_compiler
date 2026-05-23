@@ -16,8 +16,9 @@ Planned flow:
 6. Plan Ethernet ingress, SRAM allocation, and data movement.
 7. Insert configurable pipelines.
 8. Lower to a hardware graph.
-9. Emit SystemVerilog, C++ model bindings, and L1.5 hybrid harness metadata.
-10. Package for FPGA or ASIC/OpenROAD.
+9. Select implementation slots and gather active flists.
+10. Emit SystemVerilog, C++ model bindings, and L1.5 hybrid harness metadata.
+11. Package for FPGA or ASIC/OpenROAD.
 
 Each pass must be testable on its own. Intermediate artifacts should be easy to
 dump for debugging.
@@ -55,6 +56,14 @@ checks outputs, and records C++ performance counters.
 
 This flow applies to planned mocks and real RTL. It is the required bridge
 between module-local verification and later end-to-end hardware tests.
+
+## Implementation Slots
+
+Each replaceable module starts with `imp1`, the accepted mock RTL. Candidate
+real RTL is introduced as `imp2`. The `imp2` slot may point at adapted upstream
+IP, such as a CPU or systolic array, but it remains reserved until
+Verilator+DPI VIP equivalence proves it matches `imp1` on the documented
+module interface and the candidate flist has been gathered.
 
 ## Architecture JSON
 

@@ -25,3 +25,5 @@ end-to-end smoke artifact for the current scaffold.
   are updated in the same change.
 - Any code added under `e1/code/` must be understandable without reverse
   engineering generated names.
+- E1-H1 implementation lowering uses `imp1` for accepted mock RTL and reserves
+  `imp2` for candidate real RTL that has passed Verilator+DPI VIP equivalence.

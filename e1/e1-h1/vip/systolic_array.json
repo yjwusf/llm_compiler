@@ -17,6 +17,21 @@
     "input_stream_producer",
     "completion_scoreboard"
   ],
+  "dpi_equivalence": {
+    "schema": "e1-h1-dpi-equivalence-v0",
+    "reference_implementation": "imp1",
+    "candidate_implementation": "imp2",
+    "probe": "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv",
+    "scoreboard": "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp",
+    "stream_space": {
+      "kind": "sensible_bounded",
+      "cases": [
+        "command_acceptance",
+        "input_burst",
+        "completion_pulse"
+      ]
+    }
+  },
   "perf_counters": [
     "cycles",
     "array_commands",

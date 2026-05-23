@@ -39,14 +39,18 @@ hardware and device code.
 10. `e1_lower_to_hardware_graph`
     - Input: architecture-bound MLIR and memory plan.
     - Output: hardware graph with stable module interfaces.
-11. `e1_emit_systemverilog`
+11. `e1_select_implementations`
+    - Input: hardware graph, IP manifests, and module VIPs.
+    - Output: implementation matrix and gathered flists for active `imp1`
+      mocks, with `imp2` reserved until Verilator+DPI VIP equivalence passes.
+12. `e1_emit_systemverilog`
     - Input: hardware graph.
     - Output: mocked or real SystemVerilog modules and generated top-level
       pipeline registers from the architecture JSON.
-12. `e1_package_targets`
+13. `e1_package_targets`
     - Input: SystemVerilog, C++ models, tests, and target config.
     - Output: FPGA package and ASIC/OpenROAD package.
-13. `e1_end_to_end_smoke`
+14. `e1_end_to_end_smoke`
     - Input: all prior pass artifacts.
     - Output: one evidence report tying StableHLO, E1-H1 binding, device code,
       C++ chip model, generated SystemVerilog top, and target packages together.
@@ -61,6 +65,8 @@ E1 is complete when TinyLlama-derived reduced workloads can run through:
 - Legible device program execution.
 - L1.5 hybrid runs for every module.
 - Module-local VIP manifests that target exactly one SystemVerilog module.
+- Implementation matrix showing active `imp1` mocks and reserved `imp2`
+  candidates.
 - Generated SystemVerilog mocks.
 - End-to-end smoke evidence that references the exact artifacts used.
 - Verilator module tests.

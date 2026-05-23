@@ -56,6 +56,21 @@ when:
 Mock behavior should be simple and deterministic. If a mock intentionally does
 not implement final behavior, document the limitation in the L3 module file.
 
+## Implementation Equivalence
+
+Each replaceable IP has implementation slots:
+
+- `imp1` is the accepted mock contract implementation.
+- `imp2` is a candidate implementation slot for real RTL, including upstream
+  CPU or systolic-array IP adapted to the E1-H1 interface.
+
+An `imp2` implementation is not selectable until all module-local VIP cases run
+through Verilator with DPI scoreboarding against `imp1`. The VIP must generate
+sensible bounded input/output streams for the module interface, the DPI
+scoreboard must compare the externally visible behavior and counters, and the
+candidate RTL filelist must be gathered into the generated implementation
+flists.
+
 ## Compiler Pass Tests
 
 Each compiler pass must have tests that cover:

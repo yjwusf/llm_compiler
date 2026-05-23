@@ -30,7 +30,12 @@ E1_FETCH = REPO_ROOT / "e1" / "tools" / "fetch_tinyllama.py"
 E1_EXPORT = REPO_ROOT / "e1" / "tools" / "export_stablehlo.py"
 E1_PIPELINE_OUT = REPO_ROOT / "e1" / "generated" / "pipeline"
 TARGETS = E1_H1 / "generated" / "targets"
+IMPLEMENTATION_MATRIX = E1_H1 / "generated" / "implementation_matrix.json"
+IMPLEMENTATION_FLISTS = E1_H1 / "generated" / "flists"
 SOC_TOP_TB = E1_H1 / "tests" / "e1_h1_soc_top_tb.cpp"
+DPI_PROBE = E1_H1 / "dpi" / "e1_h1_imp_equiv_probe.sv"
+DPI_SCOREBOARD = E1_H1 / "dpi" / "e1_h1_imp_equiv_dpi.cpp"
+DPI_MAIN = E1_H1 / "dpi" / "e1_h1_imp_equiv_main.cpp"
 
 
 def load_generator():
@@ -144,9 +149,25 @@ class E1H1Tests(unittest.TestCase):
             self.assertIn("l1_5_harness", data, path)
             self.assertIn("module_vip", data, path)
             self.assertIn("perf_counters", data, path)
+            self.assertIn("implementation_scheme", data, path)
             self.assertTrue((REPO_ROOT / data["rtl"]).exists(), data["rtl"])
             self.assertTrue((REPO_ROOT / data["cpp_model"]).exists(), data["cpp_model"])
             self.assertTrue((REPO_ROOT / data["module_vip"]).exists(), data["module_vip"])
+            scheme = data["implementation_scheme"]
+            self.assertEqual(scheme["active"], "imp1", path)
+            self.assertEqual(scheme["reference"], "imp1", path)
+            self.assertEqual(set(scheme["implementations"]), {"imp1", "imp2"}, path)
+            imp1 = scheme["implementations"]["imp1"]
+            imp2 = scheme["implementations"]["imp2"]
+            self.assertEqual(imp1["kind"], "mock", path)
+            self.assertEqual(imp1["status"], "accepted", path)
+            self.assertEqual(imp1["module"], data["module"], path)
+            self.assertEqual(imp1["rtl"], data["rtl"], path)
+            self.assertEqual(imp1["rtl_files"], [data["rtl"]], path)
+            self.assertEqual(imp2["kind"], "candidate_rtl", path)
+            self.assertEqual(imp2["status"], "reserved", path)
+            self.assertEqual(imp2["rtl_files"], [], path)
+            self.assertEqual(imp2["acceptance"], "verilator_dpi_vip_equivalent_to_imp1", path)
             self.assertGreater(len(data["perf_counters"]), 0, path)
             self.assertGreater(len(data["ports"]), 0, path)
             for port in data["ports"]:
@@ -166,6 +187,7 @@ class E1H1Tests(unittest.TestCase):
             "## C++ Model Contract",
             "## L1.5 Hybrid Execution",
             "## Module VIP",
+            "## Implementation Versions",
             "## C++ Performance Counters",
             "## Tests",
         ]
@@ -180,6 +202,8 @@ class E1H1Tests(unittest.TestCase):
             self.assertIn(data["l1_5_hybrid"], text, spec_path)
             self.assertIn(data["l1_5_harness"], text, spec_path)
             self.assertIn(data["module_vip"], text, spec_path)
+            self.assertIn("`imp1`", text, spec_path)
+            self.assertIn("`imp2`", text, spec_path)
             for section in required_sections:
                 self.assertIn(section, text, spec_path)
             for port in data["ports"]:
@@ -221,6 +245,17 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual(vip["scope"]["kind"], "module_only", vip_path)
             self.assertEqual(vip["scope"]["allowed_systemverilog_modules"], [ip["module"]], vip_path)
             self.assertEqual(vip["scope"]["neighbors"], "cpp_environment", vip_path)
+            self.assertIn("dpi_equivalence", vip, vip_path)
+            dpi = vip["dpi_equivalence"]
+            self.assertEqual(dpi["schema"], "e1-h1-dpi-equivalence-v0", vip_path)
+            self.assertEqual(dpi["reference_implementation"], "imp1", vip_path)
+            self.assertEqual(dpi["candidate_implementation"], "imp2", vip_path)
+            self.assertEqual(dpi["probe"], "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv", vip_path)
+            self.assertEqual(dpi["scoreboard"], "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp", vip_path)
+            self.assertTrue((REPO_ROOT / dpi["probe"]).exists(), vip_path)
+            self.assertTrue((REPO_ROOT / dpi["scoreboard"]).exists(), vip_path)
+            self.assertEqual(dpi["stream_space"]["kind"], "sensible_bounded", vip_path)
+            self.assertGreaterEqual(len(dpi["stream_space"]["cases"]), 3, vip_path)
 
     def test_cpp_models_match_ip_manifests(self) -> None:
         for manifest in sorted(IP_DIR.glob("*.json")):
@@ -254,6 +289,71 @@ class E1H1Tests(unittest.TestCase):
                 str(harness.relative_to(REPO_ROOT)),
             ])
             self.assertIn(f"PASS {harness.stem}", result.stdout)
+
+    def test_dpi_equivalence_probe_runs_under_verilator(self) -> None:
+        verilator = shutil.which("verilator")
+        self.assertIsNotNone(verilator, "verilator is required for E1-H1 DPI smoke")
+        with tempfile.TemporaryDirectory() as tmp:
+            obj_dir = Path(tmp) / "obj_dir"
+            run([
+                verilator,
+                "--cc",
+                "--exe",
+                "--build",
+                "--sv",
+                "-Wall",
+                "-Wno-DECLFILENAME",
+                "--top-module",
+                "e1_h1_imp_equiv_probe",
+                "-Mdir",
+                str(obj_dir),
+                str(DPI_PROBE.relative_to(REPO_ROOT)),
+                str(DPI_SCOREBOARD.relative_to(REPO_ROOT)),
+                str(DPI_MAIN.relative_to(REPO_ROOT)),
+            ])
+            run([str(obj_dir / "Ve1_h1_imp_equiv_probe")])
+
+    def test_implementation_matrix_and_flists_define_imp1_imp2(self) -> None:
+        run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])
+        matrix = json.loads(IMPLEMENTATION_MATRIX.read_text(encoding="utf-8"))
+        self.assertEqual(matrix["schema"], "e1-h1-implementation-matrix-v0")
+        self.assertEqual(matrix["reference_implementation"], "imp1")
+        self.assertEqual(matrix["active_implementation"], "imp1")
+        self.assertEqual(matrix["imp2_acceptance"], "verilator_dpi_vip_equivalent_to_imp1")
+        self.assertEqual(matrix["dpi"]["probe"], "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv")
+        self.assertEqual(matrix["dpi"]["scoreboard"], "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp")
+        self.assertEqual(matrix["dpi"]["main"], "e1/e1-h1/dpi/e1_h1_imp_equiv_main.cpp")
+
+        target = json.loads((TARGETS / "manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(target["implementation_matrix"], "e1/e1-h1/generated/implementation_matrix.json")
+        self.assertEqual(target["implementation_flists"], matrix["flists"])
+
+        active_flist = REPO_ROOT / matrix["flists"]["active"]
+        self.assertTrue(active_flist.exists(), active_flist)
+        self.assertEqual(active_flist.read_text(encoding="utf-8").splitlines(), target["rtl_files"])
+        self.assertEqual(matrix["active_rtl_files"], target["rtl_files"])
+
+        ip_names = {path.stem for path in IP_DIR.glob("*.json")}
+        self.assertEqual({entry["name"] for entry in matrix["ips"]}, ip_names)
+        self.assertEqual(set(matrix["flists"]["imp1"]), ip_names)
+        self.assertEqual(matrix["flists"]["imp2"], {})
+        for entry in matrix["ips"]:
+            ip = json.loads((REPO_ROOT / entry["interface_source"]).read_text(encoding="utf-8"))
+            self.assertEqual(entry["active"], "imp1")
+            self.assertEqual(entry["reference"], "imp1")
+            self.assertEqual(entry["vip"], ip["module_vip"])
+            self.assertEqual(entry["l1_5_harness"], ip["l1_5_harness"])
+            self.assertEqual(entry["imp1"]["kind"], "mock")
+            self.assertEqual(entry["imp1"]["status"], "accepted")
+            self.assertEqual(entry["imp1"]["module"], ip["module"])
+            self.assertEqual(entry["imp1"]["rtl"], ip["rtl"])
+            self.assertEqual(entry["imp2"]["status"], "reserved")
+            self.assertEqual(entry["imp2"]["acceptance"], "verilator_dpi_vip_equivalent_to_imp1")
+            self.assertEqual(entry["dpi_equivalence"]["reference"], "imp1")
+            self.assertEqual(entry["dpi_equivalence"]["candidate"], "imp2")
+            imp1_flist = REPO_ROOT / entry["imp1"]["flist"]
+            self.assertTrue(imp1_flist.exists(), imp1_flist)
+            self.assertEqual(imp1_flist.read_text(encoding="utf-8").splitlines(), [ip["rtl"]])
 
     def test_generated_soc_top_matches_manifests(self) -> None:
         generator = load_generator()
@@ -568,13 +668,13 @@ class E1H1Tests(unittest.TestCase):
 
     def test_e1_pipeline_generates_e1_h1_artifacts(self) -> None:
         result = run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])
-        self.assertIn("PASS e1_pipeline 13 passes", result.stdout)
+        self.assertIn("PASS e1_pipeline 14 passes", result.stdout)
 
         summary = json.loads((E1_PIPELINE_OUT / "summary.json").read_text(encoding="utf-8"))
         self.assertEqual(summary["schema"], "e1-pipeline-summary-v0")
         self.assertEqual(summary["model_id"], "tinyllama-1.1b-chat-v1.0")
         self.assertEqual(summary["architecture_id"], "e1-h1")
-        self.assertEqual(summary["pass_count"], 13)
+        self.assertEqual(summary["pass_count"], 14)
         self.assertEqual(summary["operation_counts"]["dot_general"], 6)
         self.assertTrue(summary["all_current_modules_have_l1_5_harnesses"])
         self.assertEqual(summary["generated_top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
@@ -595,6 +695,7 @@ class E1H1Tests(unittest.TestCase):
             "e1_generate_chip_model",
             "e1_generate_l1_5_harnesses",
             "e1_lower_to_hardware_graph",
+            "e1_select_implementations",
             "e1_emit_systemverilog",
             "e1_package_targets",
             "e1_end_to_end_smoke",
@@ -700,6 +801,12 @@ class E1H1Tests(unittest.TestCase):
             "e1/e1-h1/generated/targets/fpga/rtl.filelist",
         )
 
+        implementation_matrix = json.loads(IMPLEMENTATION_MATRIX.read_text(encoding="utf-8"))
+        self.assertEqual(implementation_matrix["schema"], "e1-h1-implementation-matrix-v0")
+        self.assertEqual(implementation_matrix["reference_implementation"], "imp1")
+        self.assertEqual(implementation_matrix["active_implementation"], "imp1")
+        self.assertEqual(implementation_matrix["imp2_acceptance"], "verilator_dpi_vip_equivalent_to_imp1")
+
         sv_plan = json.loads((E1_PIPELINE_OUT / "11_systemverilog_plan.json").read_text(encoding="utf-8"))
         self.assertEqual(sv_plan["generated_top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
         self.assertEqual(sv_plan["generated_composition_manifest"], "e1/e1-h1/generated/e1_h1_soc_top_manifest.json")
@@ -721,6 +828,8 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(e2e["chip_model"]["status"], "pass")
         self.assertEqual(e2e["chip_model"]["run"], "e1/generated/pipeline/08_chip_model_run.json")
         self.assertEqual(e2e["generated_soc_top"]["top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
+        self.assertEqual(e2e["implementation_matrix"], "e1/e1-h1/generated/implementation_matrix.json")
+        self.assertEqual(e2e["implementation_flists"], implementation_matrix["flists"])
         self.assertEqual(e2e["target_package"], "e1/e1-h1/generated/targets/manifest.json")
         self.assertEqual({check["status"] for check in e2e["checks"]}, {"pass"})
         self.assertEqual(
@@ -731,6 +840,7 @@ class E1H1Tests(unittest.TestCase):
                 "device_program_run",
                 "chip_model_run",
                 "generated_soc_top",
+                "implementation_flists",
                 "target_package",
             },
         )
@@ -747,6 +857,8 @@ class E1H1Tests(unittest.TestCase):
             e2e["chip_model"]["run"],
             e2e["l1_5_harness_plan"],
             e2e["hardware_graph"],
+            e2e["implementation_matrix"],
+            e2e["implementation_flists"]["active"],
             e2e["systemverilog_plan"],
             e2e["target_package_plan"],
             e2e["target_package"],
@@ -798,6 +910,7 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(manifest["external_data_source"]["kind"], "ethernet")
         self.assertEqual(manifest["external_data_source"]["mac_interface"], "rgmii")
         self.assertEqual(manifest["rtl_source"], "e1/e1-h1/ip/*.json")
+        self.assertEqual(manifest["implementation_matrix"], "e1/e1-h1/generated/implementation_matrix.json")
 
         rtl_files = manifest["rtl_files"]
         ip_manifests = [
@@ -825,8 +938,12 @@ class E1H1Tests(unittest.TestCase):
 
         fpga_filelist = (REPO_ROOT / manifest["fpga"]["filelist"]).read_text(encoding="utf-8").splitlines()
         openroad_filelist = (REPO_ROOT / manifest["openroad"]["filelist"]).read_text(encoding="utf-8").splitlines()
+        active_flist = (REPO_ROOT / manifest["implementation_flists"]["active"]).read_text(encoding="utf-8").splitlines()
         self.assertEqual(fpga_filelist, rtl_files)
         self.assertEqual(openroad_filelist, rtl_files)
+        self.assertEqual(active_flist, rtl_files)
+        self.assertEqual(set(manifest["implementation_flists"]["imp1"]), {path.stem for path in IP_DIR.glob("*.json")})
+        self.assertEqual(manifest["implementation_flists"]["imp2"], {})
 
         fpga_constraints = (REPO_ROOT / manifest["fpga"]["constraints"]).read_text(encoding="utf-8")
         openroad_constraints = (REPO_ROOT / manifest["openroad"]["constraints"]).read_text(encoding="utf-8")

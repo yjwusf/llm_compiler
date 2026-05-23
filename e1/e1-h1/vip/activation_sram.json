@@ -16,6 +16,21 @@
     "reset_clock_driver",
     "future_activation_memory_model"
   ],
+  "dpi_equivalence": {
+    "schema": "e1-h1-dpi-equivalence-v0",
+    "reference_implementation": "imp1",
+    "candidate_implementation": "imp2",
+    "probe": "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv",
+    "scoreboard": "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp",
+    "stream_space": {
+      "kind": "sensible_bounded",
+      "cases": [
+        "reset_empty",
+        "single_config_read",
+        "parameterized_size"
+      ]
+    }
+  },
   "perf_counters": [
     "cycles",
     "input_transfers",

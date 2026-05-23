@@ -8,6 +8,32 @@
   "description": "Barebones 3-wide control CPU placeholder that programs the systolic array through a stable command interface.",
   "reference": "https://github.com/openhwgroup/core-et",
   "replaceable": true,
+  "implementation_scheme": {
+    "active": "imp1",
+    "reference": "imp1",
+    "implementations": {
+      "imp1": {
+        "kind": "mock",
+        "status": "accepted",
+        "module": "e1_h1_control_cpu",
+        "rtl": "e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv",
+        "rtl_files": [
+          "e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv"
+        ]
+      },
+      "imp2": {
+        "kind": "candidate_rtl",
+        "status": "reserved",
+        "allowed_sources": [
+          "https://github.com/openhwgroup/core-et",
+          "new_bare_metal_control_cpu"
+        ],
+        "module": null,
+        "rtl_files": [],
+        "acceptance": "verilator_dpi_vip_equivalent_to_imp1"
+      }
+    }
+  },
   "rtl": "e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv",
   "spec": "e1/e1-h1/docs/modules/control_cpu.md",
   "cpp_model": "e1/e1-h1/cmodels/control_cpu.json",

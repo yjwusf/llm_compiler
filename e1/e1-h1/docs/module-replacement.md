@@ -30,6 +30,25 @@ names the concrete C++ class, source, header, inputs, outputs, and performance
 counters for the behavioral model that surrounds or replaces the SystemVerilog
 module during L1.5 runs.
 
+Each IP also owns an `implementation_scheme`:
+
+- `imp1` is the accepted mock RTL and is the current reference for executable
+  behavior.
+- `imp2` is the candidate real RTL extension. It may be derived from upstream IP
+  such as CORE-ET or Gemmini, or from new RTL, but it is reserved until it is
+  proven equivalent.
+
+`imp2` becomes selectable only when Verilator+DPI VIP equivalence shows that it
+matches `imp1` for every sensible VIP-generated input and output stream. The
+candidate must also provide a gathered flist, and the generated implementation
+matrix must record the exact RTL files used for that candidate.
+
+The generated implementation files are:
+
+- `e1/e1-h1/generated/implementation_matrix.json`
+- `e1/e1-h1/generated/flists/active.f`
+- `e1/e1-h1/generated/flists/imp1/*.f`
+
 ## Required Per-Module Interface Definition
 
 Each E1-H1 module must document:
@@ -38,6 +57,7 @@ Each E1-H1 module must document:
 - C++ model entry points.
 - L1.5 hybrid run command.
 - Module-local VIP manifest.
+- Implementation versions `imp1` and `imp2`.
 - C++ performance counters.
 - Device-visible programming interface when applicable.
 - JSON fields that parameterize it.
