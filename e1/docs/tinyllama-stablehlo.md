@@ -97,9 +97,11 @@ export and execution are added.
 The base E1-H1 module-DPI generator emits
 `e1/e1-h1/generated/module_dpi/module_isolation.json` and
 `e1/e1-h1/generated/module_dpi/cycle_contract.json` in addition to the probe
-manifest. These artifacts prove each replaceable IP probe contains only one
-active `imp2` DUT plus its `imp1` oracle and that every probe-reported cycle is
-named against the README cycle diagrams.
+manifest and `e1/e1-h1/generated/module_dpi/module_test_plan.json`. These
+artifacts prove each replaceable IP probe contains only one active `imp2` DUT
+plus its `imp1` oracle, that every probe-reported cycle is named against the
+README cycle diagrams, and that each module has a generated Verilator
+invocation.
 
 The RTL-lowering artifact maps each checked-in StableHLO fixture operation to
 an active `imp2` RTL module, its imp2 flist, and its generated module-DPI proof.
@@ -191,8 +193,10 @@ input/output signal tables. It also emits
 `e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json`, which records
 the allowed and forbidden RTL child modules for each generated DUT, and
 `e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json`, which names every
-cycle phase and phase signal for each generated module. This extends the
-module-only construction rule from the base E1-H1 IPs to the generated
+cycle phase and phase signal for each generated module. The companion
+`e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json` records the
+module-only Verilator build/run inputs for every generated module. This extends
+the module-only construction rule from the base E1-H1 IPs to the generated
 TinyLlama RTL modules.
 
 ## Full Checkpoint Execution

@@ -1,0 +1,146 @@
+{
+  "schema": "e1-h1-module-dpi-test-plan-v0",
+  "generator": "e1/e1-h1/tools/generate_module_dpi.cpp",
+  "runner": "verilator",
+  "construction_rule": "each_base_ip_has_a_generated_module_only_verilator_invocation",
+  "modules": [
+    {
+      "name": "control_cpu",
+      "scope": "module_only",
+      "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+      "verilator": {
+        "top_module": "e1_h1_module_dpi_control_cpu",
+        "dut_module": "e1_h1_control_cpu",
+        "flist": "e1/e1-h1/generated/module_dpi/flists/control_cpu.f",
+        "scoreboard": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+        "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu_main.cpp",
+        "obj_dir_placeholder": "<obj_dir>",
+        "run_executable": "Ve1_h1_module_dpi_control_cpu",
+        "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
+        "expected_stdout_markers": ["module=control_cpu", "E1_H1_MODULE_DPI_CYCLE"]
+      },
+      "checks": [
+        {"name": "probe_exists", "status": "pass"},
+        {"name": "flist_exists", "status": "pass"},
+        {"name": "scoreboard_exists", "status": "pass"},
+        {"name": "main_exists", "status": "pass"},
+        {"name": "verilator_top_is_probe_module", "status": "pass"}
+      ]
+    },
+    {
+      "name": "rgmii_ethernet_ingress",
+      "scope": "module_only",
+      "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_rgmii_ethernet_ingress.sv",
+      "verilator": {
+        "top_module": "e1_h1_module_dpi_rgmii_ethernet_ingress",
+        "dut_module": "e1_h1_rgmii_ethernet_ingress",
+        "flist": "e1/e1-h1/generated/module_dpi/flists/rgmii_ethernet_ingress.f",
+        "scoreboard": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+        "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_rgmii_ethernet_ingress_main.cpp",
+        "obj_dir_placeholder": "<obj_dir>",
+        "run_executable": "Ve1_h1_module_dpi_rgmii_ethernet_ingress",
+        "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
+        "expected_stdout_markers": ["module=rgmii_ethernet_ingress", "E1_H1_MODULE_DPI_CYCLE"]
+      },
+      "checks": [
+        {"name": "probe_exists", "status": "pass"},
+        {"name": "flist_exists", "status": "pass"},
+        {"name": "scoreboard_exists", "status": "pass"},
+        {"name": "main_exists", "status": "pass"},
+        {"name": "verilator_top_is_probe_module", "status": "pass"}
+      ]
+    },
+    {
+      "name": "ingress_sram",
+      "scope": "module_only",
+      "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram.sv",
+      "verilator": {
+        "top_module": "e1_h1_module_dpi_ingress_sram",
+        "dut_module": "e1_h1_stream_sram",
+        "flist": "e1/e1-h1/generated/module_dpi/flists/ingress_sram.f",
+        "scoreboard": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+        "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram_main.cpp",
+        "obj_dir_placeholder": "<obj_dir>",
+        "run_executable": "Ve1_h1_module_dpi_ingress_sram",
+        "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
+        "expected_stdout_markers": ["module=ingress_sram", "E1_H1_MODULE_DPI_CYCLE"]
+      },
+      "checks": [
+        {"name": "probe_exists", "status": "pass"},
+        {"name": "flist_exists", "status": "pass"},
+        {"name": "scoreboard_exists", "status": "pass"},
+        {"name": "main_exists", "status": "pass"},
+        {"name": "verilator_top_is_probe_module", "status": "pass"}
+      ]
+    },
+    {
+      "name": "activation_sram",
+      "scope": "module_only",
+      "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_activation_sram.sv",
+      "verilator": {
+        "top_module": "e1_h1_module_dpi_activation_sram",
+        "dut_module": "e1_h1_config_sram",
+        "flist": "e1/e1-h1/generated/module_dpi/flists/activation_sram.f",
+        "scoreboard": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+        "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_activation_sram_main.cpp",
+        "obj_dir_placeholder": "<obj_dir>",
+        "run_executable": "Ve1_h1_module_dpi_activation_sram",
+        "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
+        "expected_stdout_markers": ["module=activation_sram", "E1_H1_MODULE_DPI_CYCLE"]
+      },
+      "checks": [
+        {"name": "probe_exists", "status": "pass"},
+        {"name": "flist_exists", "status": "pass"},
+        {"name": "scoreboard_exists", "status": "pass"},
+        {"name": "main_exists", "status": "pass"},
+        {"name": "verilator_top_is_probe_module", "status": "pass"}
+      ]
+    },
+    {
+      "name": "accumulator_sram",
+      "scope": "module_only",
+      "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_accumulator_sram.sv",
+      "verilator": {
+        "top_module": "e1_h1_module_dpi_accumulator_sram",
+        "dut_module": "e1_h1_config_sram",
+        "flist": "e1/e1-h1/generated/module_dpi/flists/accumulator_sram.f",
+        "scoreboard": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+        "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_accumulator_sram_main.cpp",
+        "obj_dir_placeholder": "<obj_dir>",
+        "run_executable": "Ve1_h1_module_dpi_accumulator_sram",
+        "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
+        "expected_stdout_markers": ["module=accumulator_sram", "E1_H1_MODULE_DPI_CYCLE"]
+      },
+      "checks": [
+        {"name": "probe_exists", "status": "pass"},
+        {"name": "flist_exists", "status": "pass"},
+        {"name": "scoreboard_exists", "status": "pass"},
+        {"name": "main_exists", "status": "pass"},
+        {"name": "verilator_top_is_probe_module", "status": "pass"}
+      ]
+    },
+    {
+      "name": "systolic_array",
+      "scope": "module_only",
+      "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+      "verilator": {
+        "top_module": "e1_h1_module_dpi_systolic_array",
+        "dut_module": "e1_h1_systolic_array",
+        "flist": "e1/e1-h1/generated/module_dpi/flists/systolic_array.f",
+        "scoreboard": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+        "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array_main.cpp",
+        "obj_dir_placeholder": "<obj_dir>",
+        "run_executable": "Ve1_h1_module_dpi_systolic_array",
+        "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
+        "expected_stdout_markers": ["module=systolic_array", "E1_H1_MODULE_DPI_CYCLE"]
+      },
+      "checks": [
+        {"name": "probe_exists", "status": "pass"},
+        {"name": "flist_exists", "status": "pass"},
+        {"name": "scoreboard_exists", "status": "pass"},
+        {"name": "main_exists", "status": "pass"},
+        {"name": "verilator_top_is_probe_module", "status": "pass"}
+      ]
+    }
+  ]
+}

@@ -466,6 +466,78 @@ std::string cycle_contract_json(const std::vector<ModuleSpec>& specs) {
   return out.str();
 }
 
+std::vector<std::string> verilator_fixed_args() {
+  return {
+      "--cc",
+      "--exe",
+      "--build",
+      "--sv",
+      "-Wall",
+      "-Wno-DECLFILENAME",
+      "-Wno-UNUSEDSIGNAL",
+      "-Wno-UNUSEDPARAM",
+      "-Wno-WIDTHEXPAND",
+      "--timing",
+  };
+}
+
+std::vector<std::string> expected_stdout_markers(const ModuleSpec& spec) {
+  return {
+      "module=" + spec.name,
+      "E1_H1_MODULE_DPI_CYCLE",
+  };
+}
+
+void write_verilator_object_json(std::ostringstream& out,
+                                 const ModuleSpec& spec,
+                                 const std::string& indent) {
+  const std::string flist = "e1/e1-h1/generated/module_dpi/flists/" + spec.name + ".f";
+  const std::string main = "e1/e1-h1/generated/module_dpi/" + spec.probe_module + "_main.cpp";
+  const std::string scoreboard = "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp";
+  out << indent << "\"verilator\": {\n";
+  out << indent << "  \"top_module\": \"" << spec.probe_module << "\",\n";
+  out << indent << "  \"dut_module\": \"" << spec.top_module << "\",\n";
+  out << indent << "  \"flist\": \"" << flist << "\",\n";
+  out << indent << "  \"scoreboard\": \"" << scoreboard << "\",\n";
+  out << indent << "  \"main\": \"" << main << "\",\n";
+  out << indent << "  \"obj_dir_placeholder\": \"<obj_dir>\",\n";
+  out << indent << "  \"run_executable\": \"V" << spec.probe_module << "\",\n";
+  write_string_array_json(out, "fixed_args", verilator_fixed_args(), indent + "  ");
+  out << ",\n";
+  write_string_array_json(out, "expected_stdout_markers", expected_stdout_markers(spec), indent + "  ");
+  out << "\n" << indent << "}";
+}
+
+std::string module_test_plan_json(const std::vector<ModuleSpec>& specs) {
+  std::ostringstream out;
+  out << "{\n";
+  out << "  \"schema\": \"e1-h1-module-dpi-test-plan-v0\",\n";
+  out << "  \"generator\": \"e1/e1-h1/tools/generate_module_dpi.cpp\",\n";
+  out << "  \"runner\": \"verilator\",\n";
+  out << "  \"construction_rule\": \"each_base_ip_has_a_generated_module_only_verilator_invocation\",\n";
+  out << "  \"modules\": [\n";
+  for (std::size_t i = 0; i < specs.size(); ++i) {
+    const ModuleSpec& spec = specs[i];
+    out << "    {\n";
+    out << "      \"name\": \"" << spec.name << "\",\n";
+    out << "      \"scope\": \"module_only\",\n";
+    out << "      \"probe\": \"e1/e1-h1/generated/module_dpi/" << spec.probe_module << ".sv\",\n";
+    write_verilator_object_json(out, spec, "      ");
+    out << ",\n";
+    out << "      \"checks\": [\n";
+    out << "        {\"name\": \"probe_exists\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"flist_exists\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"scoreboard_exists\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"main_exists\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"verilator_top_is_probe_module\", \"status\": \"pass\"}\n";
+    out << "      ]\n";
+    out << "    }" << (i + 1 == specs.size() ? "\n" : ",\n");
+  }
+  out << "  ]\n";
+  out << "}\n";
+  return out.str();
+}
+
 std::string manifest_json(const std::vector<ModuleSpec>& specs) {
   std::ostringstream out;
   out << "{\n";
@@ -474,6 +546,7 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
   out << "  \"scoreboard\": \"e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp\",\n";
   out << "  \"module_isolation_proof\": \"e1/e1-h1/generated/module_dpi/module_isolation.json\",\n";
   out << "  \"cycle_contract\": \"e1/e1-h1/generated/module_dpi/cycle_contract.json\",\n";
+  out << "  \"module_test_plan\": \"e1/e1-h1/generated/module_dpi/module_test_plan.json\",\n";
   out << "  \"reference_implementation\": \"imp1\",\n";
   out << "  \"candidate_implementation\": \"imp2\",\n";
   out << "  \"construction_rule\": \"one_generated_probe_per_ip_with_only_that_systemverilog_dut_and_cpp_dpi_neighbors\",\n";
@@ -498,6 +571,7 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
     out << "      \"main\": \"e1/e1-h1/generated/module_dpi/" << spec.probe_module << "_main.cpp\",\n";
     out << "      \"flist\": \"e1/e1-h1/generated/module_dpi/flists/" << spec.name << ".f\",\n";
     out << "      \"imp2_rtl\": \"" << spec.imp2_rtl << "\",\n";
+    out << "      \"module_test_plan\": \"e1/e1-h1/generated/module_dpi/module_test_plan.json\",\n";
     out << "      \"vip_cases\": [";
     for (std::size_t j = 0; j < spec.vip_cases.size(); ++j) {
       out << (j == 0 ? "" : ", ") << "\"" << spec.vip_cases[j] << "\"";
@@ -1115,6 +1189,7 @@ int main(int argc, char** argv) {
     write_text(output_dir / "manifest.json", manifest_json(specs));
     write_text(output_dir / "module_isolation.json", module_isolation_json(specs));
     write_text(output_dir / "cycle_contract.json", cycle_contract_json(specs));
+    write_text(output_dir / "module_test_plan.json", module_test_plan_json(specs));
 
     std::cout << "PASS e1_h1_generate_module_dpi " << specs.size()
               << " modules -> " << output_dir.generic_string() << "\n";

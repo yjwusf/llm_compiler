@@ -29,6 +29,10 @@
       "status": "pass"
     },
     {
+      "name": "generated_full_checkpoint_module_test_plan_exists",
+      "status": "pass"
+    },
+    {
       "name": "all_generated_full_checkpoint_modules_have_signal_docs",
       "status": "pass"
     },
@@ -38,6 +42,10 @@
     },
     {
       "name": "all_generated_full_checkpoint_modules_have_cycle_contracts",
+      "status": "pass"
+    },
+    {
+      "name": "all_generated_full_checkpoint_modules_have_verilator_test_plans",
       "status": "pass"
     },
     {
@@ -52,6 +60,7 @@
   "module_count": 7,
   "module_interfaces_doc": "e1/e1-h1/generated/full_checkpoint_dpi/module_interfaces.md",
   "module_isolation_proof": "e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json",
+  "module_test_plan": "e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json",
   "modules": [
     {
       "cycle_contract": {
@@ -308,6 +317,58 @@
       "rtl": [
         "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler.sv"
       ],
+      "test_plan": {
+        "checks": [
+          {
+            "name": "probe_exists",
+            "status": "pass"
+          },
+          {
+            "name": "flist_exists",
+            "status": "pass"
+          },
+          {
+            "name": "scoreboard_exists",
+            "status": "pass"
+          },
+          {
+            "name": "main_exists",
+            "status": "pass"
+          },
+          {
+            "name": "verilator_top_is_probe_module",
+            "status": "pass"
+          }
+        ],
+        "name": "linear_scheduler",
+        "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_scheduler.sv",
+        "scope": "generated_full_checkpoint_module_only",
+        "verilator": {
+          "dut_module": "e1_h1_tinyllama_linear_scheduler",
+          "expected_stdout_markers": [
+            "module=linear_scheduler",
+            "E1_H1_FULL_MODULE_DPI_CYCLE"
+          ],
+          "fixed_args": [
+            "--cc",
+            "--exe",
+            "--build",
+            "--sv",
+            "-Wall",
+            "-Wno-DECLFILENAME",
+            "-Wno-UNUSEDSIGNAL",
+            "-Wno-UNUSEDPARAM",
+            "-Wno-WIDTHEXPAND",
+            "--timing"
+          ],
+          "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_scheduler.f",
+          "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_scheduler_main.cpp",
+          "obj_dir_placeholder": "<obj_dir>",
+          "run_executable": "Ve1_h1_full_checkpoint_module_dpi_linear_scheduler",
+          "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+          "top_module": "e1_h1_full_checkpoint_module_dpi_linear_scheduler"
+        }
+      },
       "top_module": "e1_h1_tinyllama_linear_scheduler"
     },
     {
@@ -617,6 +678,58 @@
         "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
         "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_tile_engine.sv"
       ],
+      "test_plan": {
+        "checks": [
+          {
+            "name": "probe_exists",
+            "status": "pass"
+          },
+          {
+            "name": "flist_exists",
+            "status": "pass"
+          },
+          {
+            "name": "scoreboard_exists",
+            "status": "pass"
+          },
+          {
+            "name": "main_exists",
+            "status": "pass"
+          },
+          {
+            "name": "verilator_top_is_probe_module",
+            "status": "pass"
+          }
+        ],
+        "name": "linear_tile_engine",
+        "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine.sv",
+        "scope": "generated_full_checkpoint_module_only",
+        "verilator": {
+          "dut_module": "e1_h1_tinyllama_linear_tile_engine",
+          "expected_stdout_markers": [
+            "module=linear_tile_engine",
+            "E1_H1_FULL_MODULE_DPI_CYCLE"
+          ],
+          "fixed_args": [
+            "--cc",
+            "--exe",
+            "--build",
+            "--sv",
+            "-Wall",
+            "-Wno-DECLFILENAME",
+            "-Wno-UNUSEDSIGNAL",
+            "-Wno-UNUSEDPARAM",
+            "-Wno-WIDTHEXPAND",
+            "--timing"
+          ],
+          "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_tile_engine.f",
+          "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine_main.cpp",
+          "obj_dir_placeholder": "<obj_dir>",
+          "run_executable": "Ve1_h1_full_checkpoint_module_dpi_linear_tile_engine",
+          "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+          "top_module": "e1_h1_full_checkpoint_module_dpi_linear_tile_engine"
+        }
+      },
       "top_module": "e1_h1_tinyllama_linear_tile_engine"
     },
     {
@@ -806,6 +919,58 @@
       "rtl": [
         "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_scheduler.sv"
       ],
+      "test_plan": {
+        "checks": [
+          {
+            "name": "probe_exists",
+            "status": "pass"
+          },
+          {
+            "name": "flist_exists",
+            "status": "pass"
+          },
+          {
+            "name": "scoreboard_exists",
+            "status": "pass"
+          },
+          {
+            "name": "main_exists",
+            "status": "pass"
+          },
+          {
+            "name": "verilator_top_is_probe_module",
+            "status": "pass"
+          }
+        ],
+        "name": "control_scheduler",
+        "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_scheduler.sv",
+        "scope": "generated_full_checkpoint_module_only",
+        "verilator": {
+          "dut_module": "e1_h1_tinyllama_control_scheduler",
+          "expected_stdout_markers": [
+            "module=control_scheduler",
+            "E1_H1_FULL_MODULE_DPI_CYCLE"
+          ],
+          "fixed_args": [
+            "--cc",
+            "--exe",
+            "--build",
+            "--sv",
+            "-Wall",
+            "-Wno-DECLFILENAME",
+            "-Wno-UNUSEDSIGNAL",
+            "-Wno-UNUSEDPARAM",
+            "-Wno-WIDTHEXPAND",
+            "--timing"
+          ],
+          "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_scheduler.f",
+          "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_scheduler_main.cpp",
+          "obj_dir_placeholder": "<obj_dir>",
+          "run_executable": "Ve1_h1_full_checkpoint_module_dpi_control_scheduler",
+          "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+          "top_module": "e1_h1_full_checkpoint_module_dpi_control_scheduler"
+        }
+      },
       "top_module": "e1_h1_tinyllama_control_scheduler"
     },
     {
@@ -1016,6 +1181,58 @@
       "rtl": [
         "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.sv"
       ],
+      "test_plan": {
+        "checks": [
+          {
+            "name": "probe_exists",
+            "status": "pass"
+          },
+          {
+            "name": "flist_exists",
+            "status": "pass"
+          },
+          {
+            "name": "scoreboard_exists",
+            "status": "pass"
+          },
+          {
+            "name": "main_exists",
+            "status": "pass"
+          },
+          {
+            "name": "verilator_top_is_probe_module",
+            "status": "pass"
+          }
+        ],
+        "name": "graph_sequencer",
+        "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_graph_sequencer.sv",
+        "scope": "generated_full_checkpoint_module_only",
+        "verilator": {
+          "dut_module": "e1_h1_tinyllama_graph_sequencer",
+          "expected_stdout_markers": [
+            "module=graph_sequencer",
+            "E1_H1_FULL_MODULE_DPI_CYCLE"
+          ],
+          "fixed_args": [
+            "--cc",
+            "--exe",
+            "--build",
+            "--sv",
+            "-Wall",
+            "-Wno-DECLFILENAME",
+            "-Wno-UNUSEDSIGNAL",
+            "-Wno-UNUSEDPARAM",
+            "-Wno-WIDTHEXPAND",
+            "--timing"
+          ],
+          "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/graph_sequencer.f",
+          "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_graph_sequencer_main.cpp",
+          "obj_dir_placeholder": "<obj_dir>",
+          "run_executable": "Ve1_h1_full_checkpoint_module_dpi_graph_sequencer",
+          "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+          "top_module": "e1_h1_full_checkpoint_module_dpi_graph_sequencer"
+        }
+      },
       "top_module": "e1_h1_tinyllama_graph_sequencer"
     },
     {
@@ -1338,6 +1555,58 @@
         "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
         "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv"
       ],
+      "test_plan": {
+        "checks": [
+          {
+            "name": "probe_exists",
+            "status": "pass"
+          },
+          {
+            "name": "flist_exists",
+            "status": "pass"
+          },
+          {
+            "name": "scoreboard_exists",
+            "status": "pass"
+          },
+          {
+            "name": "main_exists",
+            "status": "pass"
+          },
+          {
+            "name": "verilator_top_is_probe_module",
+            "status": "pass"
+          }
+        ],
+        "name": "linear_slot_engine",
+        "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine.sv",
+        "scope": "generated_full_checkpoint_module_only",
+        "verilator": {
+          "dut_module": "e1_h1_tinyllama_linear_slot_engine",
+          "expected_stdout_markers": [
+            "module=linear_slot_engine",
+            "E1_H1_FULL_MODULE_DPI_CYCLE"
+          ],
+          "fixed_args": [
+            "--cc",
+            "--exe",
+            "--build",
+            "--sv",
+            "-Wall",
+            "-Wno-DECLFILENAME",
+            "-Wno-UNUSEDSIGNAL",
+            "-Wno-UNUSEDPARAM",
+            "-Wno-WIDTHEXPAND",
+            "--timing"
+          ],
+          "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_slot_engine.f",
+          "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine_main.cpp",
+          "obj_dir_placeholder": "<obj_dir>",
+          "run_executable": "Ve1_h1_full_checkpoint_module_dpi_linear_slot_engine",
+          "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+          "top_module": "e1_h1_full_checkpoint_module_dpi_linear_slot_engine"
+        }
+      },
       "top_module": "e1_h1_tinyllama_linear_slot_engine"
     },
     {
@@ -1537,6 +1806,58 @@
       "rtl": [
         "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv"
       ],
+      "test_plan": {
+        "checks": [
+          {
+            "name": "probe_exists",
+            "status": "pass"
+          },
+          {
+            "name": "flist_exists",
+            "status": "pass"
+          },
+          {
+            "name": "scoreboard_exists",
+            "status": "pass"
+          },
+          {
+            "name": "main_exists",
+            "status": "pass"
+          },
+          {
+            "name": "verilator_top_is_probe_module",
+            "status": "pass"
+          }
+        ],
+        "name": "control_slot_engine",
+        "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine.sv",
+        "scope": "generated_full_checkpoint_module_only",
+        "verilator": {
+          "dut_module": "e1_h1_tinyllama_control_slot_engine",
+          "expected_stdout_markers": [
+            "module=control_slot_engine",
+            "E1_H1_FULL_MODULE_DPI_CYCLE"
+          ],
+          "fixed_args": [
+            "--cc",
+            "--exe",
+            "--build",
+            "--sv",
+            "-Wall",
+            "-Wno-DECLFILENAME",
+            "-Wno-UNUSEDSIGNAL",
+            "-Wno-UNUSEDPARAM",
+            "-Wno-WIDTHEXPAND",
+            "--timing"
+          ],
+          "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_slot_engine.f",
+          "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine_main.cpp",
+          "obj_dir_placeholder": "<obj_dir>",
+          "run_executable": "Ve1_h1_full_checkpoint_module_dpi_control_slot_engine",
+          "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+          "top_module": "e1_h1_full_checkpoint_module_dpi_control_slot_engine"
+        }
+      },
       "top_module": "e1_h1_tinyllama_control_slot_engine"
     },
     {
@@ -1870,6 +2191,58 @@
         "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv",
         "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.sv"
       ],
+      "test_plan": {
+        "checks": [
+          {
+            "name": "probe_exists",
+            "status": "pass"
+          },
+          {
+            "name": "flist_exists",
+            "status": "pass"
+          },
+          {
+            "name": "scoreboard_exists",
+            "status": "pass"
+          },
+          {
+            "name": "main_exists",
+            "status": "pass"
+          },
+          {
+            "name": "verilator_top_is_probe_module",
+            "status": "pass"
+          }
+        ],
+        "name": "full_checkpoint_top",
+        "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_full_checkpoint_top.sv",
+        "scope": "generated_full_checkpoint_module_only",
+        "verilator": {
+          "dut_module": "e1_h1_tinyllama_full_checkpoint_top",
+          "expected_stdout_markers": [
+            "module=full_checkpoint_top",
+            "E1_H1_FULL_MODULE_DPI_CYCLE"
+          ],
+          "fixed_args": [
+            "--cc",
+            "--exe",
+            "--build",
+            "--sv",
+            "-Wall",
+            "-Wno-DECLFILENAME",
+            "-Wno-UNUSEDSIGNAL",
+            "-Wno-UNUSEDPARAM",
+            "-Wno-WIDTHEXPAND",
+            "--timing"
+          ],
+          "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/full_checkpoint_top.f",
+          "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_full_checkpoint_top_main.cpp",
+          "obj_dir_placeholder": "<obj_dir>",
+          "run_executable": "Ve1_h1_full_checkpoint_module_dpi_full_checkpoint_top",
+          "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+          "top_module": "e1_h1_full_checkpoint_module_dpi_full_checkpoint_top"
+        }
+      },
       "top_module": "e1_h1_tinyllama_full_checkpoint_top"
     }
   ],

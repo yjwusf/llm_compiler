@@ -47,7 +47,8 @@ hardware and device code.
     - Input: implementation matrix, IP manifests, and module VIPs.
     - Output: C++-generated module-DPI probes, per-module flists, and a
       construction report proving one generated probe per replaceable module,
-      plus generated base-IP isolation and cycle-contract artifacts.
+      plus generated base-IP isolation, cycle-contract, and Verilator
+      test-plan artifacts.
 13. `e1_emit_systemverilog`
     - Input: hardware graph.
     - Output: mocked or real SystemVerilog modules and generated top-level
@@ -125,8 +126,8 @@ hardware and device code.
     - Input: generated full-checkpoint RTL modules.
     - Output: C++-generated module-DPI probes, flists, C++ mains, scoreboard,
       manifest, generated input/output signal documentation, and generated
-      isolation and cycle-contract proof for each generated full-checkpoint RTL
-      module.
+      isolation, cycle-contract, and Verilator test-plan proof for each
+      generated full-checkpoint RTL module.
 26. `e1_end_to_end_smoke`
     - Input: all prior pass artifacts.
     - Output: one evidence report tying StableHLO, E1-H1 binding, device code,
@@ -145,7 +146,8 @@ E1 is complete when TinyLlama-derived reduced workloads can run through:
 - Legible device program execution.
 - L1.5 hybrid runs for every module.
 - Module-local VIP manifests that target exactly one SystemVerilog module.
-- C++-generated module-DPI probes and per-module Verilator runs.
+- C++-generated module-DPI probes and generated per-module Verilator test
+  plans.
 - Generated base-IP module isolation and cycle-contract artifacts for CPU,
   RGMII ingress, latch buffer, SRAM shells, and systolic array.
 - RTL lowering evidence that maps StableHLO fixture operations to active `imp2`
@@ -175,7 +177,7 @@ E1 is complete when TinyLlama-derived reduced workloads can run through:
   modules, including their flists, C++ mains, scoreboard, and per-module cycle
   notes, plus generated isolation proof showing each DUT's allowed and
   forbidden child modules and a generated cycle contract naming every phase in
-  each module template.
+  each module template, with generated Verilator test plans for every module.
 - Implementation matrix showing active `imp2` candidates and `imp1` mock
   references.
 - Generated SystemVerilog mocks.

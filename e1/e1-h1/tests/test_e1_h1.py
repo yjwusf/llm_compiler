@@ -43,6 +43,7 @@ MODULE_DPI_DIR = E1_H1 / "generated" / "module_dpi"
 MODULE_DPI_MANIFEST = MODULE_DPI_DIR / "manifest.json"
 MODULE_DPI_ISOLATION = MODULE_DPI_DIR / "module_isolation.json"
 MODULE_DPI_CYCLE_CONTRACT = MODULE_DPI_DIR / "cycle_contract.json"
+MODULE_DPI_TEST_PLAN = MODULE_DPI_DIR / "module_test_plan.json"
 FULL_CHECKPOINT_GENERATED = E1_H1 / "generated" / "full_checkpoint"
 FULL_CHECKPOINT_MODULE_DPI_GENERATOR = E1_H1 / "tools" / "generate_full_checkpoint_module_dpi.cpp"
 FULL_CHECKPOINT_MODULE_DPI_DIR = E1_H1 / "generated" / "full_checkpoint_dpi"
@@ -50,6 +51,7 @@ FULL_CHECKPOINT_MODULE_DPI_MANIFEST = FULL_CHECKPOINT_MODULE_DPI_DIR / "manifest
 FULL_CHECKPOINT_MODULE_INTERFACES = FULL_CHECKPOINT_MODULE_DPI_DIR / "module_interfaces.md"
 FULL_CHECKPOINT_MODULE_ISOLATION = FULL_CHECKPOINT_MODULE_DPI_DIR / "module_isolation.json"
 FULL_CHECKPOINT_CYCLE_CONTRACT = FULL_CHECKPOINT_MODULE_DPI_DIR / "cycle_contract.json"
+FULL_CHECKPOINT_MODULE_TEST_PLAN = FULL_CHECKPOINT_MODULE_DPI_DIR / "module_test_plan.json"
 
 
 def load_generator():
@@ -76,6 +78,22 @@ def run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
         check=True,
         **kwargs,
     )
+
+
+def verilator_command_from_test_plan(verilator: str, module_plan: dict, obj_dir: Path) -> list[str]:
+    verilator_plan = module_plan["verilator"]
+    return [
+        verilator,
+        *verilator_plan["fixed_args"],
+        "--top-module",
+        verilator_plan["top_module"],
+        "-Mdir",
+        str(obj_dir),
+        "-f",
+        verilator_plan["flist"],
+        verilator_plan["scoreboard"],
+        verilator_plan["main"],
+    ]
 
 
 def regenerate_module_dpi(tmp_path: Path) -> subprocess.CompletedProcess[str]:
@@ -417,23 +435,29 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(manifest["scoreboard"], "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp")
         self.assertEqual(manifest["module_isolation_proof"], "e1/e1-h1/generated/module_dpi/module_isolation.json")
         self.assertEqual(manifest["cycle_contract"], "e1/e1-h1/generated/module_dpi/cycle_contract.json")
+        self.assertEqual(manifest["module_test_plan"], "e1/e1-h1/generated/module_dpi/module_test_plan.json")
         self.assertIn("one_generated_probe_per_ip", manifest["construction_rule"])
         self.assertIn("CPU command issue is tested without the systolic array RTL", manifest["separation_of_concerns"]["control_cpu"])
         self.assertIn("The array is tested without CPU RTL", manifest["separation_of_concerns"]["systolic_array"])
         self.assertIn("latched boundary", manifest["separation_of_concerns"]["ingress_sram"])
         self.assertTrue(MODULE_DPI_ISOLATION.exists())
         self.assertTrue(MODULE_DPI_CYCLE_CONTRACT.exists())
+        self.assertTrue(MODULE_DPI_TEST_PLAN.exists())
         isolation = json.loads(MODULE_DPI_ISOLATION.read_text(encoding="utf-8"))
         cycle_contract = json.loads(MODULE_DPI_CYCLE_CONTRACT.read_text(encoding="utf-8"))
+        test_plan = json.loads(MODULE_DPI_TEST_PLAN.read_text(encoding="utf-8"))
         self.assertEqual(isolation["schema"], "e1-h1-module-dpi-isolation-v0")
         self.assertEqual(cycle_contract["schema"], "e1-h1-module-dpi-cycle-contract-v0")
+        self.assertEqual(test_plan["schema"], "e1-h1-module-dpi-test-plan-v0")
         isolation_by_name = {module["name"]: module for module in isolation["modules"]}
         cycle_contract_by_name = {module["name"]: module for module in cycle_contract["modules"]}
+        test_plan_by_name = {module["name"]: module for module in test_plan["modules"]}
 
         modules = {module["name"]: module for module in manifest["modules"]}
         self.assertEqual(set(modules), {path.stem for path in IP_DIR.glob("*.json")})
         self.assertEqual(set(isolation_by_name), set(modules))
         self.assertEqual(set(cycle_contract_by_name), set(modules))
+        self.assertEqual(set(test_plan_by_name), set(modules))
         self.assertEqual([name for name, module in modules.items() if module["latch_buffer"]], ["ingress_sram"])
         for name, module in modules.items():
             vip = json.loads((REPO_ROOT / f"e1/e1-h1/vip/{name}.json").read_text(encoding="utf-8"))
@@ -449,6 +473,12 @@ class E1H1Tests(unittest.TestCase):
             )
             self.assertEqual({check["status"] for check in isolation_by_name[name]["checks"]}, {"pass"})
             self.assertEqual({check["status"] for check in cycle_contract_by_name[name]["checks"]}, {"pass"})
+            self.assertEqual({check["status"] for check in test_plan_by_name[name]["checks"]}, {"pass"})
+            self.assertEqual(test_plan_by_name[name]["verilator"]["top_module"], module["probe_module"])
+            self.assertEqual(test_plan_by_name[name]["verilator"]["flist"], module["flist"])
+            self.assertEqual(test_plan_by_name[name]["verilator"]["main"], module["main"])
+            self.assertEqual(test_plan_by_name[name]["verilator"]["scoreboard"], manifest["scoreboard"])
+            self.assertEqual(test_plan_by_name[name]["verilator"]["run_executable"], f"V{module['probe_module']}")
             self.assertEqual(module["probe"], dpi["module_probe"])
             self.assertEqual(module["main"], dpi["module_main"])
             self.assertEqual(module["flist"], dpi["module_flist"])
@@ -494,34 +524,14 @@ class E1H1Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             regenerate_module_dpi(tmp_path)
-            manifest = json.loads(MODULE_DPI_MANIFEST.read_text(encoding="utf-8"))
-            for module in manifest["modules"]:
+            test_plan = json.loads(MODULE_DPI_TEST_PLAN.read_text(encoding="utf-8"))
+            for module in test_plan["modules"]:
                 with self.subTest(module=module["name"]):
                     obj_dir = tmp_path / f"obj_{module['name']}"
-                    run([
-                        verilator,
-                        "--cc",
-                        "--exe",
-                        "--build",
-                        "--sv",
-                        "-Wall",
-                        "-Wno-DECLFILENAME",
-                        "-Wno-UNUSEDSIGNAL",
-                        "-Wno-UNUSEDPARAM",
-                        "-Wno-WIDTHEXPAND",
-                        "--timing",
-                        "--top-module",
-                        module["probe_module"],
-                        "-Mdir",
-                        str(obj_dir),
-                        "-f",
-                        module["flist"],
-                        manifest["scoreboard"],
-                        module["main"],
-                    ])
-                    result = run([str(obj_dir / f"V{module['probe_module']}")])
-                    self.assertIn(f"module={module['name']}", result.stdout)
-                    self.assertIn("E1_H1_MODULE_DPI_CYCLE", result.stdout)
+                    run(verilator_command_from_test_plan(verilator, module, obj_dir))
+                    result = run([str(obj_dir / module["verilator"]["run_executable"])])
+                    for marker in module["verilator"]["expected_stdout_markers"]:
+                        self.assertIn(marker, result.stdout)
 
     def test_full_checkpoint_module_dpi_generator_outputs_generated_probes(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -547,17 +557,25 @@ class E1H1Tests(unittest.TestCase):
             manifest["cycle_contract"],
             "e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json",
         )
+        self.assertEqual(
+            manifest["module_test_plan"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json",
+        )
         self.assertTrue(FULL_CHECKPOINT_MODULE_INTERFACES.exists())
         self.assertTrue(FULL_CHECKPOINT_MODULE_ISOLATION.exists())
         self.assertTrue(FULL_CHECKPOINT_CYCLE_CONTRACT.exists())
+        self.assertTrue(FULL_CHECKPOINT_MODULE_TEST_PLAN.exists())
         interface_doc = FULL_CHECKPOINT_MODULE_INTERFACES.read_text(encoding="utf-8")
         isolation = json.loads(FULL_CHECKPOINT_MODULE_ISOLATION.read_text(encoding="utf-8"))
         cycle_contract = json.loads(FULL_CHECKPOINT_CYCLE_CONTRACT.read_text(encoding="utf-8"))
+        test_plan = json.loads(FULL_CHECKPOINT_MODULE_TEST_PLAN.read_text(encoding="utf-8"))
         self.assertEqual(isolation["schema"], "e1-h1-full-checkpoint-module-isolation-v0")
         self.assertEqual(cycle_contract["schema"], "e1-h1-full-checkpoint-cycle-contract-v0")
+        self.assertEqual(test_plan["schema"], "e1-h1-full-checkpoint-module-dpi-test-plan-v0")
         self.assertEqual(cycle_contract["readme_diagram"], "e1/e1-h1/docs/modules/README.md#cycle-diagram")
         isolation_by_name = {module["name"]: module for module in isolation["modules"]}
         cycle_contract_by_name = {module["name"]: module for module in cycle_contract["modules"]}
+        test_plan_by_name = {module["name"]: module for module in test_plan["modules"]}
         self.assertIn("# Generated Full-Checkpoint RTL Module Interfaces", interface_doc)
         self.assertIn("one_generated_probe_per_full_checkpoint_rtl_module", manifest["construction_rule"])
         modules = {module["name"]: module for module in manifest["modules"]}
@@ -578,6 +596,7 @@ class E1H1Tests(unittest.TestCase):
             self.assertIn("cpp_dpi", module["neighbors"])
             self.assertIn(module["name"], isolation_by_name)
             self.assertIn(module["name"], cycle_contract_by_name)
+            self.assertIn(module["name"], test_plan_by_name)
             self.assertEqual(isolation_by_name[module["name"]]["dut_module"], module["top_module"])
             self.assertEqual(isolation_by_name[module["name"]]["rtl_files"], module["rtl"])
             self.assertEqual({check["status"] for check in isolation_by_name[module["name"]]["checks"]}, {"pass"})
@@ -596,6 +615,15 @@ class E1H1Tests(unittest.TestCase):
                 list(range(module["cycle_contract"]["cycle_period"])),
             )
             self.assertGreater(module["cycle_contract"]["cycle_period"], 0, module)
+            self.assertEqual({check["status"] for check in test_plan_by_name[module["name"]]["checks"]}, {"pass"})
+            self.assertEqual(test_plan_by_name[module["name"]]["verilator"]["top_module"], module["probe_module"])
+            self.assertEqual(test_plan_by_name[module["name"]]["verilator"]["flist"], module["flist"])
+            self.assertEqual(test_plan_by_name[module["name"]]["verilator"]["main"], module["main"])
+            self.assertEqual(test_plan_by_name[module["name"]]["verilator"]["scoreboard"], manifest["scoreboard"])
+            self.assertEqual(
+                test_plan_by_name[module["name"]]["verilator"]["run_executable"],
+                f"V{module['probe_module']}",
+            )
             self.assertGreater(len(module["cycle_notes"]), 0, module)
             self.assertGreater(len(module["input_signals"]), 0, module)
             self.assertGreater(len(module["output_signals"]), 0, module)
@@ -665,34 +693,14 @@ class E1H1Tests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
             regenerate_full_checkpoint_module_dpi(tmp_path)
-            manifest = json.loads(FULL_CHECKPOINT_MODULE_DPI_MANIFEST.read_text(encoding="utf-8"))
-            for module in manifest["modules"]:
+            test_plan = json.loads(FULL_CHECKPOINT_MODULE_TEST_PLAN.read_text(encoding="utf-8"))
+            for module in test_plan["modules"]:
                 with self.subTest(module=module["name"]):
                     obj_dir = tmp_path / f"obj_full_{module['name']}"
-                    run([
-                        verilator,
-                        "--cc",
-                        "--exe",
-                        "--build",
-                        "--sv",
-                        "-Wall",
-                        "-Wno-DECLFILENAME",
-                        "-Wno-UNUSEDSIGNAL",
-                        "-Wno-UNUSEDPARAM",
-                        "-Wno-WIDTHEXPAND",
-                        "--timing",
-                        "--top-module",
-                        module["probe_module"],
-                        "-Mdir",
-                        str(obj_dir),
-                        "-f",
-                        module["flist"],
-                        manifest["scoreboard"],
-                        module["main"],
-                    ])
-                    result = run([str(obj_dir / f"V{module['probe_module']}")])
-                    self.assertIn(f"module={module['name']}", result.stdout)
-                    self.assertIn("E1_H1_FULL_MODULE_DPI_CYCLE", result.stdout)
+                    run(verilator_command_from_test_plan(verilator, module, obj_dir))
+                    result = run([str(obj_dir / module["verilator"]["run_executable"])])
+                    for marker in module["verilator"]["expected_stdout_markers"]:
+                        self.assertIn(marker, result.stdout)
 
     def test_implementation_matrix_and_flists_define_imp1_imp2(self) -> None:
         run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])
@@ -1095,6 +1103,7 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(summary["module_dpi_manifest"], "e1/e1-h1/generated/module_dpi/manifest.json")
         self.assertEqual(summary["module_dpi_isolation_proof"], "e1/e1-h1/generated/module_dpi/module_isolation.json")
         self.assertEqual(summary["module_dpi_cycle_contract"], "e1/e1-h1/generated/module_dpi/cycle_contract.json")
+        self.assertEqual(summary["module_dpi_test_plan"], "e1/e1-h1/generated/module_dpi/module_test_plan.json")
         self.assertEqual(summary["rtl_lowering"], "e1/generated/pipeline/15_rtl_lowering.json")
         self.assertEqual(summary["rtl_lowering_status"], "pass")
         self.assertEqual(
@@ -1150,6 +1159,10 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(
             summary["full_checkpoint_module_cycle_contract"],
             "e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json",
+        )
+        self.assertEqual(
+            summary["full_checkpoint_module_test_plan"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json",
         )
         self.assertEqual(summary["full_checkpoint_module_dpi_status"], "pass")
         self.assertEqual(summary["full_checkpoint_module_dpi_count"], 7)
@@ -1301,6 +1314,7 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(module_dpi_report["manifest"], "e1/e1-h1/generated/module_dpi/manifest.json")
         self.assertEqual(module_dpi_report["module_isolation_proof"], "e1/e1-h1/generated/module_dpi/module_isolation.json")
         self.assertEqual(module_dpi_report["cycle_contract"], "e1/e1-h1/generated/module_dpi/cycle_contract.json")
+        self.assertEqual(module_dpi_report["module_test_plan"], "e1/e1-h1/generated/module_dpi/module_test_plan.json")
         self.assertEqual(module_dpi_report["module_count"], len(list(IP_DIR.glob("*.json"))))
         self.assertIn("without the systolic array RTL", module_dpi_report["separation_of_concerns"]["control_cpu"])
         self.assertIn("without CPU RTL", module_dpi_report["separation_of_concerns"]["systolic_array"])
@@ -1319,6 +1333,10 @@ class E1H1Tests(unittest.TestCase):
                 [step["cycle"] for step in module["cycle_contract"]["cycles"]],
                 list(range(module["cycle_contract"]["cycle_period"])),
             )
+            self.assertEqual({check["status"] for check in module["test_plan"]["checks"]}, {"pass"})
+            self.assertEqual(module["test_plan"]["verilator"]["top_module"], module["probe"].split("/")[-1][:-3])
+            self.assertEqual(module["test_plan"]["verilator"]["flist"], module["flist"])
+            self.assertEqual(module["test_plan"]["verilator"]["main"], module["main"])
 
         target_plan = json.loads((E1_PIPELINE_OUT / "14_target_package_plan.json").read_text(encoding="utf-8"))
         self.assertEqual(target_plan["manifest"], "e1/e1-h1/generated/targets/manifest.json")
@@ -1741,6 +1759,10 @@ class E1H1Tests(unittest.TestCase):
             "e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json",
         )
         self.assertEqual(
+            full_checkpoint_module_dpi["module_test_plan"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json",
+        )
+        self.assertEqual(
             full_checkpoint_module_dpi["scoreboard"],
             "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
         )
@@ -1770,6 +1792,10 @@ class E1H1Tests(unittest.TestCase):
                 [step["cycle"] for step in module["cycle_contract"]["cycles"]],
                 list(range(module["cycle_contract"]["cycle_period"])),
             )
+            self.assertEqual({check["status"] for check in module["test_plan"]["checks"]}, {"pass"})
+            self.assertEqual(module["test_plan"]["verilator"]["top_module"], module["probe_module"])
+            self.assertEqual(module["test_plan"]["verilator"]["flist"], module["flist"])
+            self.assertEqual(module["test_plan"]["verilator"]["main"], module["main"])
             for signal in [*module["input_signals"], *module["output_signals"]]:
                 self.assertEqual(set(signal), {"name", "width", "description"})
             for path in [module["probe"], module["main"], module["flist"], *module["rtl"]]:
@@ -1795,6 +1821,7 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(e2e["module_dpi_manifest"], "e1/e1-h1/generated/module_dpi/manifest.json")
         self.assertEqual(e2e["module_dpi_isolation_proof"], "e1/e1-h1/generated/module_dpi/module_isolation.json")
         self.assertEqual(e2e["module_dpi_cycle_contract"], "e1/e1-h1/generated/module_dpi/cycle_contract.json")
+        self.assertEqual(e2e["module_dpi_test_plan"], "e1/e1-h1/generated/module_dpi/module_test_plan.json")
         self.assertEqual(e2e["rtl_lowering"], "e1/generated/pipeline/15_rtl_lowering.json")
         self.assertEqual(e2e["rtl_lowering_status"], "pass")
         self.assertEqual(e2e["tinyllama_imp2_coverage"], "e1/generated/pipeline/16_tinyllama_imp2_coverage.json")
@@ -1855,6 +1882,10 @@ class E1H1Tests(unittest.TestCase):
             e2e["full_checkpoint_module_cycle_contract"],
             "e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json",
         )
+        self.assertEqual(
+            e2e["full_checkpoint_module_test_plan"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json",
+        )
         self.assertEqual(e2e["full_checkpoint_module_dpi_status"], "pass")
         self.assertEqual(e2e["full_checkpoint_module_dpi_count"], 7)
         self.assertEqual(e2e["target_package"], "e1/e1-h1/generated/targets/manifest.json")
@@ -1903,6 +1934,7 @@ class E1H1Tests(unittest.TestCase):
             e2e["module_dpi_manifest"],
             e2e["module_dpi_isolation_proof"],
             e2e["module_dpi_cycle_contract"],
+            e2e["module_dpi_test_plan"],
             e2e["rtl_lowering"],
             e2e["tinyllama_imp2_coverage"],
             e2e["full_tinyllama_checkpoint_execution"],
@@ -1919,6 +1951,7 @@ class E1H1Tests(unittest.TestCase):
             e2e["full_checkpoint_module_interfaces_doc"],
             e2e["full_checkpoint_module_isolation_proof"],
             e2e["full_checkpoint_module_cycle_contract"],
+            e2e["full_checkpoint_module_test_plan"],
             e2e["systemverilog_plan"],
             e2e["target_package_plan"],
             e2e["target_package"],
