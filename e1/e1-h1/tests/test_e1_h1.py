@@ -856,21 +856,24 @@ class E1H1Tests(unittest.TestCase):
 
     def test_e1_pipeline_generates_e1_h1_artifacts(self) -> None:
         result = run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])
-        self.assertIn("PASS e1_pipeline 16 passes", result.stdout)
+        self.assertIn("PASS e1_pipeline 18 passes", result.stdout)
 
         summary = json.loads((E1_PIPELINE_OUT / "summary.json").read_text(encoding="utf-8"))
         self.assertEqual(summary["schema"], "e1-pipeline-summary-v0")
         self.assertEqual(summary["model_id"], "tinyllama-1.1b-chat-v1.0")
         self.assertEqual(summary["architecture_id"], "e1-h1")
-        self.assertEqual(summary["pass_count"], 16)
+        self.assertEqual(summary["pass_count"], 18)
         self.assertEqual(summary["operation_counts"]["dot_general"], 6)
         self.assertTrue(summary["all_current_modules_have_l1_5_harnesses"])
         self.assertEqual(summary["generated_top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
-        self.assertEqual(summary["end_to_end_smoke"], "e1/generated/pipeline/15_end_to_end_smoke.json")
+        self.assertEqual(summary["end_to_end_smoke"], "e1/generated/pipeline/18_end_to_end_smoke.json")
         self.assertEqual(summary["end_to_end_status"], "pass")
+        self.assertEqual(summary["module_dpi_generation"], "e1/generated/pipeline/12_module_dpi_generation.json")
+        self.assertEqual(summary["rtl_lowering"], "e1/generated/pipeline/15_rtl_lowering.json")
+        self.assertEqual(summary["rtl_lowering_status"], "pass")
         self.assertEqual(
             summary["full_tinyllama_checkpoint_execution"],
-            "e1/generated/pipeline/14_full_tinyllama_checkpoint_execution.json",
+            "e1/generated/pipeline/17_full_tinyllama_checkpoint_execution.json",
         )
         self.assertFalse(summary["full_tinyllama_checkpoint_implemented"])
         self.assertIn(
@@ -893,8 +896,10 @@ class E1H1Tests(unittest.TestCase):
             "e1_generate_l1_5_harnesses",
             "e1_lower_to_hardware_graph",
             "e1_select_implementations",
+            "e1_generate_module_dpi",
             "e1_emit_systemverilog",
             "e1_package_targets",
+            "e1_lower_to_rtl",
             "e1_check_tinyllama_imp2_coverage",
             "e1_run_full_tinyllama_checkpoint",
             "e1_end_to_end_smoke",
@@ -991,7 +996,23 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(chip_model_run["counters"]["frames_seen"], 1)
         self.assertGreater(chip_model_run["counters"]["rgmii_rx_cycles"], 0)
 
-        target_plan = json.loads((E1_PIPELINE_OUT / "12_target_package_plan.json").read_text(encoding="utf-8"))
+        module_dpi_report = json.loads((E1_PIPELINE_OUT / "12_module_dpi_generation.json").read_text(encoding="utf-8"))
+        self.assertEqual(module_dpi_report["schema"], "e1-module-dpi-generation-report-v0")
+        self.assertEqual(module_dpi_report["status"], "pass")
+        self.assertEqual(module_dpi_report["generator"], "e1/e1-h1/tools/generate_module_dpi.cpp")
+        self.assertEqual(module_dpi_report["manifest"], "e1/e1-h1/generated/module_dpi/manifest.json")
+        self.assertEqual(module_dpi_report["module_count"], len(list(IP_DIR.glob("*.json"))))
+        self.assertIn("without the systolic array RTL", module_dpi_report["separation_of_concerns"]["control_cpu"])
+        self.assertIn("without CPU RTL", module_dpi_report["separation_of_concerns"]["systolic_array"])
+        self.assertEqual({check["status"] for check in module_dpi_report["checks"]}, {"pass"})
+        self.assertEqual([module["name"] for module in module_dpi_report["modules"] if module["latch_buffer"]], ["ingress_sram"])
+        for module in module_dpi_report["modules"]:
+            self.assertTrue((REPO_ROOT / module["probe"]).exists(), module)
+            self.assertTrue((REPO_ROOT / module["main"]).exists(), module)
+            self.assertTrue((REPO_ROOT / module["flist"]).exists(), module)
+            self.assertGreater(len(module["cycle_notes"]), 0, module)
+
+        target_plan = json.loads((E1_PIPELINE_OUT / "14_target_package_plan.json").read_text(encoding="utf-8"))
         self.assertEqual(target_plan["manifest"], "e1/e1-h1/generated/targets/manifest.json")
         self.assertTrue(target_plan["digital_only"])
         self.assertEqual(target_plan["fpga"]["top"], "e1_h1_soc_top")
@@ -1007,7 +1028,47 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(implementation_matrix["active_implementation"], "imp2")
         self.assertEqual(implementation_matrix["imp2_acceptance"], "verilator_dpi_vip_equivalent_to_imp1")
 
-        tinyllama_coverage = json.loads((E1_PIPELINE_OUT / "13_tinyllama_imp2_coverage.json").read_text(encoding="utf-8"))
+        rtl_lowering = json.loads((E1_PIPELINE_OUT / "15_rtl_lowering.json").read_text(encoding="utf-8"))
+        self.assertEqual(rtl_lowering["schema"], "e1-rtl-lowering-v0")
+        self.assertEqual(rtl_lowering["status"], "pass")
+        self.assertEqual(rtl_lowering["model_id"], summary["model_id"])
+        self.assertEqual(rtl_lowering["scope"]["kind"], "reduced_stablehlo_fixture")
+        self.assertFalse(rtl_lowering["scope"]["full_checkpoint_graph_lowering"])
+        self.assertEqual(rtl_lowering["architecture_id"], summary["architecture_id"])
+        self.assertEqual(rtl_lowering["pipeline"], summary["pipeline"])
+        self.assertEqual(rtl_lowering["hardware_graph"], "e1/generated/pipeline/10_hardware_graph.json")
+        self.assertEqual(rtl_lowering["implementation_matrix"], "e1/e1-h1/generated/implementation_matrix.json")
+        self.assertEqual(rtl_lowering["module_dpi_generation"]["manifest"], module_dpi_report["manifest"])
+        self.assertEqual(rtl_lowering["cycle_diagram"], "e1/e1-h1/docs/modules/README.md")
+        self.assertEqual({check["status"] for check in rtl_lowering["checks"]}, {"pass"})
+        self.assertEqual(
+            {entry["operation"] for entry in rtl_lowering["operation_lowering"]},
+            {f"stablehlo.{name}" for name in summary["operation_counts"]},
+        )
+        self.assertEqual({entry["status"] for entry in rtl_lowering["operation_lowering"]}, {"pass"})
+        self.assertEqual(
+            {entry["operation"]: entry["ip"] for entry in rtl_lowering["operation_lowering"]},
+            {
+                "stablehlo.add": "control_cpu",
+                "stablehlo.constant": "control_cpu",
+                "stablehlo.dot_general": "systolic_array",
+                "stablehlo.gather": "control_cpu",
+                "stablehlo.multiply": "control_cpu",
+                "stablehlo.tanh": "control_cpu",
+            },
+        )
+        self.assertIn("control_cpu", {entry["module"] for entry in rtl_lowering["cycle_schedule"]})
+        self.assertIn("ingress_sram", {entry["module"] for entry in rtl_lowering["cycle_schedule"]})
+        self.assertIn("systolic_array", {entry["module"] for entry in rtl_lowering["cycle_schedule"]})
+        for entry in rtl_lowering["operation_lowering"]:
+            self.assertEqual(entry["active_implementation"], "imp2", entry)
+            self.assertIsNotNone(entry["module_dpi_probe"], entry)
+            self.assertIsNotNone(entry["module_dpi_flist"], entry)
+            self.assertTrue((REPO_ROOT / entry["module_dpi_probe"]).exists(), entry)
+            self.assertTrue((REPO_ROOT / entry["module_dpi_flist"]).exists(), entry)
+            self.assertTrue(all("/rtl/imp2/" in path for path in entry["rtl_files"]), entry)
+
+        tinyllama_coverage = json.loads((E1_PIPELINE_OUT / "16_tinyllama_imp2_coverage.json").read_text(encoding="utf-8"))
         self.assertEqual(tinyllama_coverage["schema"], "e1-tinyllama-imp2-coverage-v0")
         self.assertEqual(tinyllama_coverage["status"], "pass")
         self.assertEqual(tinyllama_coverage["model_id"], summary["model_id"])
@@ -1050,7 +1111,7 @@ class E1H1Tests(unittest.TestCase):
             for rtl in entry["rtl_files"]:
                 self.assertTrue((REPO_ROOT / rtl).exists(), rtl)
 
-        sv_plan = json.loads((E1_PIPELINE_OUT / "11_systemverilog_plan.json").read_text(encoding="utf-8"))
+        sv_plan = json.loads((E1_PIPELINE_OUT / "13_systemverilog_plan.json").read_text(encoding="utf-8"))
         self.assertEqual(sv_plan["generated_top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
         self.assertEqual(sv_plan["generated_composition_manifest"], "e1/e1-h1/generated/e1_h1_soc_top_manifest.json")
         self.assertEqual(sv_plan["generated_interface_contracts"], "e1/e1-h1/generated/e1_h1_interface_contracts.json")
@@ -1058,7 +1119,7 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(sv_plan["pipeline"], summary["pipeline"])
 
         full_checkpoint = json.loads(
-            (E1_PIPELINE_OUT / "14_full_tinyllama_checkpoint_execution.json").read_text(encoding="utf-8")
+            (E1_PIPELINE_OUT / "17_full_tinyllama_checkpoint_execution.json").read_text(encoding="utf-8")
         )
         self.assertEqual(full_checkpoint["schema"], "e1-full-tinyllama-checkpoint-execution-v0")
         self.assertEqual(full_checkpoint["model_id"], summary["model_id"])
@@ -1073,7 +1134,7 @@ class E1H1Tests(unittest.TestCase):
                 full_checkpoint,
             )
 
-        e2e = json.loads((E1_PIPELINE_OUT / "15_end_to_end_smoke.json").read_text(encoding="utf-8"))
+        e2e = json.loads((E1_PIPELINE_OUT / "18_end_to_end_smoke.json").read_text(encoding="utf-8"))
         self.assertEqual(e2e["schema"], "e1-end-to-end-smoke-v0")
         self.assertEqual(e2e["status"], "pass")
         self.assertEqual(e2e["model_id"], summary["model_id"])
@@ -1089,10 +1150,14 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(e2e["generated_soc_top"]["top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
         self.assertEqual(e2e["implementation_matrix"], "e1/e1-h1/generated/implementation_matrix.json")
         self.assertEqual(e2e["implementation_flists"], implementation_matrix["flists"])
-        self.assertEqual(e2e["tinyllama_imp2_coverage"], "e1/generated/pipeline/13_tinyllama_imp2_coverage.json")
+        self.assertEqual(e2e["module_dpi_generation"], "e1/generated/pipeline/12_module_dpi_generation.json")
+        self.assertEqual(e2e["module_dpi_manifest"], "e1/e1-h1/generated/module_dpi/manifest.json")
+        self.assertEqual(e2e["rtl_lowering"], "e1/generated/pipeline/15_rtl_lowering.json")
+        self.assertEqual(e2e["rtl_lowering_status"], "pass")
+        self.assertEqual(e2e["tinyllama_imp2_coverage"], "e1/generated/pipeline/16_tinyllama_imp2_coverage.json")
         self.assertEqual(
             e2e["full_tinyllama_checkpoint_execution"],
-            "e1/generated/pipeline/14_full_tinyllama_checkpoint_execution.json",
+            "e1/generated/pipeline/17_full_tinyllama_checkpoint_execution.json",
         )
         self.assertEqual(
             e2e["full_tinyllama_checkpoint_execution_status"],
@@ -1111,6 +1176,8 @@ class E1H1Tests(unittest.TestCase):
                 "chip_model_run",
                 "generated_soc_top",
                 "implementation_flists",
+                "module_dpi_generation",
+                "rtl_lowering",
                 "tinyllama_imp2_coverage",
                 "full_tinyllama_checkpoint",
                 "target_package",
@@ -1131,6 +1198,9 @@ class E1H1Tests(unittest.TestCase):
             e2e["hardware_graph"],
             e2e["implementation_matrix"],
             e2e["implementation_flists"]["active"],
+            e2e["module_dpi_generation"],
+            e2e["module_dpi_manifest"],
+            e2e["rtl_lowering"],
             e2e["tinyllama_imp2_coverage"],
             e2e["full_tinyllama_checkpoint_execution"],
             e2e["systemverilog_plan"],

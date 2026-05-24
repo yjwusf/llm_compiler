@@ -43,20 +43,30 @@ hardware and device code.
     - Input: hardware graph, IP manifests, and module VIPs.
     - Output: implementation matrix and gathered flists for active `imp2`
       candidate RTL, with `imp1` retained as the mock reference.
-12. `e1_emit_systemverilog`
+12. `e1_generate_module_dpi`
+    - Input: implementation matrix, IP manifests, and module VIPs.
+    - Output: C++-generated module-DPI probes, per-module flists, and a
+      construction report proving one generated probe per replaceable module.
+13. `e1_emit_systemverilog`
     - Input: hardware graph.
     - Output: mocked or real SystemVerilog modules and generated top-level
       pipeline registers from the architecture JSON.
-13. `e1_package_targets`
+14. `e1_package_targets`
     - Input: SystemVerilog, C++ models, tests, and target config.
     - Output: FPGA package and ASIC/OpenROAD package.
-14. `e1_check_tinyllama_imp2_coverage`
+15. `e1_lower_to_rtl`
+    - Input: StableHLO binding, hardware graph, implementation matrix,
+      module-DPI report, and target filelists.
+    - Output: construction-checked RTL lowering report that maps every
+      operation in the checked-in StableHLO fixture to active `imp2` RTL,
+      per-module DPI proof collateral, and the documented cycle schedule.
+16. `e1_check_tinyllama_imp2_coverage`
     - Input: TinyLlama StableHLO fixture, binding, active implementation
       matrix, device-program smoke, and C++ chip-model smoke.
     - Output: proof that every StableHLO op in the reduced TinyLlama fixture is
       bound to active `imp2` RTL, plus an explicit non-claim for full checkpoint
       execution.
-15. `e1_run_full_tinyllama_checkpoint`
+17. `e1_run_full_tinyllama_checkpoint`
     - Input: pinned checkpoint cache, tokenizer files, and local
       `torch`/`transformers` dependencies.
     - Output: a full-checkpoint execution report. The default deterministic
@@ -64,7 +74,7 @@ hardware and device code.
       Python dependencies instead of claiming execution. The same pass can be
       selected in `live` mode from the pipeline CLI when the checkpoint cache
       and dependencies are present.
-16. `e1_end_to_end_smoke`
+18. `e1_end_to_end_smoke`
     - Input: all prior pass artifacts.
     - Output: one evidence report tying StableHLO, E1-H1 binding, device code,
       C++ chip model, generated SystemVerilog top, and target packages together.
@@ -82,6 +92,9 @@ E1 is complete when TinyLlama-derived reduced workloads can run through:
 - Legible device program execution.
 - L1.5 hybrid runs for every module.
 - Module-local VIP manifests that target exactly one SystemVerilog module.
+- C++-generated module-DPI probes and per-module Verilator runs.
+- RTL lowering evidence that maps StableHLO fixture operations to active `imp2`
+  RTL and the documented cycle/latch schedule.
 - Implementation matrix showing active `imp2` candidates and `imp1` mock
   references.
 - Generated SystemVerilog mocks.

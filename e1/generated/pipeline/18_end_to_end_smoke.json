@@ -27,6 +27,14 @@
       "status": "pass"
     },
     {
+      "name": "module_dpi_generation",
+      "status": "pass"
+    },
+    {
+      "name": "rtl_lowering",
+      "status": "pass"
+    },
+    {
       "name": "tinyllama_imp2_coverage",
       "status": "pass"
     },
@@ -51,7 +59,7 @@
     "run": "e1/generated/pipeline/07_device_program_run.json",
     "status": "pass"
   },
-  "full_tinyllama_checkpoint_execution": "e1/generated/pipeline/14_full_tinyllama_checkpoint_execution.json",
+  "full_tinyllama_checkpoint_execution": "e1/generated/pipeline/17_full_tinyllama_checkpoint_execution.json",
   "full_tinyllama_checkpoint_execution_status": "missing_python_dependencies",
   "full_tinyllama_checkpoint_implemented": false,
   "generated_soc_top": {
@@ -83,6 +91,10 @@
   "l1_5_harness_plan": "e1/generated/pipeline/09_l1_5_harness_plan.json",
   "memory_plan": "e1/generated/pipeline/06_memory_plan.json",
   "model_id": "tinyllama-1.1b-chat-v1.0",
+  "module_dpi_generation": "e1/generated/pipeline/12_module_dpi_generation.json",
+  "module_dpi_manifest": "e1/e1-h1/generated/module_dpi/manifest.json",
+  "rtl_lowering": "e1/generated/pipeline/15_rtl_lowering.json",
+  "rtl_lowering_status": "pass",
   "schema": "e1-end-to-end-smoke-v0",
   "stablehlo": {
     "export_report": "e1/generated/pipeline/02_stablehlo_export.json",
@@ -92,8 +104,8 @@
     "unsupported_ops": []
   },
   "status": "pass",
-  "systemverilog_plan": "e1/generated/pipeline/11_systemverilog_plan.json",
+  "systemverilog_plan": "e1/generated/pipeline/13_systemverilog_plan.json",
   "target_package": "e1/e1-h1/generated/targets/manifest.json",
-  "target_package_plan": "e1/generated/pipeline/12_target_package_plan.json",
-  "tinyllama_imp2_coverage": "e1/generated/pipeline/13_tinyllama_imp2_coverage.json"
+  "target_package_plan": "e1/generated/pipeline/14_target_package_plan.json",
+  "tinyllama_imp2_coverage": "e1/generated/pipeline/16_tinyllama_imp2_coverage.json"
 }

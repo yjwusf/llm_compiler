@@ -512,7 +512,7 @@ def run_full_checkpoint(
     cache_dir: Path,
     allow_download: bool,
 ) -> dict[str, Any]:
-    report_path = output_dir / "14_full_tinyllama_checkpoint_execution.json"
+    report_path = output_dir / "17_full_tinyllama_checkpoint_execution.json"
     command = [
         sys.executable,
         "e1/tools/run_tinyllama_checkpoint.py",
@@ -534,6 +534,213 @@ def run_full_checkpoint(
         check=True,
     )
     return load_json(report_path)
+
+
+def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, Any]:
+    generator = e1_h1_dir / "tools" / "generate_module_dpi.cpp"
+    module_dpi_dir = e1_h1_dir / "generated" / "module_dpi"
+    with tempfile.TemporaryDirectory() as tmp:
+        exe = Path(tmp) / "e1_h1_generate_module_dpi"
+        subprocess.run(
+            [
+                "c++",
+                "-std=c++17",
+                repo_rel(generator),
+                "-o",
+                str(exe),
+            ],
+            cwd=REPO_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=True,
+        )
+        subprocess.run(
+            [
+                str(exe),
+                "--repo-root",
+                str(REPO_ROOT),
+                "--output-dir",
+                str(module_dpi_dir),
+            ],
+            cwd=REPO_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=True,
+        )
+
+    module_dpi_manifest_path = module_dpi_dir / "manifest.json"
+    module_dpi_manifest = load_json(module_dpi_manifest_path)
+    checks = [
+        {
+            "name": "module_dpi_manifest_exists",
+            "status": "pass" if module_dpi_manifest_path.exists() else "fail",
+        },
+        {
+            "name": "one_probe_per_module",
+            "status": "pass"
+            if len({module["name"] for module in module_dpi_manifest["modules"]}) == len(module_dpi_manifest["modules"])
+            else "fail",
+        },
+        {
+            "name": "all_probes_have_flists",
+            "status": "pass"
+            if all((REPO_ROOT / module["flist"]).exists() for module in module_dpi_manifest["modules"])
+            else "fail",
+        },
+        {
+            "name": "ingress_sram_is_latch_buffer",
+            "status": "pass"
+            if any(module["name"] == "ingress_sram" and module["latch_buffer"] for module in module_dpi_manifest["modules"])
+            else "fail",
+        },
+    ]
+    report = {
+        "schema": "e1-module-dpi-generation-report-v0",
+        "status": "pass" if all(check["status"] == "pass" for check in checks) else "fail",
+        "generator": repo_rel(generator),
+        "manifest": repo_rel(module_dpi_manifest_path),
+        "scoreboard": module_dpi_manifest["scoreboard"],
+        "module_count": len(module_dpi_manifest["modules"]),
+        "modules": [
+            {
+                "name": module["name"],
+                "top_module": module["top_module"],
+                "probe": module["probe"],
+                "main": module["main"],
+                "flist": module["flist"],
+                "latch_buffer": module["latch_buffer"],
+                "cycle_notes": module["cycle_notes"],
+            }
+            for module in module_dpi_manifest["modules"]
+        ],
+        "construction_rule": module_dpi_manifest["construction_rule"],
+        "separation_of_concerns": module_dpi_manifest["separation_of_concerns"],
+        "checks": checks,
+    }
+    write_json(output_path, report)
+    return report
+
+
+def emit_rtl_lowering(
+    output_path: Path,
+    manifest: dict[str, Any],
+    fixture_path: Path,
+    ops: Counter[str],
+    binding: dict[str, Any],
+    architecture: dict[str, Any],
+    hardware_graph: dict[str, Any],
+    implementation_matrix: dict[str, Any],
+    module_dpi_report: dict[str, Any],
+    target_manifest: dict[str, Any],
+) -> dict[str, Any]:
+    ips_by_name = {entry["name"]: entry for entry in implementation_matrix["ips"]}
+    graph_ips = {entry["name"]: entry for entry in hardware_graph["ips"]}
+    module_dpi_by_name = {entry["name"]: entry for entry in module_dpi_report["modules"]}
+
+    operation_lowering: list[dict[str, Any]] = []
+    for op_name, count in sorted(ops.items()):
+        operation = f"stablehlo.{op_name}"
+        ip_name = binding["bindings"].get(operation)
+        ip_entry = ips_by_name.get(ip_name) if ip_name is not None else None
+        graph_ip = graph_ips.get(ip_name) if ip_name is not None else None
+        module_dpi = module_dpi_by_name.get(ip_name) if ip_name is not None else None
+        imp2 = ip_entry.get("imp2") if ip_entry is not None else {}
+        operation_lowering.append(
+            {
+                "operation": operation,
+                "count": count,
+                "ip": ip_name,
+                "subsystem": graph_ip["subsystem"] if graph_ip is not None else None,
+                "active_implementation": ip_entry["active"] if ip_entry is not None else None,
+                "rtl_files": imp2.get("rtl_files", []),
+                "imp2_flist": imp2.get("flist"),
+                "module_dpi_probe": module_dpi["probe"] if module_dpi is not None else None,
+                "module_dpi_flist": module_dpi["flist"] if module_dpi is not None else None,
+                "cycle_notes": module_dpi["cycle_notes"] if module_dpi is not None else [],
+                "lowering_stage": "systolic_array_tile" if ip_name == "systolic_array" else "cpu_or_control_stream",
+                "status": "pass"
+                if ip_entry is not None
+                and ip_entry["active"] == "imp2"
+                and imp2.get("flist") is not None
+                and module_dpi is not None
+                and all("/rtl/imp2/" in path for path in imp2.get("rtl_files", []))
+                else "fail",
+            }
+        )
+
+    cpu_probe_path = REPO_ROOT / module_dpi_by_name["control_cpu"]["probe"]
+    array_probe_path = REPO_ROOT / module_dpi_by_name["systolic_array"]["probe"]
+    buffer_probe_path = REPO_ROOT / module_dpi_by_name["ingress_sram"]["probe"]
+    cpu_probe = cpu_probe_path.read_text(encoding="utf-8")
+    array_probe = array_probe_path.read_text(encoding="utf-8")
+    buffer_probe = buffer_probe_path.read_text(encoding="utf-8")
+    checks = [
+        {
+            "name": "all_stablehlo_ops_bound_to_rtl",
+            "status": "pass" if all(entry["status"] == "pass" for entry in operation_lowering) else "fail",
+        },
+        {
+            "name": "module_dpi_generation",
+            "status": module_dpi_report["status"],
+        },
+        {
+            "name": "cpu_probe_excludes_systolic_array",
+            "status": "pass" if "e1_h1_systolic_array" not in cpu_probe else "fail",
+        },
+        {
+            "name": "systolic_array_probe_excludes_cpu",
+            "status": "pass" if "e1_h1_control_cpu" not in array_probe else "fail",
+        },
+        {
+            "name": "latch_buffer_probe_is_explicit",
+            "status": "pass"
+            if "drive_latch_boundary" in buffer_probe
+            and "sample_latched_output" in buffer_probe
+            and "array_ready_i = (cycle >= 2);" in buffer_probe
+            else "fail",
+        },
+        {
+            "name": "active_target_filelist_matches_imp2",
+            "status": "pass" if target_manifest["rtl_files"] == implementation_matrix["active_rtl_files"] else "fail",
+        },
+        {
+            "name": "cycle_diagram_documented",
+            "status": "pass" if (REPO_ROOT / "e1/e1-h1/docs/modules/README.md").exists() else "fail",
+        },
+    ]
+    lowering = {
+        "schema": "e1-rtl-lowering-v0",
+        "status": "pass" if all(check["status"] == "pass" for check in checks) else "fail",
+        "model_id": manifest["model_id"],
+        "scope": {
+            "kind": "reduced_stablehlo_fixture",
+            "fixture": repo_rel(fixture_path),
+            "full_checkpoint_graph_lowering": False,
+            "note": "This lowers every operation in the checked-in TinyLlama-derived StableHLO fixture to active imp2 RTL modules; the full checkpoint graph is still not lowered.",
+        },
+        "architecture_id": architecture["architecture_id"],
+        "pipeline": architecture["pipeline"],
+        "hardware_graph": repo_rel(output_path.parent / "10_hardware_graph.json"),
+        "implementation_matrix": implementation_matrix["matrix"],
+        "module_dpi_generation": module_dpi_report,
+        "cycle_diagram": "e1/e1-h1/docs/modules/README.md",
+        "operation_lowering": operation_lowering,
+        "cycle_schedule": [
+            {"cycle": "reset", "module": "control_cpu", "behavior": "state_q = Reset"},
+            {"cycle": 0, "module": "ingress_sram", "behavior": "latches first stream word"},
+            {"cycle": 1, "module": "control_cpu", "behavior": "cmd_valid_o remains asserted under backpressure"},
+            {"cycle": 1, "module": "systolic_array", "behavior": "accepts array command and enters busy"},
+            {"cycle": 2, "module": "ingress_sram", "behavior": "releases latched word when array_ready_i is high"},
+            {"cycle": 3, "module": "systolic_array", "behavior": "consumes input beat 1"},
+            {"cycle": 6, "module": "systolic_array", "behavior": "consumes input beat 4 and pulses done_o"},
+            {"cycle": 7, "module": "control_cpu", "behavior": "debug_halted_o = 1"},
+        ],
+        "checks": checks,
+    }
+    write_json(output_path, lowering)
+    return lowering
 
 
 def emit_tinyllama_imp2_coverage(
@@ -787,34 +994,36 @@ def run_pipeline(
     soc_top_artifacts = emit_soc_top_artifacts(e1_h1_dir, architecture_path)
     implementation_matrix = emit_implementation_matrix(e1_h1_dir, ip_manifests)
     graph_out = output_dir / "10_hardware_graph.json"
-    write_json(
-        graph_out,
-        {
-            "top": "e1_h1_soc_top",
-            "generator": "e1/e1-h1/tools/generate_soc_top.py",
-            "composition_manifest": soc_top_artifacts["composition_manifest"],
-            "interface_contracts": soc_top_artifacts["interface_contracts"],
-            "subsystems": [item["name"] for item in architecture["soc_top"]["subsystems"]],
-            "pipeline": architecture["pipeline"],
-            "ips": [
-                {
-                    "name": ip["name"],
-                    "module": ip["module"],
-                    "subsystem": ip["subsystem"],
-                    "rtl": ip["rtl"],
-                    "spec": ip["spec"],
-                    "cpp_model": ip["cpp_model"],
-                    "module_vip": ip["module_vip"],
-                    "replaceable": ip["replaceable"],
-                }
-                for ip in ip_manifests
-            ],
-        },
-    )
+    hardware_graph = {
+        "top": "e1_h1_soc_top",
+        "generator": "e1/e1-h1/tools/generate_soc_top.py",
+        "composition_manifest": soc_top_artifacts["composition_manifest"],
+        "interface_contracts": soc_top_artifacts["interface_contracts"],
+        "subsystems": [item["name"] for item in architecture["soc_top"]["subsystems"]],
+        "pipeline": architecture["pipeline"],
+        "ips": [
+            {
+                "name": ip["name"],
+                "module": ip["module"],
+                "subsystem": ip["subsystem"],
+                "rtl": ip["rtl"],
+                "spec": ip["spec"],
+                "cpp_model": ip["cpp_model"],
+                "module_vip": ip["module_vip"],
+                "replaceable": ip["replaceable"],
+            }
+            for ip in ip_manifests
+        ],
+    }
+    write_json(graph_out, hardware_graph)
     passes.append({"pass": "e1_lower_to_hardware_graph", "artifact": repo_rel(graph_out)})
     passes.append({"pass": "e1_select_implementations", "artifact": implementation_matrix["matrix"]})
 
-    sv_out = output_dir / "11_systemverilog_plan.json"
+    module_dpi_out = output_dir / "12_module_dpi_generation.json"
+    module_dpi_report = run_module_dpi_generator(e1_h1_dir, module_dpi_out)
+    passes.append({"pass": "e1_generate_module_dpi", "artifact": repo_rel(module_dpi_out)})
+
+    sv_out = output_dir / "13_systemverilog_plan.json"
     write_json(
         sv_out,
         {
@@ -830,7 +1039,7 @@ def run_pipeline(
     passes.append({"pass": "e1_emit_systemverilog", "artifact": repo_rel(sv_out)})
 
     target_manifest = emit_target_packages(e1_h1_dir, architecture, ip_manifests, implementation_matrix)
-    target_out = output_dir / "12_target_package_plan.json"
+    target_out = output_dir / "14_target_package_plan.json"
     write_json(
         target_out,
         {
@@ -842,7 +1051,22 @@ def run_pipeline(
     )
     passes.append({"pass": "e1_package_targets", "artifact": repo_rel(target_out)})
 
-    tinyllama_coverage_out = output_dir / "13_tinyllama_imp2_coverage.json"
+    rtl_lowering_out = output_dir / "15_rtl_lowering.json"
+    rtl_lowering = emit_rtl_lowering(
+        rtl_lowering_out,
+        manifest,
+        fixture_path,
+        ops,
+        binding,
+        architecture,
+        hardware_graph,
+        implementation_matrix,
+        module_dpi_report,
+        target_manifest,
+    )
+    passes.append({"pass": "e1_lower_to_rtl", "artifact": repo_rel(rtl_lowering_out)})
+
+    tinyllama_coverage_out = output_dir / "16_tinyllama_imp2_coverage.json"
     tinyllama_coverage = emit_tinyllama_imp2_coverage(
         tinyllama_coverage_out,
         manifest,
@@ -865,11 +1089,11 @@ def run_pipeline(
     passes.append(
         {
             "pass": "e1_run_full_tinyllama_checkpoint",
-            "artifact": repo_rel(output_dir / "14_full_tinyllama_checkpoint_execution.json"),
+            "artifact": repo_rel(output_dir / "17_full_tinyllama_checkpoint_execution.json"),
         }
     )
 
-    e2e_out = output_dir / "15_end_to_end_smoke.json"
+    e2e_out = output_dir / "18_end_to_end_smoke.json"
     target_manifest_path = "e1/e1-h1/generated/targets/manifest.json"
     generated_soc_top_exists = all(
         (REPO_ROOT / path).exists()
@@ -877,6 +1101,16 @@ def run_pipeline(
             soc_top_artifacts["top"],
             soc_top_artifacts["composition_manifest"],
             soc_top_artifacts["interface_contracts"],
+        ]
+    )
+    module_dpi_exists = all(
+        (REPO_ROOT / path).exists()
+        for path in [
+            module_dpi_report["manifest"],
+            module_dpi_report["scoreboard"],
+            *[module["probe"] for module in module_dpi_report["modules"]],
+            *[module["main"] for module in module_dpi_report["modules"]],
+            *[module["flist"] for module in module_dpi_report["modules"]],
         ]
     )
     target_package_exists = all(
@@ -913,6 +1147,8 @@ def run_pipeline(
         {"name": "chip_model_run", "status": chip_model_run["status"]},
         {"name": "generated_soc_top", "status": "pass" if generated_soc_top_exists else "fail"},
         {"name": "implementation_flists", "status": "pass" if target_package_exists else "fail"},
+        {"name": "module_dpi_generation", "status": "pass" if module_dpi_exists else "fail"},
+        {"name": "rtl_lowering", "status": rtl_lowering["status"]},
         {"name": "tinyllama_imp2_coverage", "status": tinyllama_coverage["status"]},
         {"name": "full_tinyllama_checkpoint", "status": "pass" if checkpoint_check_passes else "fail"},
         {"name": "target_package", "status": "pass" if target_package_exists else "fail"},
@@ -947,8 +1183,12 @@ def run_pipeline(
         "hardware_graph": repo_rel(graph_out),
         "implementation_matrix": implementation_matrix["matrix"],
         "implementation_flists": implementation_matrix["flists"],
+        "module_dpi_generation": repo_rel(module_dpi_out),
+        "module_dpi_manifest": module_dpi_report["manifest"],
+        "rtl_lowering": repo_rel(rtl_lowering_out),
+        "rtl_lowering_status": rtl_lowering["status"],
         "tinyllama_imp2_coverage": repo_rel(tinyllama_coverage_out),
-        "full_tinyllama_checkpoint_execution": repo_rel(output_dir / "14_full_tinyllama_checkpoint_execution.json"),
+        "full_tinyllama_checkpoint_execution": repo_rel(output_dir / "17_full_tinyllama_checkpoint_execution.json"),
         "full_tinyllama_checkpoint_execution_status": full_checkpoint_execution["status"],
         "full_tinyllama_checkpoint_implemented": full_checkpoint_execution["full_checkpoint_execution"],
         "systemverilog_plan": repo_rel(sv_out),
@@ -973,7 +1213,10 @@ def run_pipeline(
         "generated_top": "e1/e1-h1/generated/e1_h1_soc_top.sv",
         "end_to_end_smoke": repo_rel(e2e_out),
         "end_to_end_status": e2e["status"],
-        "full_tinyllama_checkpoint_execution": repo_rel(output_dir / "14_full_tinyllama_checkpoint_execution.json"),
+        "module_dpi_generation": repo_rel(module_dpi_out),
+        "rtl_lowering": repo_rel(rtl_lowering_out),
+        "rtl_lowering_status": rtl_lowering["status"],
+        "full_tinyllama_checkpoint_execution": repo_rel(output_dir / "17_full_tinyllama_checkpoint_execution.json"),
         "full_tinyllama_checkpoint_execution_status": full_checkpoint_execution["status"],
         "full_tinyllama_checkpoint_implemented": full_checkpoint_execution["full_checkpoint_execution"],
         "pipeline": architecture["pipeline"],

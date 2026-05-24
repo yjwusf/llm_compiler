@@ -1,0 +1,327 @@
+{
+  "architecture_id": "e1-h1",
+  "checks": [
+    {
+      "name": "all_stablehlo_ops_bound_to_rtl",
+      "status": "pass"
+    },
+    {
+      "name": "module_dpi_generation",
+      "status": "pass"
+    },
+    {
+      "name": "cpu_probe_excludes_systolic_array",
+      "status": "pass"
+    },
+    {
+      "name": "systolic_array_probe_excludes_cpu",
+      "status": "pass"
+    },
+    {
+      "name": "latch_buffer_probe_is_explicit",
+      "status": "pass"
+    },
+    {
+      "name": "active_target_filelist_matches_imp2",
+      "status": "pass"
+    },
+    {
+      "name": "cycle_diagram_documented",
+      "status": "pass"
+    }
+  ],
+  "cycle_diagram": "e1/e1-h1/docs/modules/README.md",
+  "cycle_schedule": [
+    {
+      "behavior": "state_q = Reset",
+      "cycle": "reset",
+      "module": "control_cpu"
+    },
+    {
+      "behavior": "latches first stream word",
+      "cycle": 0,
+      "module": "ingress_sram"
+    },
+    {
+      "behavior": "cmd_valid_o remains asserted under backpressure",
+      "cycle": 1,
+      "module": "control_cpu"
+    },
+    {
+      "behavior": "accepts array command and enters busy",
+      "cycle": 1,
+      "module": "systolic_array"
+    },
+    {
+      "behavior": "releases latched word when array_ready_i is high",
+      "cycle": 2,
+      "module": "ingress_sram"
+    },
+    {
+      "behavior": "consumes input beat 1",
+      "cycle": 3,
+      "module": "systolic_array"
+    },
+    {
+      "behavior": "consumes input beat 4 and pulses done_o",
+      "cycle": 6,
+      "module": "systolic_array"
+    },
+    {
+      "behavior": "debug_halted_o = 1",
+      "cycle": 7,
+      "module": "control_cpu"
+    }
+  ],
+  "hardware_graph": "e1/generated/pipeline/10_hardware_graph.json",
+  "implementation_matrix": "e1/e1-h1/generated/implementation_matrix.json",
+  "model_id": "tinyllama-1.1b-chat-v1.0",
+  "module_dpi_generation": {
+    "checks": [
+      {
+        "name": "module_dpi_manifest_exists",
+        "status": "pass"
+      },
+      {
+        "name": "one_probe_per_module",
+        "status": "pass"
+      },
+      {
+        "name": "all_probes_have_flists",
+        "status": "pass"
+      },
+      {
+        "name": "ingress_sram_is_latch_buffer",
+        "status": "pass"
+      }
+    ],
+    "construction_rule": "one_generated_probe_per_ip_with_only_that_systemverilog_dut_and_cpp_dpi_neighbors",
+    "generator": "e1/e1-h1/tools/generate_module_dpi.cpp",
+    "manifest": "e1/e1-h1/generated/module_dpi/manifest.json",
+    "module_count": 6,
+    "modules": [
+      {
+        "cycle_notes": [
+          "cycle 0 reset release",
+          "cycle 1 command valid with backpressure",
+          "cycle 5 array completion"
+        ],
+        "flist": "e1/e1-h1/generated/module_dpi/flists/control_cpu.f",
+        "latch_buffer": false,
+        "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu_main.cpp",
+        "name": "control_cpu",
+        "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+        "top_module": "e1_h1_control_cpu"
+      },
+      {
+        "cycle_notes": [
+          "cycle 1 frame starts",
+          "cycles 1-5 nibbles shift",
+          "cycle 7 downstream accepts"
+        ],
+        "flist": "e1/e1-h1/generated/module_dpi/flists/rgmii_ethernet_ingress.f",
+        "latch_buffer": false,
+        "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_rgmii_ethernet_ingress_main.cpp",
+        "name": "rgmii_ethernet_ingress",
+        "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_rgmii_ethernet_ingress.sv",
+        "top_module": "e1_h1_rgmii_ethernet_ingress"
+      },
+      {
+        "cycle_notes": [
+          "cycle 0 latch first word",
+          "cycle 1 hold while array_ready_i is low",
+          "cycle 2 release latched word"
+        ],
+        "flist": "e1/e1-h1/generated/module_dpi/flists/ingress_sram.f",
+        "latch_buffer": true,
+        "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram_main.cpp",
+        "name": "ingress_sram",
+        "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram.sv",
+        "top_module": "e1_h1_stream_sram"
+      },
+      {
+        "cycle_notes": [
+          "cycle -1 reset clears initialized_q",
+          "cycle 0 initialization latch sets",
+          "cycle 1 initialized_q holds"
+        ],
+        "flist": "e1/e1-h1/generated/module_dpi/flists/activation_sram.f",
+        "latch_buffer": false,
+        "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_activation_sram_main.cpp",
+        "name": "activation_sram",
+        "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_activation_sram.sv",
+        "top_module": "e1_h1_config_sram"
+      },
+      {
+        "cycle_notes": [
+          "cycle -1 reset clears initialized_q",
+          "cycle 0 initialization latch sets",
+          "cycle 1 initialized_q holds"
+        ],
+        "flist": "e1/e1-h1/generated/module_dpi/flists/accumulator_sram.f",
+        "latch_buffer": false,
+        "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_accumulator_sram_main.cpp",
+        "name": "accumulator_sram",
+        "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_accumulator_sram.sv",
+        "top_module": "e1_h1_config_sram"
+      },
+      {
+        "cycle_notes": [
+          "cycle 1 command accepted",
+          "cycles 3-6 input burst drains",
+          "cycle 6 completion pulse"
+        ],
+        "flist": "e1/e1-h1/generated/module_dpi/flists/systolic_array.f",
+        "latch_buffer": false,
+        "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array_main.cpp",
+        "name": "systolic_array",
+        "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+        "top_module": "e1_h1_systolic_array"
+      }
+    ],
+    "schema": "e1-module-dpi-generation-report-v0",
+    "scoreboard": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+    "separation_of_concerns": {
+      "control_cpu": "CPU command issue is tested without the systolic array RTL; completion and ready are C++/DPI-driven inputs.",
+      "ingress_sram": "The stream buffer is the explicit latched boundary between Ethernet ingress and the array input stream.",
+      "systolic_array": "The array is tested without CPU RTL; command and input streams are C++/DPI-driven inputs."
+    },
+    "status": "pass"
+  },
+  "operation_lowering": [
+    {
+      "active_implementation": "imp2",
+      "count": 2,
+      "cycle_notes": [
+        "cycle 0 reset release",
+        "cycle 1 command valid with backpressure",
+        "cycle 5 array completion"
+      ],
+      "imp2_flist": "e1/e1-h1/generated/flists/imp2/control_cpu.f",
+      "ip": "control_cpu",
+      "lowering_stage": "cpu_or_control_stream",
+      "module_dpi_flist": "e1/e1-h1/generated/module_dpi/flists/control_cpu.f",
+      "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+      "operation": "stablehlo.add",
+      "rtl_files": [
+        "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+      ],
+      "status": "pass",
+      "subsystem": "cpu_subsystem"
+    },
+    {
+      "active_implementation": "imp2",
+      "count": 1,
+      "cycle_notes": [
+        "cycle 0 reset release",
+        "cycle 1 command valid with backpressure",
+        "cycle 5 array completion"
+      ],
+      "imp2_flist": "e1/e1-h1/generated/flists/imp2/control_cpu.f",
+      "ip": "control_cpu",
+      "lowering_stage": "cpu_or_control_stream",
+      "module_dpi_flist": "e1/e1-h1/generated/module_dpi/flists/control_cpu.f",
+      "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+      "operation": "stablehlo.constant",
+      "rtl_files": [
+        "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+      ],
+      "status": "pass",
+      "subsystem": "cpu_subsystem"
+    },
+    {
+      "active_implementation": "imp2",
+      "count": 6,
+      "cycle_notes": [
+        "cycle 1 command accepted",
+        "cycles 3-6 input burst drains",
+        "cycle 6 completion pulse"
+      ],
+      "imp2_flist": "e1/e1-h1/generated/flists/imp2/systolic_array.f",
+      "ip": "systolic_array",
+      "lowering_stage": "systolic_array_tile",
+      "module_dpi_flist": "e1/e1-h1/generated/module_dpi/flists/systolic_array.f",
+      "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+      "operation": "stablehlo.dot_general",
+      "rtl_files": [
+        "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+      ],
+      "status": "pass",
+      "subsystem": "accelerator_subsystem"
+    },
+    {
+      "active_implementation": "imp2",
+      "count": 1,
+      "cycle_notes": [
+        "cycle 0 reset release",
+        "cycle 1 command valid with backpressure",
+        "cycle 5 array completion"
+      ],
+      "imp2_flist": "e1/e1-h1/generated/flists/imp2/control_cpu.f",
+      "ip": "control_cpu",
+      "lowering_stage": "cpu_or_control_stream",
+      "module_dpi_flist": "e1/e1-h1/generated/module_dpi/flists/control_cpu.f",
+      "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+      "operation": "stablehlo.gather",
+      "rtl_files": [
+        "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+      ],
+      "status": "pass",
+      "subsystem": "cpu_subsystem"
+    },
+    {
+      "active_implementation": "imp2",
+      "count": 2,
+      "cycle_notes": [
+        "cycle 0 reset release",
+        "cycle 1 command valid with backpressure",
+        "cycle 5 array completion"
+      ],
+      "imp2_flist": "e1/e1-h1/generated/flists/imp2/control_cpu.f",
+      "ip": "control_cpu",
+      "lowering_stage": "cpu_or_control_stream",
+      "module_dpi_flist": "e1/e1-h1/generated/module_dpi/flists/control_cpu.f",
+      "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+      "operation": "stablehlo.multiply",
+      "rtl_files": [
+        "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+      ],
+      "status": "pass",
+      "subsystem": "cpu_subsystem"
+    },
+    {
+      "active_implementation": "imp2",
+      "count": 1,
+      "cycle_notes": [
+        "cycle 0 reset release",
+        "cycle 1 command valid with backpressure",
+        "cycle 5 array completion"
+      ],
+      "imp2_flist": "e1/e1-h1/generated/flists/imp2/control_cpu.f",
+      "ip": "control_cpu",
+      "lowering_stage": "cpu_or_control_stream",
+      "module_dpi_flist": "e1/e1-h1/generated/module_dpi/flists/control_cpu.f",
+      "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+      "operation": "stablehlo.tanh",
+      "rtl_files": [
+        "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+      ],
+      "status": "pass",
+      "subsystem": "cpu_subsystem"
+    }
+  ],
+  "pipeline": {
+    "array_input_depth": 2,
+    "array_output_depth": 2,
+    "cpu_to_accelerator_depth": 1,
+    "default_depth": 2
+  },
+  "schema": "e1-rtl-lowering-v0",
+  "scope": {
+    "fixture": "e1/fixtures/stablehlo/tinyllama_block.mlir",
+    "full_checkpoint_graph_lowering": false,
+    "kind": "reduced_stablehlo_fixture",
+    "note": "This lowers every operation in the checked-in TinyLlama-derived StableHLO fixture to active imp2 RTL modules; the full checkpoint graph is still not lowered."
+  },
+  "status": "pass"
+}

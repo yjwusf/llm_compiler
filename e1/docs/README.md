@@ -29,3 +29,5 @@ when the pinned checkpoint cache is present.
   engineering generated names.
 - E1-H1 implementation lowering uses `imp1` as the accepted mock reference and
   `imp2` as the active candidate RTL after Verilator+DPI VIP equivalence.
+- RTL lowering evidence must point at generated module-DPI probes and the
+  cycle/latch diagram in `e1/e1-h1/docs/modules/README.md`.

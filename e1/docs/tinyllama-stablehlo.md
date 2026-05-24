@@ -74,9 +74,11 @@ dependencies.
 The executable E1-H1 path currently proves the checked-in reduced TinyLlama
 StableHLO fixture, not the full TinyLlama checkpoint. The pipeline emits:
 
-- `e1/generated/pipeline/13_tinyllama_imp2_coverage.json`
-- `e1/generated/pipeline/14_full_tinyllama_checkpoint_execution.json`
-- `e1/generated/pipeline/15_end_to_end_smoke.json`
+- `e1/generated/pipeline/12_module_dpi_generation.json`
+- `e1/generated/pipeline/15_rtl_lowering.json`
+- `e1/generated/pipeline/16_tinyllama_imp2_coverage.json`
+- `e1/generated/pipeline/17_full_tinyllama_checkpoint_execution.json`
+- `e1/generated/pipeline/18_end_to_end_smoke.json`
 
 The coverage artifact requires every StableHLO operation in
 `tinyllama_block.mlir` to bind to an accepted active `imp2` implementation and
@@ -84,13 +86,20 @@ requires the target RTL filelist to use `e1/e1-h1/rtl/imp2/*.sv`. It also
 records `full_tinyllama_checkpoint_implemented: false` until live checkpoint
 export and execution are added.
 
+The RTL-lowering artifact maps each checked-in StableHLO fixture operation to
+an active `imp2` RTL module, its imp2 flist, and its generated module-DPI proof.
+It also records the cycle schedule and latch-buffer checks from
+`e1/e1-h1/docs/modules/README.md`. This is a construction check for the reduced
+fixture path, not a claim that the entire TinyLlama checkpoint graph has already
+been lowered to RTL.
+
 ## Full Checkpoint Execution
 
 The full-checkpoint runner is:
 
 ```sh
 python3 e1/tools/run_tinyllama_checkpoint.py --mode live \
-  --report e1/generated/pipeline/14_full_tinyllama_checkpoint_execution.json
+  --report e1/generated/pipeline/17_full_tinyllama_checkpoint_execution.json
 ```
 
 The same check is wired into the E1 pipeline:
