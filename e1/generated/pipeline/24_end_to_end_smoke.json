@@ -63,6 +63,10 @@
       "status": "pass"
     },
     {
+      "name": "full_checkpoint_graph_sequencer",
+      "status": "pass"
+    },
+    {
       "name": "target_package",
       "status": "pass"
     }
@@ -84,6 +88,8 @@
   "full_checkpoint_control_scheduler": "e1/generated/pipeline/22_full_checkpoint_control_scheduler.json",
   "full_checkpoint_control_scheduler_status": "pass",
   "full_checkpoint_graph_lowered_to_rtl": false,
+  "full_checkpoint_graph_sequencer": "e1/generated/pipeline/23_full_checkpoint_graph_sequencer.json",
+  "full_checkpoint_graph_sequencer_status": "pass",
   "full_checkpoint_rtl_cycle_lowering": "e1/generated/pipeline/20_full_checkpoint_rtl_cycle_lowering.json",
   "full_checkpoint_rtl_cycle_lowering_status": "pass",
   "full_checkpoint_rtl_lowering_plan": "e1/generated/pipeline/18_full_checkpoint_rtl_lowering_plan.json",
@@ -91,6 +97,7 @@
   "full_checkpoint_tile_engine": "e1/generated/pipeline/21_full_checkpoint_tile_engine.json",
   "full_checkpoint_tile_engine_status": "pass",
   "full_checkpoint_total_control_ops": 154,
+  "full_checkpoint_total_graph_slots": 308,
   "full_checkpoint_total_rtl_cycles": 30277632,
   "full_checkpoint_total_tile_commands": 3784704,
   "full_tinyllama_checkpoint_execution": "e1/generated/pipeline/17_full_tinyllama_checkpoint_execution.json",

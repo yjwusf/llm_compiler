@@ -2413,6 +2413,432 @@ int main(int argc, char** argv) {{
     return report
 
 
+def emit_full_checkpoint_graph_sequencer(
+    output_path: Path,
+    manifest: dict[str, Any],
+    full_checkpoint_rtl_lowering: dict[str, Any],
+    command_stream: dict[str, Any],
+    control_scheduler: dict[str, Any],
+) -> dict[str, Any]:
+    first_layer_ops = full_checkpoint_rtl_lowering["layers"][0]["ops"]
+    linear_ops = command_stream["linear_ops"]
+    layers = int(full_checkpoint_rtl_lowering["aggregate"]["layers"])
+    slots_per_layer = len(first_layer_ops)
+    total_graph_slots = layers * slots_per_layer
+    linear_slot_count = sum(1 for op in first_layer_ops if op["kind"] == "linear")
+    control_slot_count = slots_per_layer - linear_slot_count
+    linear_index_by_name = {op["name"]: index for index, op in enumerate(linear_ops)}
+    control_kind_ids = {
+        "rms_norm": 1,
+        "rope": 2,
+        "attention_control": 3,
+        "residual_add": 4,
+        "activation_control": 5,
+    }
+
+    slot_entries: list[dict[str, Any]] = []
+    control_order = 0
+    for slot, op in enumerate(first_layer_ops):
+        if op["kind"] == "linear":
+            linear_index = linear_index_by_name[op["name"]]
+            linear = linear_ops[linear_index]
+            tile_count = int(linear["input_tiles"]) * int(linear["output_tiles"])
+            slot_entries.append(
+                {
+                    "slot": slot,
+                    "name": op["name"],
+                    "kind": "linear",
+                    "ip": "systolic_array",
+                    "linear_op_index": linear_index,
+                    "control_op_index": 0,
+                    "control_kind": 0,
+                    "tile_count": tile_count,
+                }
+            )
+        else:
+            slot_entries.append(
+                {
+                    "slot": slot,
+                    "name": op["name"],
+                    "kind": op["kind"],
+                    "ip": "control_cpu",
+                    "linear_op_index": 0,
+                    "control_op_index": control_order,
+                    "control_kind": control_kind_ids[op["kind"]],
+                    "tile_count": 0,
+                }
+            )
+            control_order += 1
+
+    generated_dir = REPO_ROOT / "e1/e1-h1/generated/full_checkpoint"
+    sequencer_path = generated_dir / "e1_h1_tinyllama_graph_sequencer.sv"
+    tb_path = generated_dir / "e1_h1_tinyllama_graph_sequencer_tb.cpp"
+    flist_path = generated_dir / "e1_h1_tinyllama_graph_sequencer.f"
+
+    def sv_case(fn_name: str, width: int, values: list[int]) -> str:
+        lines = [f"  function automatic logic [{width - 1}:0] {fn_name}(input logic [3:0] slot);", "    unique case (slot)"]
+        for slot, value in enumerate(values):
+            lines.append(f"      4'd{slot}: {fn_name} = {width}'d{value};")
+        lines.append(f"      default: {fn_name} = {width}'d0;")
+        lines.append("    endcase")
+        lines.append("  endfunction")
+        return "\n".join(lines)
+
+    is_linear_values = [1 if entry["kind"] == "linear" else 0 for entry in slot_entries]
+    linear_index_values = [entry["linear_op_index"] for entry in slot_entries]
+    control_index_values = [entry["control_op_index"] for entry in slot_entries]
+    control_kind_values = [entry["control_kind"] for entry in slot_entries]
+    tile_count_values = [entry["tile_count"] for entry in slot_entries]
+    expected_names = [entry["name"] for entry in slot_entries]
+
+    write_text(
+        sequencer_path,
+        f"""`default_nettype none
+
+module e1_h1_tinyllama_graph_sequencer (
+  input  logic        clk_i,
+  input  logic        rst_ni,
+  input  logic        start_i,
+  output logic        busy_o,
+  output logic        done_o,
+  output logic        slot_valid_o,
+  input  logic        slot_ready_i,
+  output logic        launch_control_o,
+  output logic        launch_linear_o,
+  input  logic        op_done_i,
+  output logic [31:0] layer_o,
+  output logic [3:0]  layer_slot_o,
+  output logic [2:0]  linear_op_index_o,
+  output logic [2:0]  control_op_index_o,
+  output logic [3:0]  control_kind_o,
+  output logic [31:0] linear_tile_count_o,
+  output logic [31:0] issued_graph_slots_o,
+  output logic [1:0]  cycle_phase_o
+);
+
+  localparam int unsigned LayerCount = {layers};
+  localparam int unsigned SlotsPerLayer = {slots_per_layer};
+  localparam logic [31:0] TotalGraphSlots = 32'd{total_graph_slots};
+
+  typedef enum logic [1:0] {{
+    StateIdle,
+    StateRun,
+    StateDone
+  }} state_e;
+
+  state_e state_q;
+  logic [31:0] layer_q;
+  logic [3:0]  layer_slot_q;
+  logic [31:0] issued_graph_slots_q;
+  logic [1:0]  phase_q;
+
+{sv_case("is_linear_slot", 1, is_linear_values)}
+
+{sv_case("linear_index_for", 3, linear_index_values)}
+
+{sv_case("control_index_for", 3, control_index_values)}
+
+{sv_case("control_kind_for", 4, control_kind_values)}
+
+{sv_case("tile_count_for", 32, tile_count_values)}
+
+  function automatic logic is_last_slot(input logic [31:0] layer, input logic [3:0] slot);
+    is_last_slot = layer == (LayerCount - 1) && slot == 4'd{slots_per_layer - 1};
+  endfunction
+
+  assign busy_o = state_q == StateRun;
+  assign done_o = state_q == StateDone;
+  assign slot_valid_o = state_q == StateRun && phase_q == 2'd0;
+  assign launch_control_o = state_q == StateRun && phase_q == 2'd1 && !is_linear_slot(layer_slot_q);
+  assign launch_linear_o = state_q == StateRun && phase_q == 2'd1 && is_linear_slot(layer_slot_q);
+  assign layer_o = layer_q;
+  assign layer_slot_o = layer_slot_q;
+  assign linear_op_index_o = linear_index_for(layer_slot_q);
+  assign control_op_index_o = control_index_for(layer_slot_q);
+  assign control_kind_o = control_kind_for(layer_slot_q);
+  assign linear_tile_count_o = tile_count_for(layer_slot_q);
+  assign issued_graph_slots_o = issued_graph_slots_q;
+  assign cycle_phase_o = phase_q;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      state_q <= StateIdle;
+      layer_q <= 32'd0;
+      layer_slot_q <= 4'd0;
+      issued_graph_slots_q <= 32'd0;
+      phase_q <= 2'd0;
+    end else begin
+      unique case (state_q)
+        StateIdle: begin
+          if (start_i) begin
+            state_q <= StateRun;
+            layer_q <= 32'd0;
+            layer_slot_q <= 4'd0;
+            issued_graph_slots_q <= 32'd0;
+            phase_q <= 2'd0;
+          end
+        end
+        StateRun: begin
+          if (phase_q == 2'd0 && !slot_ready_i) begin
+            phase_q <= 2'd0;
+          end else if (phase_q == 2'd2 && !op_done_i) begin
+            phase_q <= 2'd2;
+          end else if (phase_q == 2'd3) begin
+            issued_graph_slots_q <= issued_graph_slots_q + 32'd1;
+            if (is_last_slot(layer_q, layer_slot_q)) begin
+              state_q <= StateDone;
+            end else begin
+              phase_q <= 2'd0;
+              if (layer_slot_q + 4'd1 < SlotsPerLayer) begin
+                layer_slot_q <= layer_slot_q + 4'd1;
+              end else begin
+                layer_slot_q <= 4'd0;
+                layer_q <= layer_q + 32'd1;
+              end
+            end
+          end else begin
+            phase_q <= phase_q + 2'd1;
+          end
+        end
+        StateDone: begin
+          if (!start_i) begin
+            state_q <= StateIdle;
+          end
+        end
+        default: begin
+          state_q <= StateIdle;
+        end
+      endcase
+    end
+  end
+
+  logic unused_total_graph_slots;
+  assign unused_total_graph_slots = TotalGraphSlots[0];
+
+endmodule
+
+`default_nettype wire
+""",
+    )
+
+    expected_linear_array = ", ".join(str(value) for value in is_linear_values)
+    expected_linear_index_array = ", ".join(str(value) for value in linear_index_values)
+    expected_control_index_array = ", ".join(str(value) for value in control_index_values)
+    expected_control_kind_array = ", ".join(str(value) for value in control_kind_values)
+    expected_tile_count_array = ", ".join(str(value) for value in tile_count_values)
+    expected_name_array = ", ".join(f'"{name}"' for name in expected_names)
+    write_text(
+        tb_path,
+        f"""// Generated by e1/tools/run_e1_pipeline.py.
+
+#include "Ve1_h1_tinyllama_graph_sequencer.h"
+#include "verilated.h"
+
+#include <cstdint>
+#include <iostream>
+
+namespace {{
+
+constexpr std::uint32_t kLayerCount = {layers};
+constexpr std::uint32_t kSlotsPerLayer = {slots_per_layer};
+constexpr std::uint32_t kTotalGraphSlots = {total_graph_slots};
+constexpr bool kIsLinear[kSlotsPerLayer] = {{{expected_linear_array}}};
+constexpr std::uint8_t kLinearIndex[kSlotsPerLayer] = {{{expected_linear_index_array}}};
+constexpr std::uint8_t kControlIndex[kSlotsPerLayer] = {{{expected_control_index_array}}};
+constexpr std::uint8_t kControlKind[kSlotsPerLayer] = {{{expected_control_kind_array}}};
+constexpr std::uint32_t kTileCount[kSlotsPerLayer] = {{{expected_tile_count_array}}};
+const char* const kNames[kSlotsPerLayer] = {{{expected_name_array}}};
+
+void tick(VerilatedContext& context, Ve1_h1_tinyllama_graph_sequencer& top) {{
+  top.clk_i = 0;
+  top.eval();
+  context.timeInc(1);
+  top.clk_i = 1;
+  top.eval();
+  context.timeInc(1);
+  top.clk_i = 0;
+  top.eval();
+}}
+
+}}  // namespace
+
+int main(int argc, char** argv) {{
+  VerilatedContext context;
+  context.commandArgs(argc, argv);
+  Ve1_h1_tinyllama_graph_sequencer top{{&context}};
+
+  bool pass = true;
+  auto fail = [&](const char* message) {{
+    std::cerr << "E1_FULL_GRAPH_SEQUENCER_FAIL " << message << "\\n";
+    pass = false;
+  }};
+  auto expect_slot = [&](std::uint32_t layer, std::uint32_t slot) {{
+    top.eval();
+    if (top.layer_o != layer ||
+        top.layer_slot_o != slot ||
+        top.linear_op_index_o != kLinearIndex[slot] ||
+        top.control_op_index_o != kControlIndex[slot] ||
+        top.control_kind_o != kControlKind[slot] ||
+        top.linear_tile_count_o != kTileCount[slot]) {{
+      std::cerr << "slot mismatch at layer=" << layer
+                << " slot=" << slot
+                << " name=" << kNames[slot] << "\\n";
+      fail("graph slot payload mismatch");
+    }}
+  }};
+
+  top.clk_i = 0;
+  top.rst_ni = 0;
+  top.start_i = 0;
+  top.slot_ready_i = 0;
+  top.op_done_i = 0;
+  tick(context, top);
+  tick(context, top);
+  top.rst_ni = 1;
+  top.start_i = 1;
+  tick(context, top);
+
+  top.slot_ready_i = 0;
+  top.eval();
+  const bool saw_backpressure_hold = top.slot_valid_o && top.cycle_phase_o == 0;
+  tick(context, top);
+  top.eval();
+  if (!(top.slot_valid_o && top.cycle_phase_o == 0)) {{
+    fail("graph sequencer did not hold slot under backpressure");
+  }}
+  top.slot_ready_i = 1;
+
+  std::uint32_t completed = 0;
+  std::uint32_t launched_control = 0;
+  std::uint32_t launched_linear = 0;
+  bool saw_wait_for_op_done = false;
+  for (std::uint32_t cycle = 0; cycle < 4096 && completed < kTotalGraphSlots; ++cycle) {{
+    top.eval();
+    const std::uint32_t layer = completed / kSlotsPerLayer;
+    const std::uint32_t slot = completed % kSlotsPerLayer;
+    if (top.slot_valid_o) {{
+      expect_slot(layer, slot);
+    }}
+    if (top.launch_control_o) {{
+      expect_slot(layer, slot);
+      if (kIsLinear[slot]) {{
+        fail("linear slot launched as control");
+      }}
+      ++launched_control;
+    }}
+    if (top.launch_linear_o) {{
+      expect_slot(layer, slot);
+      if (!kIsLinear[slot]) {{
+        fail("control slot launched as linear");
+      }}
+      ++launched_linear;
+    }}
+
+    top.op_done_i = 0;
+    if (top.cycle_phase_o == 2) {{
+      saw_wait_for_op_done = true;
+      top.op_done_i = 1;
+    }}
+    if (top.cycle_phase_o == 3) {{
+      expect_slot(layer, slot);
+      ++completed;
+    }}
+    tick(context, top);
+  }}
+
+  top.eval();
+  if (completed != kTotalGraphSlots) {{
+    fail("missing graph slots");
+  }}
+  if (top.issued_graph_slots_o != kTotalGraphSlots) {{
+    fail("issued graph slot counter mismatch");
+  }}
+  if (launched_control != {control_slot_count * layers}u) {{
+    fail("control launch count mismatch");
+  }}
+  if (launched_linear != {linear_slot_count * layers}u) {{
+    fail("linear launch count mismatch");
+  }}
+  if (!top.done_o) {{
+    fail("graph sequencer did not finish");
+  }}
+  if (!saw_backpressure_hold || !saw_wait_for_op_done) {{
+    fail("graph sequencer did not exercise required waits");
+  }}
+
+  std::cout
+      << "{{\\n"
+      << "  \\"schema\\": \\"e1-full-checkpoint-graph-sequencer-smoke-v0\\",\\n"
+      << "  \\"status\\": \\"" << (pass ? "pass" : "fail") << "\\",\\n"
+      << "  \\"layers\\": " << kLayerCount << ",\\n"
+      << "  \\"slots_per_layer\\": " << kSlotsPerLayer << ",\\n"
+      << "  \\"total_graph_slots\\": " << kTotalGraphSlots << ",\\n"
+      << "  \\"launched_control\\": " << launched_control << ",\\n"
+      << "  \\"launched_linear\\": " << launched_linear << ",\\n"
+      << "  \\"issued_graph_slots\\": " << top.issued_graph_slots_o << "\\n"
+      << "}}\\n";
+
+  return pass ? 0 : 1;
+}}
+""",
+    )
+
+    write_text(flist_path, f"{repo_rel(sequencer_path)}\n")
+
+    phase_template = [
+        {"cycle": 0, "module": "control_cpu", "phase": "present ordered graph slot and allow backpressure"},
+        {"cycle": 1, "module": "control_cpu", "phase": "launch CPU/control or linear tile engine"},
+        {"cycle": 2, "module": "control_cpu", "phase": "wait for launched engine completion"},
+        {"cycle": 3, "module": "control_cpu", "phase": "commit graph slot and advance layer/slot counters"},
+    ]
+    checks = [
+        {
+            "name": "slot_count_matches_full_checkpoint_plan",
+            "status": "pass" if total_graph_slots == layers * slots_per_layer else "fail",
+        },
+        {
+            "name": "linear_slots_match_command_stream",
+            "status": "pass" if linear_slot_count == len(linear_ops) else "fail",
+        },
+        {
+            "name": "control_slots_match_control_scheduler",
+            "status": "pass" if control_slot_count == int(control_scheduler["control_ops_per_layer"]) else "fail",
+        },
+        {
+            "name": "sequencer_generated",
+            "status": "pass" if sequencer_path.exists() and tb_path.exists() and flist_path.exists() else "fail",
+        },
+        {
+            "name": "phase_template_names_each_cycle",
+            "status": "pass" if [entry["cycle"] for entry in phase_template] == [0, 1, 2, 3] else "fail",
+        },
+    ]
+    report = {
+        "schema": "e1-full-checkpoint-graph-sequencer-v0",
+        "status": "pass" if all(check["status"] == "pass" for check in checks) else "fail",
+        "model_id": manifest["model_id"],
+        "truth_boundary": "ordered_layer_graph_slot_sequencer_rtl",
+        "full_checkpoint_ordered_graph_rtl_lowering": True,
+        "full_checkpoint_graph_lowering": False,
+        "full_checkpoint_rtl_execution": False,
+        "scheduler_rtl": repo_rel(sequencer_path),
+        "verilator_tb": repo_rel(tb_path),
+        "flist": repo_rel(flist_path),
+        "layers": layers,
+        "slots_per_layer": slots_per_layer,
+        "total_graph_slots": total_graph_slots,
+        "linear_slots_per_layer": linear_slot_count,
+        "control_slots_per_layer": control_slot_count,
+        "total_linear_slots": linear_slot_count * layers,
+        "total_control_slots": control_slot_count * layers,
+        "slot_entries": slot_entries,
+        "phase_template": phase_template,
+        "checks": checks,
+    }
+    write_json(output_path, report)
+    return report
+
+
 def emit_tinyllama_imp2_coverage(
     output_path: Path,
     manifest: dict[str, Any],
@@ -2836,7 +3262,22 @@ def run_pipeline(
         }
     )
 
-    e2e_out = output_dir / "23_end_to_end_smoke.json"
+    full_checkpoint_graph_sequencer_out = output_dir / "23_full_checkpoint_graph_sequencer.json"
+    full_checkpoint_graph_sequencer = emit_full_checkpoint_graph_sequencer(
+        full_checkpoint_graph_sequencer_out,
+        manifest,
+        full_checkpoint_rtl_lowering,
+        full_checkpoint_command_stream,
+        full_checkpoint_control_scheduler,
+    )
+    passes.append(
+        {
+            "pass": "e1_sequence_full_checkpoint_graph_slots",
+            "artifact": repo_rel(full_checkpoint_graph_sequencer_out),
+        }
+    )
+
+    e2e_out = output_dir / "24_end_to_end_smoke.json"
     target_manifest_path = "e1/e1-h1/generated/targets/manifest.json"
     generated_soc_top_exists = all(
         (REPO_ROOT / path).exists()
@@ -2914,6 +3355,10 @@ def run_pipeline(
             "name": "full_checkpoint_control_scheduler",
             "status": full_checkpoint_control_scheduler["status"],
         },
+        {
+            "name": "full_checkpoint_graph_sequencer",
+            "status": full_checkpoint_graph_sequencer["status"],
+        },
         {"name": "target_package", "status": "pass" if target_package_exists else "fail"},
     ]
     e2e = {
@@ -2968,6 +3413,9 @@ def run_pipeline(
         "full_checkpoint_control_scheduler": repo_rel(full_checkpoint_control_scheduler_out),
         "full_checkpoint_control_scheduler_status": full_checkpoint_control_scheduler["status"],
         "full_checkpoint_total_control_ops": full_checkpoint_control_scheduler["total_control_ops"],
+        "full_checkpoint_graph_sequencer": repo_rel(full_checkpoint_graph_sequencer_out),
+        "full_checkpoint_graph_sequencer_status": full_checkpoint_graph_sequencer["status"],
+        "full_checkpoint_total_graph_slots": full_checkpoint_graph_sequencer["total_graph_slots"],
         "systemverilog_plan": repo_rel(sv_out),
         "generated_soc_top": soc_top_artifacts,
         "target_package_plan": repo_rel(target_out),
@@ -3010,6 +3458,9 @@ def run_pipeline(
         "full_checkpoint_control_scheduler": repo_rel(full_checkpoint_control_scheduler_out),
         "full_checkpoint_control_scheduler_status": full_checkpoint_control_scheduler["status"],
         "full_checkpoint_total_control_ops": full_checkpoint_control_scheduler["total_control_ops"],
+        "full_checkpoint_graph_sequencer": repo_rel(full_checkpoint_graph_sequencer_out),
+        "full_checkpoint_graph_sequencer_status": full_checkpoint_graph_sequencer["status"],
+        "full_checkpoint_total_graph_slots": full_checkpoint_graph_sequencer["total_graph_slots"],
         "pipeline": architecture["pipeline"],
     }
     write_json(summary_out, summary)

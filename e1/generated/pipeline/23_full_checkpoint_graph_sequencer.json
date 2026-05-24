@@ -1,0 +1,205 @@
+{
+  "checks": [
+    {
+      "name": "slot_count_matches_full_checkpoint_plan",
+      "status": "pass"
+    },
+    {
+      "name": "linear_slots_match_command_stream",
+      "status": "pass"
+    },
+    {
+      "name": "control_slots_match_control_scheduler",
+      "status": "pass"
+    },
+    {
+      "name": "sequencer_generated",
+      "status": "pass"
+    },
+    {
+      "name": "phase_template_names_each_cycle",
+      "status": "pass"
+    }
+  ],
+  "control_slots_per_layer": 7,
+  "flist": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.f",
+  "full_checkpoint_graph_lowering": false,
+  "full_checkpoint_ordered_graph_rtl_lowering": true,
+  "full_checkpoint_rtl_execution": false,
+  "layers": 22,
+  "linear_slots_per_layer": 7,
+  "model_id": "tinyllama-1.1b-chat-v1.0",
+  "phase_template": [
+    {
+      "cycle": 0,
+      "module": "control_cpu",
+      "phase": "present ordered graph slot and allow backpressure"
+    },
+    {
+      "cycle": 1,
+      "module": "control_cpu",
+      "phase": "launch CPU/control or linear tile engine"
+    },
+    {
+      "cycle": 2,
+      "module": "control_cpu",
+      "phase": "wait for launched engine completion"
+    },
+    {
+      "cycle": 3,
+      "module": "control_cpu",
+      "phase": "commit graph slot and advance layer/slot counters"
+    }
+  ],
+  "scheduler_rtl": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.sv",
+  "schema": "e1-full-checkpoint-graph-sequencer-v0",
+  "slot_entries": [
+    {
+      "control_kind": 1,
+      "control_op_index": 0,
+      "ip": "control_cpu",
+      "kind": "rms_norm",
+      "linear_op_index": 0,
+      "name": "input_rms_norm",
+      "slot": 0,
+      "tile_count": 0
+    },
+    {
+      "control_kind": 0,
+      "control_op_index": 0,
+      "ip": "systolic_array",
+      "kind": "linear",
+      "linear_op_index": 0,
+      "name": "q_proj",
+      "slot": 1,
+      "tile_count": 16384
+    },
+    {
+      "control_kind": 0,
+      "control_op_index": 0,
+      "ip": "systolic_array",
+      "kind": "linear",
+      "linear_op_index": 1,
+      "name": "k_proj",
+      "slot": 2,
+      "tile_count": 2048
+    },
+    {
+      "control_kind": 0,
+      "control_op_index": 0,
+      "ip": "systolic_array",
+      "kind": "linear",
+      "linear_op_index": 2,
+      "name": "v_proj",
+      "slot": 3,
+      "tile_count": 2048
+    },
+    {
+      "control_kind": 2,
+      "control_op_index": 1,
+      "ip": "control_cpu",
+      "kind": "rope",
+      "linear_op_index": 0,
+      "name": "rope_qk",
+      "slot": 4,
+      "tile_count": 0
+    },
+    {
+      "control_kind": 3,
+      "control_op_index": 2,
+      "ip": "control_cpu",
+      "kind": "attention_control",
+      "linear_op_index": 0,
+      "name": "attention_scores_softmax",
+      "slot": 5,
+      "tile_count": 0
+    },
+    {
+      "control_kind": 0,
+      "control_op_index": 0,
+      "ip": "systolic_array",
+      "kind": "linear",
+      "linear_op_index": 3,
+      "name": "o_proj",
+      "slot": 6,
+      "tile_count": 16384
+    },
+    {
+      "control_kind": 4,
+      "control_op_index": 3,
+      "ip": "control_cpu",
+      "kind": "residual_add",
+      "linear_op_index": 0,
+      "name": "post_attention_residual",
+      "slot": 7,
+      "tile_count": 0
+    },
+    {
+      "control_kind": 1,
+      "control_op_index": 4,
+      "ip": "control_cpu",
+      "kind": "rms_norm",
+      "linear_op_index": 0,
+      "name": "post_attention_rms_norm",
+      "slot": 8,
+      "tile_count": 0
+    },
+    {
+      "control_kind": 0,
+      "control_op_index": 0,
+      "ip": "systolic_array",
+      "kind": "linear",
+      "linear_op_index": 4,
+      "name": "gate_proj",
+      "slot": 9,
+      "tile_count": 45056
+    },
+    {
+      "control_kind": 0,
+      "control_op_index": 0,
+      "ip": "systolic_array",
+      "kind": "linear",
+      "linear_op_index": 5,
+      "name": "up_proj",
+      "slot": 10,
+      "tile_count": 45056
+    },
+    {
+      "control_kind": 5,
+      "control_op_index": 5,
+      "ip": "control_cpu",
+      "kind": "activation_control",
+      "linear_op_index": 0,
+      "name": "silu_gate_multiply",
+      "slot": 11,
+      "tile_count": 0
+    },
+    {
+      "control_kind": 0,
+      "control_op_index": 0,
+      "ip": "systolic_array",
+      "kind": "linear",
+      "linear_op_index": 6,
+      "name": "down_proj",
+      "slot": 12,
+      "tile_count": 45056
+    },
+    {
+      "control_kind": 4,
+      "control_op_index": 6,
+      "ip": "control_cpu",
+      "kind": "residual_add",
+      "linear_op_index": 0,
+      "name": "post_mlp_residual",
+      "slot": 13,
+      "tile_count": 0
+    }
+  ],
+  "slots_per_layer": 14,
+  "status": "pass",
+  "total_control_slots": 154,
+  "total_graph_slots": 308,
+  "total_linear_slots": 154,
+  "truth_boundary": "ordered_layer_graph_slot_sequencer_rtl",
+  "verilator_tb": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer_tb.cpp"
+}

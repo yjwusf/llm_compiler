@@ -83,7 +83,8 @@ StableHLO fixture, not the full TinyLlama checkpoint. The pipeline emits:
 - `e1/generated/pipeline/20_full_checkpoint_rtl_cycle_lowering.json`
 - `e1/generated/pipeline/21_full_checkpoint_tile_engine.json`
 - `e1/generated/pipeline/22_full_checkpoint_control_scheduler.json`
-- `e1/generated/pipeline/23_end_to_end_smoke.json`
+- `e1/generated/pipeline/23_full_checkpoint_graph_sequencer.json`
+- `e1/generated/pipeline/24_end_to_end_smoke.json`
 
 The coverage artifact requires every StableHLO operation in
 `tinyllama_block.mlir` to bind to an accepted active `imp2` implementation and
@@ -144,6 +145,15 @@ attention softmax/control, attention residual, post-attention RMSNorm, SiLU
 gate multiply, and MLP residual for all 22 layers. This makes the planned
 non-linear control path visible in RTL, but the arithmetic kernels and full
 checkpoint output comparison are still future work.
+
+The full-checkpoint graph-sequencer artifact emits
+`e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.sv`, a
+matching flist, and a Verilator C++ harness. It preserves the ordered 14-slot
+layer template from the lowering plan and launches either CPU/control work or
+linear tile-engine work for each slot. The current generated sequencer covers
+308 ordered graph slots across 22 layers: 154 control launches and 154 linear
+launches. It is ordering RTL for the full layer inventory; the launched engines
+still need to be integrated into one complete end-to-end checkpoint RTL run.
 
 ## Full Checkpoint Execution
 

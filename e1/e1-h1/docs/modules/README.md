@@ -101,6 +101,9 @@ The generated artifacts are:
 - `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_scheduler.sv`
 - `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_scheduler.f`
 - `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_scheduler_tb.cpp`
+- `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.sv`
+- `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.f`
+- `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer_tb.cpp`
 
 The Verilator harness checks sampled RTL command payloads against
 `e1/code/program/e1_tinyllama_full_schedule.hpp`; the pipeline report records
@@ -129,3 +132,20 @@ The generated control sequence has seven graph slots per layer:
 `input_rms_norm`, `rope_qk`, `attention_scores_softmax`,
 `post_attention_residual`, `post_attention_rms_norm`, `silu_gate_multiply`, and
 `post_mlp_residual`.
+
+The graph sequencer wraps the ordered layer template with this four-cycle
+launch protocol:
+
+```text
+Graph cycle  control_cpu responsibility
+-----------  --------------------------
+0            present ordered layer graph slot and hold under backpressure
+1            launch either CPU/control scheduler or linear tile engine
+2            wait for launched engine completion
+3            commit graph slot and advance layer/slot counters
+```
+
+This sequencer preserves the review-visible TinyLlama order:
+RMSNorm, Q/K/V projections, RoPE, attention softmax/control, output
+projection, residual, post-attention RMSNorm, MLP gate/up projections, SiLU
+gate multiply, down projection, and MLP residual.
