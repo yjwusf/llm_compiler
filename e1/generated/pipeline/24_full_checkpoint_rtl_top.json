@@ -17,6 +17,10 @@
       "status": "pass"
     },
     {
+      "name": "full_command_count_matches_command_stream",
+      "status": "pass"
+    },
+    {
       "name": "phase_template_names_each_cycle",
       "status": "pass"
     }
@@ -26,6 +30,12 @@
   "full_checkpoint_graph_lowering": false,
   "full_checkpoint_ordered_graph_integrated_rtl": true,
   "full_checkpoint_rtl_execution": false,
+  "full_command_count_rtl_execution": true,
+  "full_command_count_rtl_execution_note": "Runs every planned linear tile command through generated RTL control/handshake paths; does not yet prove TinyLlama numeric output equivalence.",
+  "full_execution_cycle_limit": 45422400,
+  "full_expected_linear_commands": 3784704,
+  "full_top_verilator_parameter": "-GSmokeMaxTilesPerLinearSlot=0",
+  "full_verilator_tb": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top_full_tb.cpp",
   "graph_sequencer_rtl": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.sv",
   "latch_buffer_rtl": "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv",
   "layers": 22,

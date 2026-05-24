@@ -154,19 +154,23 @@ matching flist, and a Verilator C++ harness. It preserves the ordered 14-slot
 layer template from the lowering plan and launches either CPU/control work or
 linear tile-engine work for each slot. The current generated sequencer covers
 308 ordered graph slots across 22 layers: 154 control launches and 154 linear
-launches. It is ordering RTL for the full layer inventory; the launched engines
-still need to be integrated into one complete end-to-end checkpoint RTL run.
+launches. It is ordering RTL for the full layer inventory and is integrated by
+the generated top-level RTL.
 
 The full-checkpoint RTL-top artifact emits
 `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.sv`,
-slot-scoped linear and CPU/control engines, a matching flist, and a Verilator
-C++ harness. The top connects the graph sequencer to exactly one selected slot
-engine at a time. Linear slots run through `e1_h1_stream_sram` and
-`e1_h1_systolic_array` as separated modules; control slots run through a
-separate CPU/control slot engine without instantiating array RTL. The harness
-runs all 308 graph slots with a bounded two-tile smoke per linear slot, so it is
-integration RTL for the whole graph order, not yet the full 3,784,704-command
-checkpoint RTL execution or numeric output comparison.
+slot-scoped linear and CPU/control engines, a matching flist, a bounded
+Verilator C++ harness, and
+`e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top_full_tb.cpp`.
+The top connects the graph sequencer to exactly one selected slot engine at a
+time. Linear slots run through `e1_h1_stream_sram` and `e1_h1_systolic_array`
+as separated modules; control slots run through a separate CPU/control slot
+engine without instantiating array RTL. The bounded harness runs all 308 graph
+slots with a two-tile smoke per linear slot. The full-command harness compiles
+the same top with `SmokeMaxTilesPerLinearSlot=0` and runs all 3,784,704 planned
+linear tile commands through the RTL control/handshake path. This is
+full-command-count RTL execution evidence, not yet TinyLlama numeric output
+comparison.
 
 The full-checkpoint module-DPI generation artifact is produced by
 `e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp`. It emits

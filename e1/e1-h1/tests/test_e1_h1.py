@@ -1034,6 +1034,12 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(summary["full_checkpoint_rtl_top_status"], "pass")
         self.assertEqual(summary["full_checkpoint_rtl_top_smoke_max_tiles_per_linear_slot"], 2)
         self.assertEqual(
+            summary["full_checkpoint_rtl_top_full_verilator_tb"],
+            "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top_full_tb.cpp",
+        )
+        self.assertEqual(summary["full_checkpoint_rtl_top_full_expected_linear_commands"], 3784704)
+        self.assertTrue(summary["full_checkpoint_rtl_top_full_command_count_rtl_execution"])
+        self.assertEqual(
             summary["full_checkpoint_module_dpi_generation"],
             "e1/generated/pipeline/25_full_checkpoint_module_dpi_generation.json",
         )
@@ -1566,6 +1572,10 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(rtl_top["systolic_array_rtl"], "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv")
         self.assertEqual(rtl_top["flist"], "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.f")
         self.assertEqual(rtl_top["verilator_tb"], "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top_tb.cpp")
+        self.assertEqual(
+            rtl_top["full_verilator_tb"],
+            "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top_full_tb.cpp",
+        )
         self.assertEqual(rtl_top["layers"], 22)
         self.assertEqual(rtl_top["total_graph_slots"], 308)
         self.assertEqual(rtl_top["total_linear_slots"], 154)
@@ -1573,6 +1583,11 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(rtl_top["total_tile_commands_full"], 3784704)
         self.assertEqual(rtl_top["smoke_max_tiles_per_linear_slot"], 2)
         self.assertEqual(rtl_top["smoke_expected_linear_commands"], 308)
+        self.assertEqual(rtl_top["full_top_verilator_parameter"], "-GSmokeMaxTilesPerLinearSlot=0")
+        self.assertEqual(rtl_top["full_expected_linear_commands"], 3784704)
+        self.assertGreater(rtl_top["full_execution_cycle_limit"], rtl_top["total_tile_commands_full"])
+        self.assertTrue(rtl_top["full_command_count_rtl_execution"])
+        self.assertIn("does not yet prove TinyLlama numeric", rtl_top["full_command_count_rtl_execution_note"])
         self.assertEqual([entry["cycle"] for entry in rtl_top["phase_template"]], list(range(4)))
         self.assertEqual({check["status"] for check in rtl_top["checks"]}, {"pass"})
         for path in [
@@ -1583,6 +1598,7 @@ class E1H1Tests(unittest.TestCase):
             rtl_top["latch_buffer_rtl"],
             rtl_top["systolic_array_rtl"],
             rtl_top["verilator_tb"],
+            rtl_top["full_verilator_tb"],
             rtl_top["flist"],
         ]:
             self.assertTrue((REPO_ROOT / path).exists(), path)
@@ -1678,6 +1694,12 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(e2e["full_checkpoint_rtl_top_status"], "pass")
         self.assertEqual(e2e["full_checkpoint_rtl_top_smoke_max_tiles_per_linear_slot"], 2)
         self.assertEqual(
+            e2e["full_checkpoint_rtl_top_full_verilator_tb"],
+            "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top_full_tb.cpp",
+        )
+        self.assertEqual(e2e["full_checkpoint_rtl_top_full_expected_linear_commands"], 3784704)
+        self.assertTrue(e2e["full_checkpoint_rtl_top_full_command_count_rtl_execution"])
+        self.assertEqual(
             e2e["full_checkpoint_module_dpi_generation"],
             "e1/generated/pipeline/25_full_checkpoint_module_dpi_generation.json",
         )
@@ -1742,6 +1764,7 @@ class E1H1Tests(unittest.TestCase):
             e2e["full_checkpoint_control_scheduler"],
             e2e["full_checkpoint_graph_sequencer"],
             e2e["full_checkpoint_rtl_top"],
+            e2e["full_checkpoint_rtl_top_full_verilator_tb"],
             e2e["full_checkpoint_module_dpi_generation"],
             e2e["full_checkpoint_module_dpi_manifest"],
             e2e["full_checkpoint_module_interfaces_doc"],
@@ -1932,6 +1955,7 @@ class E1H1Tests(unittest.TestCase):
         full_top = FULL_CHECKPOINT_GENERATED / "e1_h1_tinyllama_full_checkpoint_top.sv"
         full_top_flist = FULL_CHECKPOINT_GENERATED / "e1_h1_tinyllama_full_checkpoint_top.f"
         full_top_tb = FULL_CHECKPOINT_GENERATED / "e1_h1_tinyllama_full_checkpoint_top_tb.cpp"
+        full_top_full_tb = FULL_CHECKPOINT_GENERATED / "e1_h1_tinyllama_full_checkpoint_top_full_tb.cpp"
         linear_slot_engine = FULL_CHECKPOINT_GENERATED / "e1_h1_tinyllama_linear_slot_engine.sv"
         control_slot_engine = FULL_CHECKPOINT_GENERATED / "e1_h1_tinyllama_control_slot_engine.sv"
         with tempfile.TemporaryDirectory() as tmp:
@@ -2092,11 +2116,50 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual(full_top_report["issued_graph_slots"], 308)
             self.assertTrue(full_top_report["saw_latched_hold"])
             self.assertTrue(full_top_report["saw_array_consume"])
+            full_top_full_obj_dir = Path(tmp) / "obj_full_checkpoint_top_full"
+            run([
+                verilator,
+                "--cc",
+                "--exe",
+                "--build",
+                "--sv",
+                "-Wall",
+                "-Wno-DECLFILENAME",
+                "-Wno-UNUSEDSIGNAL",
+                "-Wno-UNUSEDPARAM",
+                "-Wno-WIDTHEXPAND",
+                "--top-module",
+                "e1_h1_tinyllama_full_checkpoint_top",
+                "-GSmokeMaxTilesPerLinearSlot=0",
+                "-Mdir",
+                str(full_top_full_obj_dir),
+                "-CFLAGS",
+                "-std=c++17",
+                "-f",
+                str(full_top_flist.relative_to(REPO_ROOT)),
+                str(full_top_full_tb.relative_to(REPO_ROOT)),
+            ])
+            full_top_full_report = json.loads(run([str(full_top_full_obj_dir / "Ve1_h1_tinyllama_full_checkpoint_top")]).stdout)
+            self.assertEqual(full_top_full_report["schema"], "e1-full-checkpoint-rtl-top-full-command-v0")
+            self.assertEqual(full_top_full_report["status"], "pass")
+            self.assertEqual(full_top_full_report["layers"], 22)
+            self.assertEqual(full_top_full_report["total_graph_slots"], 308)
+            self.assertEqual(full_top_full_report["launch_linear"], 154)
+            self.assertEqual(full_top_full_report["launch_control"], 154)
+            self.assertEqual(full_top_full_report["smoke_max_tiles_per_linear_slot"], 0)
+            self.assertEqual(full_top_full_report["issued_linear_commands"], 3784704)
+            self.assertEqual(full_top_full_report["expected_linear_commands"], 3784704)
+            self.assertEqual(full_top_full_report["issued_control_ops"], 154)
+            self.assertEqual(full_top_full_report["issued_graph_slots"], 308)
+            self.assertLess(full_top_full_report["cycles"], full_top_full_report["cycle_limit"])
+            self.assertTrue(full_top_full_report["saw_latched_hold"])
+            self.assertTrue(full_top_full_report["saw_array_consume"])
         self.assertTrue(scheduler.exists())
         self.assertTrue(tile_engine.exists())
         self.assertTrue(control_scheduler.exists())
         self.assertTrue(graph_sequencer.exists())
         self.assertTrue(full_top.exists())
+        self.assertTrue(full_top_full_tb.exists())
         self.assertTrue(linear_slot_engine.exists())
         self.assertTrue(control_slot_engine.exists())
 

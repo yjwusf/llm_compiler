@@ -114,8 +114,10 @@ hardware and device code.
 24. `e1_integrate_full_checkpoint_rtl_top`
     - Input: graph sequencer report and full-checkpoint command stream.
     - Output: generated full-checkpoint RTL top, slot-scoped linear/control
-      engines, flist, and Verilator C++ harness. The bounded harness runs all
-      308 graph slots while limiting each linear slot to a short tile smoke.
+      engines, flist, bounded Verilator C++ harness, and full-command
+      Verilator C++ harness. The bounded harness runs all 308 graph slots while
+      limiting each linear slot to a short tile smoke; the full-command harness
+      runs the same top for all 3,784,704 planned linear tile commands.
 25. `e1_generate_full_checkpoint_module_dpi`
     - Input: generated full-checkpoint RTL modules.
     - Output: C++-generated module-DPI probes, flists, C++ mains, scoreboard,
@@ -161,8 +163,8 @@ E1 is complete when TinyLlama-derived reduced workloads can run through:
   the correct layer order.
 - Full-checkpoint RTL top that wires the ordered graph sequencer to
   slot-scoped CPU/control and linear engines, keeping the latch buffer and
-  systolic array as separated modules and passing a bounded full-graph
-  Verilator smoke.
+  systolic array as separated modules and passing both a bounded full-graph
+  Verilator smoke and a full-command-count Verilator run.
 - C++-generated module-DPI probes for the generated full-checkpoint RTL
   modules, including their flists, C++ mains, scoreboard, and per-module cycle
   notes.

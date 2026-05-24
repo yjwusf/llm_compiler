@@ -109,6 +109,7 @@ The generated artifacts are:
 - `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.sv`
 - `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.f`
 - `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top_tb.cpp`
+- `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top_full_tb.cpp`
 - `e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp`
 - `e1/e1-h1/generated/full_checkpoint_dpi/manifest.json`
 - `e1/e1-h1/generated/full_checkpoint_dpi/module_interfaces.md`
@@ -175,7 +176,11 @@ The linear slot engine instantiates the separated `ingress_sram` latch buffer
 and `systolic_array` modules. The control slot engine does not instantiate
 array RTL. The generated top-level Verilator harness runs all 308 graph slots
 and bounds each linear slot to a two-tile smoke so the full graph order is
-covered without claiming full checkpoint arithmetic execution.
+covered quickly. The generated full-command top harness compiles the same RTL
+with `SmokeMaxTilesPerLinearSlot=0` and runs all 3,784,704 planned linear tile
+commands through the graph sequencer, selected slot engine, latch buffer, and
+systolic-array handshake path. This is command-count RTL execution evidence;
+it still does not claim TinyLlama numeric output equivalence.
 
 The generated full-checkpoint module-DPI collateral applies the same
 module-only rule to generated RTL modules. The C++ generator emits one probe
