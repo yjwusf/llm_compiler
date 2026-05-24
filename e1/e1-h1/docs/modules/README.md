@@ -98,6 +98,9 @@ The generated artifacts are:
 - `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_tile_engine.sv`
 - `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_tile_engine.f`
 - `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_tile_engine_tb.cpp`
+- `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_scheduler.sv`
+- `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_scheduler.f`
+- `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_scheduler_tb.cpp`
 
 The Verilator harness checks sampled RTL command payloads against
 `e1/code/program/e1_tinyllama_full_schedule.hpp`; the pipeline report records
@@ -109,3 +112,20 @@ The tile-engine harness additionally wires the scheduler to the explicit
 scheduler command-valid phase remains separate from the array handshake phase,
 that the latch buffer holds data while the array is not ready, and that the
 array consumes latched input beats after command acceptance.
+
+The CPU/control scheduler covers the non-linear graph slots with this
+four-cycle template:
+
+```text
+Control cycle  control_cpu responsibility
+-------------  --------------------------
+0              issue graph-slot command and hold under backpressure
+1              read source/control metadata
+2              execute scalar or vector-control operation
+3              commit graph-slot result and advance layer/op counters
+```
+
+The generated control sequence has seven graph slots per layer:
+`input_rms_norm`, `rope_qk`, `attention_scores_softmax`,
+`post_attention_residual`, `post_attention_rms_norm`, `silu_gate_multiply`, and
+`post_mlp_residual`.

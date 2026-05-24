@@ -82,7 +82,8 @@ StableHLO fixture, not the full TinyLlama checkpoint. The pipeline emits:
 - `e1/generated/pipeline/19_full_checkpoint_command_stream.json`
 - `e1/generated/pipeline/20_full_checkpoint_rtl_cycle_lowering.json`
 - `e1/generated/pipeline/21_full_checkpoint_tile_engine.json`
-- `e1/generated/pipeline/22_end_to_end_smoke.json`
+- `e1/generated/pipeline/22_full_checkpoint_control_scheduler.json`
+- `e1/generated/pipeline/23_end_to_end_smoke.json`
 
 The coverage artifact requires every StableHLO operation in
 `tinyllama_block.mlir` to bind to an accepted active `imp2` implementation and
@@ -133,6 +134,16 @@ handshake cycle. Its harness checks real RTL command handshakes, latch-buffer
 hold behavior, array input consumption, and command payloads against the
 generated C++ schedule. It is still scoped to the full linear tile stream, not
 the complete TinyLlama graph.
+
+The full-checkpoint control-scheduler artifact emits
+`e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_scheduler.sv`, a
+matching flist, and a Verilator C++ harness. It lowers the seven CPU/control
+ops per TinyLlama layer into a four-cycle control template: issue, metadata
+read, execute, and commit. The covered graph slots are input RMSNorm, RoPE,
+attention softmax/control, attention residual, post-attention RMSNorm, SiLU
+gate multiply, and MLP residual for all 22 layers. This makes the planned
+non-linear control path visible in RTL, but the arithmetic kernels and full
+checkpoint output comparison are still future work.
 
 ## Full Checkpoint Execution
 

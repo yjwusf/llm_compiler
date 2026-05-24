@@ -857,17 +857,17 @@ class E1H1Tests(unittest.TestCase):
 
     def test_e1_pipeline_generates_e1_h1_artifacts(self) -> None:
         result = run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])
-        self.assertIn("PASS e1_pipeline 22 passes", result.stdout)
+        self.assertIn("PASS e1_pipeline 23 passes", result.stdout)
 
         summary = json.loads((E1_PIPELINE_OUT / "summary.json").read_text(encoding="utf-8"))
         self.assertEqual(summary["schema"], "e1-pipeline-summary-v0")
         self.assertEqual(summary["model_id"], "tinyllama-1.1b-chat-v1.0")
         self.assertEqual(summary["architecture_id"], "e1-h1")
-        self.assertEqual(summary["pass_count"], 22)
+        self.assertEqual(summary["pass_count"], 23)
         self.assertEqual(summary["operation_counts"]["dot_general"], 6)
         self.assertTrue(summary["all_current_modules_have_l1_5_harnesses"])
         self.assertEqual(summary["generated_top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
-        self.assertEqual(summary["end_to_end_smoke"], "e1/generated/pipeline/22_end_to_end_smoke.json")
+        self.assertEqual(summary["end_to_end_smoke"], "e1/generated/pipeline/23_end_to_end_smoke.json")
         self.assertEqual(summary["end_to_end_status"], "pass")
         self.assertEqual(summary["module_dpi_generation"], "e1/generated/pipeline/12_module_dpi_generation.json")
         self.assertEqual(summary["rtl_lowering"], "e1/generated/pipeline/15_rtl_lowering.json")
@@ -889,6 +889,12 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(summary["full_checkpoint_total_rtl_cycles"], 30277632)
         self.assertEqual(summary["full_checkpoint_tile_engine"], "e1/generated/pipeline/21_full_checkpoint_tile_engine.json")
         self.assertEqual(summary["full_checkpoint_tile_engine_status"], "pass")
+        self.assertEqual(
+            summary["full_checkpoint_control_scheduler"],
+            "e1/generated/pipeline/22_full_checkpoint_control_scheduler.json",
+        )
+        self.assertEqual(summary["full_checkpoint_control_scheduler_status"], "pass")
+        self.assertEqual(summary["full_checkpoint_total_control_ops"], 154)
         self.assertEqual(
             summary["full_tinyllama_checkpoint_execution"],
             "e1/generated/pipeline/17_full_tinyllama_checkpoint_execution.json",
@@ -924,6 +930,7 @@ class E1H1Tests(unittest.TestCase):
             "e1_emit_full_checkpoint_command_stream",
             "e1_lower_full_checkpoint_command_stream_to_rtl_cycles",
             "e1_wire_full_checkpoint_tile_engine",
+            "e1_lower_full_checkpoint_control_ops_to_rtl",
             "e1_end_to_end_smoke",
         ]
         self.assertEqual([entry["pass"] for entry in summary["passes"]], expected_passes)
@@ -1295,7 +1302,55 @@ class E1H1Tests(unittest.TestCase):
         self.assertIn("u_systolic_array", tile_engine_text)
         self.assertIn("assign array_cmd_valid_o = scheduler_cmd_valid_o && (cycle_phase_o == 3'd2);", tile_engine_text)
 
-        e2e = json.loads((E1_PIPELINE_OUT / "22_end_to_end_smoke.json").read_text(encoding="utf-8"))
+        control_scheduler = json.loads((E1_PIPELINE_OUT / "22_full_checkpoint_control_scheduler.json").read_text(encoding="utf-8"))
+        self.assertEqual(control_scheduler["schema"], "e1-full-checkpoint-control-scheduler-v0")
+        self.assertEqual(control_scheduler["status"], "pass")
+        self.assertEqual(control_scheduler["truth_boundary"], "cpu_control_op_scheduler_rtl")
+        self.assertTrue(control_scheduler["full_checkpoint_control_op_rtl_lowering"])
+        self.assertFalse(control_scheduler["full_checkpoint_graph_lowering"])
+        self.assertFalse(control_scheduler["full_checkpoint_rtl_execution"])
+        self.assertEqual(
+            control_scheduler["scheduler_rtl"],
+            "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_scheduler.sv",
+        )
+        self.assertEqual(
+            control_scheduler["verilator_tb"],
+            "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_scheduler_tb.cpp",
+        )
+        self.assertEqual(
+            control_scheduler["flist"],
+            "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_scheduler.f",
+        )
+        control_module_dpi = next(module for module in module_dpi_report["modules"] if module["name"] == "control_cpu")
+        self.assertEqual(control_scheduler["module_dpi_probe"], control_module_dpi["probe"])
+        self.assertEqual(control_scheduler["layers"], 22)
+        self.assertEqual(control_scheduler["control_ops_per_layer"], 7)
+        self.assertEqual(control_scheduler["total_control_ops"], 154)
+        self.assertEqual(control_scheduler["cycles_per_control_op"], 4)
+        self.assertEqual(control_scheduler["total_control_cycles"], 616)
+        self.assertEqual([entry["cycle"] for entry in control_scheduler["phase_template"]], list(range(4)))
+        self.assertEqual({entry["module"] for entry in control_scheduler["phase_template"]}, {"control_cpu"})
+        self.assertEqual({check["status"] for check in control_scheduler["checks"]}, {"pass"})
+        self.assertEqual(
+            [op["name"] for op in control_scheduler["control_ops"]],
+            [
+                "input_rms_norm",
+                "rope_qk",
+                "attention_scores_softmax",
+                "post_attention_residual",
+                "post_attention_rms_norm",
+                "silu_gate_multiply",
+                "post_mlp_residual",
+            ],
+        )
+        self.assertEqual(
+            [op["layer_op_slot"] for op in control_scheduler["control_ops"]],
+            [0, 4, 5, 7, 8, 11, 13],
+        )
+        for path in [control_scheduler["scheduler_rtl"], control_scheduler["verilator_tb"], control_scheduler["flist"]]:
+            self.assertTrue((REPO_ROOT / path).exists(), path)
+
+        e2e = json.loads((E1_PIPELINE_OUT / "23_end_to_end_smoke.json").read_text(encoding="utf-8"))
         self.assertEqual(e2e["schema"], "e1-end-to-end-smoke-v0")
         self.assertEqual(e2e["status"], "pass")
         self.assertEqual(e2e["model_id"], summary["model_id"])
@@ -1339,6 +1394,9 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(e2e["full_checkpoint_total_rtl_cycles"], 30277632)
         self.assertEqual(e2e["full_checkpoint_tile_engine"], "e1/generated/pipeline/21_full_checkpoint_tile_engine.json")
         self.assertEqual(e2e["full_checkpoint_tile_engine_status"], "pass")
+        self.assertEqual(e2e["full_checkpoint_control_scheduler"], "e1/generated/pipeline/22_full_checkpoint_control_scheduler.json")
+        self.assertEqual(e2e["full_checkpoint_control_scheduler_status"], "pass")
+        self.assertEqual(e2e["full_checkpoint_total_control_ops"], 154)
         self.assertEqual(e2e["target_package"], "e1/e1-h1/generated/targets/manifest.json")
         self.assertIn("full_tinyllama_checkpoint", {check["name"] for check in e2e["checks"]})
         self.assertEqual({check["status"] for check in e2e["checks"]}, {"pass"})
@@ -1359,6 +1417,7 @@ class E1H1Tests(unittest.TestCase):
                 "full_checkpoint_command_stream",
                 "full_checkpoint_rtl_cycle_lowering",
                 "full_checkpoint_tile_engine",
+                "full_checkpoint_control_scheduler",
                 "target_package",
             },
         )
@@ -1386,6 +1445,7 @@ class E1H1Tests(unittest.TestCase):
             e2e["full_checkpoint_command_stream"],
             e2e["full_checkpoint_rtl_cycle_lowering"],
             e2e["full_checkpoint_tile_engine"],
+            e2e["full_checkpoint_control_scheduler"],
             e2e["systemverilog_plan"],
             e2e["target_package_plan"],
             e2e["target_package"],
@@ -1564,6 +1624,9 @@ class E1H1Tests(unittest.TestCase):
         tile_engine = FULL_CHECKPOINT_GENERATED / "e1_h1_tinyllama_linear_tile_engine.sv"
         tile_engine_flist = FULL_CHECKPOINT_GENERATED / "e1_h1_tinyllama_linear_tile_engine.f"
         tile_engine_tb = FULL_CHECKPOINT_GENERATED / "e1_h1_tinyllama_linear_tile_engine_tb.cpp"
+        control_scheduler = FULL_CHECKPOINT_GENERATED / "e1_h1_tinyllama_control_scheduler.sv"
+        control_scheduler_flist = FULL_CHECKPOINT_GENERATED / "e1_h1_tinyllama_control_scheduler.f"
+        control_scheduler_tb = FULL_CHECKPOINT_GENERATED / "e1_h1_tinyllama_control_scheduler_tb.cpp"
         with tempfile.TemporaryDirectory() as tmp:
             obj_dir = Path(tmp) / "obj_dir"
             run([
@@ -1625,8 +1688,39 @@ class E1H1Tests(unittest.TestCase):
             self.assertTrue(tile_report["saw_latched_hold"])
             self.assertTrue(tile_report["saw_array_consume"])
             self.assertTrue(tile_report["saw_scheduler_valid_before_array_valid"])
+            control_obj_dir = Path(tmp) / "obj_control_scheduler"
+            run([
+                verilator,
+                "--cc",
+                "--exe",
+                "--build",
+                "--sv",
+                "-Wall",
+                "-Wno-DECLFILENAME",
+                "-Wno-UNUSEDSIGNAL",
+                "-Wno-UNUSEDPARAM",
+                "-Wno-WIDTHEXPAND",
+                "--top-module",
+                "e1_h1_tinyllama_control_scheduler",
+                "-Mdir",
+                str(control_obj_dir),
+                "-CFLAGS",
+                "-std=c++17",
+                "-f",
+                str(control_scheduler_flist.relative_to(REPO_ROOT)),
+                str(control_scheduler_tb.relative_to(REPO_ROOT)),
+            ])
+            control_report = json.loads(run([str(control_obj_dir / "Ve1_h1_tinyllama_control_scheduler")]).stdout)
+            self.assertEqual(control_report["schema"], "e1-full-checkpoint-control-scheduler-smoke-v0")
+            self.assertEqual(control_report["status"], "pass")
+            self.assertEqual(control_report["layers"], 22)
+            self.assertEqual(control_report["control_ops_per_layer"], 7)
+            self.assertEqual(control_report["total_control_ops"], 154)
+            self.assertEqual(control_report["issued_control_ops"], 154)
+            self.assertTrue(control_report["saw_backpressure_hold"])
         self.assertTrue(scheduler.exists())
         self.assertTrue(tile_engine.exists())
+        self.assertTrue(control_scheduler.exists())
 
     def test_cpp_chip_model_compiles_and_runs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

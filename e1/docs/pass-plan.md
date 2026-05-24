@@ -100,7 +100,13 @@ hardware and device code.
     - Output: a generated tile-engine RTL composition and Verilator C++
       harness that wires scheduler, latch buffer, and systolic array together
       while keeping their responsibilities separated.
-22. `e1_end_to_end_smoke`
+22. `e1_lower_full_checkpoint_control_ops_to_rtl`
+    - Input: shape-complete full-checkpoint layer plan and generated
+      module-DPI report.
+    - Output: generated CPU/control scheduler RTL, flist, and Verilator C++
+      harness for the 154 planned non-linear TinyLlama control ops across 22
+      layers.
+23. `e1_end_to_end_smoke`
     - Input: all prior pass artifacts.
     - Output: one evidence report tying StableHLO, E1-H1 binding, device code,
       C++ chip model, generated SystemVerilog top, and target packages together.
@@ -132,6 +138,9 @@ E1 is complete when TinyLlama-derived reduced workloads can run through:
 - Full-checkpoint tile-engine RTL that wires the generated scheduler to the
   explicit latch buffer and systolic array, with a Verilator harness proving
   command handshakes, latch holds, and array input consumption.
+- Full-checkpoint CPU/control scheduler RTL that enumerates RMSNorm, RoPE,
+  attention-control/softmax, residual, and SiLU gate-control graph slots for
+  every layer and passes a Verilator harness.
 - Implementation matrix showing active `imp2` candidates and `imp1` mock
   references.
 - Generated SystemVerilog mocks.

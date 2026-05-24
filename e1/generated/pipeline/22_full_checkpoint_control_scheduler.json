@@ -1,0 +1,99 @@
+{
+  "checks": [
+    {
+      "name": "control_cpu_module_dpi_present",
+      "status": "pass"
+    },
+    {
+      "name": "control_ops_match_full_checkpoint_plan",
+      "status": "pass"
+    },
+    {
+      "name": "all_control_ops_map_to_cpu",
+      "status": "pass"
+    },
+    {
+      "name": "control_scheduler_generated",
+      "status": "pass"
+    },
+    {
+      "name": "phase_template_names_each_cycle",
+      "status": "pass"
+    }
+  ],
+  "control_ops": [
+    {
+      "kind": "rms_norm",
+      "layer_op_slot": 0,
+      "name": "input_rms_norm"
+    },
+    {
+      "kind": "rope",
+      "layer_op_slot": 4,
+      "name": "rope_qk"
+    },
+    {
+      "kind": "attention_control",
+      "layer_op_slot": 5,
+      "name": "attention_scores_softmax"
+    },
+    {
+      "kind": "residual_add",
+      "layer_op_slot": 7,
+      "name": "post_attention_residual"
+    },
+    {
+      "kind": "rms_norm",
+      "layer_op_slot": 8,
+      "name": "post_attention_rms_norm"
+    },
+    {
+      "kind": "activation_control",
+      "layer_op_slot": 11,
+      "name": "silu_gate_multiply"
+    },
+    {
+      "kind": "residual_add",
+      "layer_op_slot": 13,
+      "name": "post_mlp_residual"
+    }
+  ],
+  "control_ops_per_layer": 7,
+  "cycles_per_control_op": 4,
+  "flist": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_scheduler.f",
+  "full_checkpoint_control_op_rtl_lowering": true,
+  "full_checkpoint_graph_lowering": false,
+  "full_checkpoint_rtl_execution": false,
+  "layers": 22,
+  "model_id": "tinyllama-1.1b-chat-v1.0",
+  "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+  "phase_template": [
+    {
+      "cycle": 0,
+      "module": "control_cpu",
+      "phase": "issue control op and allow backpressure"
+    },
+    {
+      "cycle": 1,
+      "module": "control_cpu",
+      "phase": "read source/control metadata"
+    },
+    {
+      "cycle": 2,
+      "module": "control_cpu",
+      "phase": "execute scalar or vector-control operation"
+    },
+    {
+      "cycle": 3,
+      "module": "control_cpu",
+      "phase": "commit control op and advance graph slot"
+    }
+  ],
+  "scheduler_rtl": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_scheduler.sv",
+  "schema": "e1-full-checkpoint-control-scheduler-v0",
+  "status": "pass",
+  "total_control_cycles": 616,
+  "total_control_ops": 154,
+  "truth_boundary": "cpu_control_op_scheduler_rtl",
+  "verilator_tb": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_scheduler_tb.cpp"
+}

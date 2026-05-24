@@ -2067,6 +2067,352 @@ int main(int argc, char** argv) {
     return report
 
 
+def emit_full_checkpoint_control_scheduler(
+    output_path: Path,
+    manifest: dict[str, Any],
+    full_checkpoint_rtl_lowering: dict[str, Any],
+    module_dpi_report: dict[str, Any],
+) -> dict[str, Any]:
+    first_layer_ops = full_checkpoint_rtl_lowering["layers"][0]["ops"]
+    control_ops = [
+        {
+            "name": op["name"],
+            "kind": op["kind"],
+            "layer_op_slot": slot,
+        }
+        for slot, op in enumerate(first_layer_ops)
+        if op["kind"] != "linear"
+    ]
+    layers = int(full_checkpoint_rtl_lowering["aggregate"]["layers"])
+    control_ops_per_layer = len(control_ops)
+    total_control_ops = layers * control_ops_per_layer
+    cycles_per_control_op = 4
+    total_control_cycles = total_control_ops * cycles_per_control_op
+    kind_ids = {
+        "rms_norm": 1,
+        "rope": 2,
+        "attention_control": 3,
+        "residual_add": 4,
+        "activation_control": 5,
+    }
+
+    generated_dir = REPO_ROOT / "e1/e1-h1/generated/full_checkpoint"
+    scheduler_path = generated_dir / "e1_h1_tinyllama_control_scheduler.sv"
+    tb_path = generated_dir / "e1_h1_tinyllama_control_scheduler_tb.cpp"
+    flist_path = generated_dir / "e1_h1_tinyllama_control_scheduler.f"
+
+    kind_cases = "\n".join(
+        f"      3'd{index}: control_kind_for = 4'd{kind_ids[op['kind']]};"
+        for index, op in enumerate(control_ops)
+    )
+    slot_cases = "\n".join(
+        f"      3'd{index}: layer_slot_for = 4'd{op['layer_op_slot']};"
+        for index, op in enumerate(control_ops)
+    )
+    expected_kind_array = ", ".join(str(kind_ids[op["kind"]]) for op in control_ops)
+    expected_slot_array = ", ".join(str(op["layer_op_slot"]) for op in control_ops)
+
+    write_text(
+        scheduler_path,
+        f"""`default_nettype none
+
+module e1_h1_tinyllama_control_scheduler (
+  input  logic        clk_i,
+  input  logic        rst_ni,
+  input  logic        start_i,
+  output logic        busy_o,
+  output logic        done_o,
+  output logic        control_valid_o,
+  input  logic        control_ready_i,
+  output logic        control_commit_o,
+  output logic [31:0] layer_o,
+  output logic [2:0]  control_op_index_o,
+  output logic [3:0]  layer_op_slot_o,
+  output logic [3:0]  control_kind_o,
+  output logic [31:0] issued_control_ops_o,
+  output logic [1:0]  cycle_phase_o
+);
+
+  localparam int unsigned LayerCount = {layers};
+  localparam int unsigned ControlOpsPerLayer = {control_ops_per_layer};
+  localparam logic [31:0] TotalControlOps = 32'd{total_control_ops};
+
+  typedef enum logic [1:0] {{
+    StateIdle,
+    StateRun,
+    StateDone
+  }} state_e;
+
+  state_e state_q;
+  logic [31:0] layer_q;
+  logic [2:0]  control_op_index_q;
+  logic [31:0] issued_control_ops_q;
+  logic [1:0]  phase_q;
+
+  function automatic logic [3:0] control_kind_for(input logic [2:0] control_op_index);
+    unique case (control_op_index)
+{kind_cases}
+      default: control_kind_for = 4'd0;
+    endcase
+  endfunction
+
+  function automatic logic [3:0] layer_slot_for(input logic [2:0] control_op_index);
+    unique case (control_op_index)
+{slot_cases}
+      default: layer_slot_for = 4'd0;
+    endcase
+  endfunction
+
+  function automatic logic is_last_control(
+      input logic [31:0] layer,
+      input logic [2:0] control_op_index);
+    is_last_control = layer == (LayerCount - 1) && control_op_index == 3'd{control_ops_per_layer - 1};
+  endfunction
+
+  assign busy_o = state_q == StateRun;
+  assign done_o = state_q == StateDone;
+  assign control_valid_o = state_q == StateRun && phase_q == 2'd0;
+  assign control_commit_o = state_q == StateRun && phase_q == 2'd3;
+  assign layer_o = layer_q;
+  assign control_op_index_o = control_op_index_q;
+  assign layer_op_slot_o = layer_slot_for(control_op_index_q);
+  assign control_kind_o = control_kind_for(control_op_index_q);
+  assign issued_control_ops_o = issued_control_ops_q;
+  assign cycle_phase_o = phase_q;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      state_q <= StateIdle;
+      layer_q <= 32'd0;
+      control_op_index_q <= 3'd0;
+      issued_control_ops_q <= 32'd0;
+      phase_q <= 2'd0;
+    end else begin
+      unique case (state_q)
+        StateIdle: begin
+          if (start_i) begin
+            state_q <= StateRun;
+            layer_q <= 32'd0;
+            control_op_index_q <= 3'd0;
+            issued_control_ops_q <= 32'd0;
+            phase_q <= 2'd0;
+          end
+        end
+        StateRun: begin
+          if (phase_q == 2'd0 && !control_ready_i) begin
+            phase_q <= 2'd0;
+          end else if (phase_q == 2'd3) begin
+            issued_control_ops_q <= issued_control_ops_q + 32'd1;
+            if (is_last_control(layer_q, control_op_index_q)) begin
+              state_q <= StateDone;
+            end else begin
+              phase_q <= 2'd0;
+              if (control_op_index_q + 3'd1 < ControlOpsPerLayer) begin
+                control_op_index_q <= control_op_index_q + 3'd1;
+              end else begin
+                control_op_index_q <= 3'd0;
+                layer_q <= layer_q + 32'd1;
+              end
+            end
+          end else begin
+            phase_q <= phase_q + 2'd1;
+          end
+        end
+        StateDone: begin
+          if (!start_i) begin
+            state_q <= StateIdle;
+          end
+        end
+        default: begin
+          state_q <= StateIdle;
+        end
+      endcase
+    end
+  end
+
+  logic unused_total_control_ops;
+  assign unused_total_control_ops = TotalControlOps[0];
+
+endmodule
+
+`default_nettype wire
+""",
+    )
+
+    write_text(
+        tb_path,
+        f"""// Generated by e1/tools/run_e1_pipeline.py.
+
+#include "Ve1_h1_tinyllama_control_scheduler.h"
+#include "verilated.h"
+
+#include <cstdint>
+#include <iostream>
+
+namespace {{
+
+constexpr std::uint32_t kLayerCount = {layers};
+constexpr std::uint32_t kControlOpsPerLayer = {control_ops_per_layer};
+constexpr std::uint32_t kTotalControlOps = {total_control_ops};
+constexpr std::uint8_t kExpectedKinds[kControlOpsPerLayer] = {{{expected_kind_array}}};
+constexpr std::uint8_t kExpectedSlots[kControlOpsPerLayer] = {{{expected_slot_array}}};
+
+void tick(VerilatedContext& context, Ve1_h1_tinyllama_control_scheduler& top) {{
+  top.clk_i = 0;
+  top.eval();
+  context.timeInc(1);
+  top.clk_i = 1;
+  top.eval();
+  context.timeInc(1);
+  top.clk_i = 0;
+  top.eval();
+}}
+
+}}  // namespace
+
+int main(int argc, char** argv) {{
+  VerilatedContext context;
+  context.commandArgs(argc, argv);
+  Ve1_h1_tinyllama_control_scheduler top{{&context}};
+
+  bool pass = true;
+  auto fail = [&](const char* message) {{
+    std::cerr << "E1_FULL_CONTROL_SCHEDULER_FAIL " << message << "\\n";
+    pass = false;
+  }};
+  auto expect_control = [&](std::uint32_t layer, std::uint32_t control_op_index) {{
+    top.eval();
+    if (top.layer_o != layer ||
+        top.control_op_index_o != control_op_index ||
+        top.control_kind_o != kExpectedKinds[control_op_index] ||
+        top.layer_op_slot_o != kExpectedSlots[control_op_index]) {{
+      fail("control op payload mismatch");
+    }}
+  }};
+
+  top.clk_i = 0;
+  top.rst_ni = 0;
+  top.start_i = 0;
+  top.control_ready_i = 0;
+  tick(context, top);
+  tick(context, top);
+  top.rst_ni = 1;
+  top.start_i = 1;
+  tick(context, top);
+
+  top.control_ready_i = 0;
+  top.eval();
+  if (!top.control_valid_o || top.cycle_phase_o != 0) {{
+    fail("control scheduler did not hold valid on initial issue");
+  }}
+  tick(context, top);
+  top.eval();
+  const bool saw_backpressure_hold = top.control_valid_o && top.cycle_phase_o == 0;
+  top.control_ready_i = 1;
+
+  std::uint32_t commits = 0;
+  for (std::uint32_t cycle = 0; cycle < 4096 && commits < kTotalControlOps; ++cycle) {{
+    top.eval();
+    const std::uint32_t layer = commits / kControlOpsPerLayer;
+    const std::uint32_t control_op_index = commits % kControlOpsPerLayer;
+    if (top.control_valid_o) {{
+      expect_control(layer, control_op_index);
+    }}
+    if (top.control_commit_o) {{
+      expect_control(layer, control_op_index);
+      ++commits;
+    }}
+    tick(context, top);
+  }}
+
+  top.eval();
+  if (commits != kTotalControlOps) {{
+    fail("missing control commits");
+  }}
+  if (top.issued_control_ops_o != kTotalControlOps) {{
+    fail("issued control counter mismatch");
+  }}
+  if (!top.done_o) {{
+    fail("control scheduler did not finish");
+  }}
+  if (!saw_backpressure_hold) {{
+    fail("control scheduler did not hold phase 0 under backpressure");
+  }}
+
+  std::cout
+      << "{{\\n"
+      << "  \\"schema\\": \\"e1-full-checkpoint-control-scheduler-smoke-v0\\",\\n"
+      << "  \\"status\\": \\"" << (pass ? "pass" : "fail") << "\\",\\n"
+      << "  \\"layers\\": " << kLayerCount << ",\\n"
+      << "  \\"control_ops_per_layer\\": " << kControlOpsPerLayer << ",\\n"
+      << "  \\"total_control_ops\\": " << kTotalControlOps << ",\\n"
+      << "  \\"issued_control_ops\\": " << top.issued_control_ops_o << ",\\n"
+      << "  \\"saw_backpressure_hold\\": " << (saw_backpressure_hold ? "true" : "false") << "\\n"
+      << "}}\\n";
+
+  return pass ? 0 : 1;
+}}
+""",
+    )
+
+    write_text(flist_path, f"{repo_rel(scheduler_path)}\n")
+
+    module_dpi_by_name = {module["name"]: module for module in module_dpi_report["modules"]}
+    phase_template = [
+        {"cycle": 0, "module": "control_cpu", "phase": "issue control op and allow backpressure"},
+        {"cycle": 1, "module": "control_cpu", "phase": "read source/control metadata"},
+        {"cycle": 2, "module": "control_cpu", "phase": "execute scalar or vector-control operation"},
+        {"cycle": 3, "module": "control_cpu", "phase": "commit control op and advance graph slot"},
+    ]
+    checks = [
+        {
+            "name": "control_cpu_module_dpi_present",
+            "status": "pass" if "control_cpu" in module_dpi_by_name else "fail",
+        },
+        {
+            "name": "control_ops_match_full_checkpoint_plan",
+            "status": "pass"
+            if total_control_ops == int(full_checkpoint_rtl_lowering["aggregate"]["total_control_ops"])
+            else "fail",
+        },
+        {
+            "name": "all_control_ops_map_to_cpu",
+            "status": "pass" if all(op["kind"] in kind_ids for op in control_ops) else "fail",
+        },
+        {
+            "name": "control_scheduler_generated",
+            "status": "pass" if scheduler_path.exists() and tb_path.exists() and flist_path.exists() else "fail",
+        },
+        {
+            "name": "phase_template_names_each_cycle",
+            "status": "pass" if [entry["cycle"] for entry in phase_template] == list(range(cycles_per_control_op)) else "fail",
+        },
+    ]
+    report = {
+        "schema": "e1-full-checkpoint-control-scheduler-v0",
+        "status": "pass" if all(check["status"] == "pass" for check in checks) else "fail",
+        "model_id": manifest["model_id"],
+        "truth_boundary": "cpu_control_op_scheduler_rtl",
+        "full_checkpoint_control_op_rtl_lowering": True,
+        "full_checkpoint_graph_lowering": False,
+        "full_checkpoint_rtl_execution": False,
+        "scheduler_rtl": repo_rel(scheduler_path),
+        "verilator_tb": repo_rel(tb_path),
+        "flist": repo_rel(flist_path),
+        "module_dpi_probe": module_dpi_by_name["control_cpu"]["probe"] if "control_cpu" in module_dpi_by_name else None,
+        "layers": layers,
+        "control_ops_per_layer": control_ops_per_layer,
+        "total_control_ops": total_control_ops,
+        "cycles_per_control_op": cycles_per_control_op,
+        "total_control_cycles": total_control_cycles,
+        "control_ops": control_ops,
+        "phase_template": phase_template,
+        "checks": checks,
+    }
+    write_json(output_path, report)
+    return report
+
+
 def emit_tinyllama_imp2_coverage(
     output_path: Path,
     manifest: dict[str, Any],
@@ -2476,7 +2822,21 @@ def run_pipeline(
         }
     )
 
-    e2e_out = output_dir / "22_end_to_end_smoke.json"
+    full_checkpoint_control_scheduler_out = output_dir / "22_full_checkpoint_control_scheduler.json"
+    full_checkpoint_control_scheduler = emit_full_checkpoint_control_scheduler(
+        full_checkpoint_control_scheduler_out,
+        manifest,
+        full_checkpoint_rtl_lowering,
+        module_dpi_report,
+    )
+    passes.append(
+        {
+            "pass": "e1_lower_full_checkpoint_control_ops_to_rtl",
+            "artifact": repo_rel(full_checkpoint_control_scheduler_out),
+        }
+    )
+
+    e2e_out = output_dir / "23_end_to_end_smoke.json"
     target_manifest_path = "e1/e1-h1/generated/targets/manifest.json"
     generated_soc_top_exists = all(
         (REPO_ROOT / path).exists()
@@ -2550,6 +2910,10 @@ def run_pipeline(
             "name": "full_checkpoint_tile_engine",
             "status": full_checkpoint_tile_engine["status"],
         },
+        {
+            "name": "full_checkpoint_control_scheduler",
+            "status": full_checkpoint_control_scheduler["status"],
+        },
         {"name": "target_package", "status": "pass" if target_package_exists else "fail"},
     ]
     e2e = {
@@ -2601,6 +2965,9 @@ def run_pipeline(
         "full_checkpoint_total_rtl_cycles": full_checkpoint_rtl_cycle["total_rtl_cycles"],
         "full_checkpoint_tile_engine": repo_rel(full_checkpoint_tile_engine_out),
         "full_checkpoint_tile_engine_status": full_checkpoint_tile_engine["status"],
+        "full_checkpoint_control_scheduler": repo_rel(full_checkpoint_control_scheduler_out),
+        "full_checkpoint_control_scheduler_status": full_checkpoint_control_scheduler["status"],
+        "full_checkpoint_total_control_ops": full_checkpoint_control_scheduler["total_control_ops"],
         "systemverilog_plan": repo_rel(sv_out),
         "generated_soc_top": soc_top_artifacts,
         "target_package_plan": repo_rel(target_out),
@@ -2640,6 +3007,9 @@ def run_pipeline(
         "full_checkpoint_total_rtl_cycles": full_checkpoint_rtl_cycle["total_rtl_cycles"],
         "full_checkpoint_tile_engine": repo_rel(full_checkpoint_tile_engine_out),
         "full_checkpoint_tile_engine_status": full_checkpoint_tile_engine["status"],
+        "full_checkpoint_control_scheduler": repo_rel(full_checkpoint_control_scheduler_out),
+        "full_checkpoint_control_scheduler_status": full_checkpoint_control_scheduler["status"],
+        "full_checkpoint_total_control_ops": full_checkpoint_control_scheduler["total_control_ops"],
         "pipeline": architecture["pipeline"],
     }
     write_json(summary_out, summary)
