@@ -218,12 +218,23 @@ def run_plan(
                 for marker in module["verilator"]["expected_stdout_markers"]
                 if marker in run_stdout
             ]
+            expected_phase_markers = [
+                marker
+                for marker in module["verilator"]["expected_stdout_markers"]
+                if marker.startswith("phase=")
+            ]
+            observed_phase_markers = [
+                marker
+                for marker in expected_phase_markers
+                if marker in run_stdout
+            ]
             module_status = (
                 "pass"
                 if build.returncode == 0
                 and run_result is not None
                 and run_result.returncode == 0
                 and observed_markers == module["verilator"]["expected_stdout_markers"]
+                and observed_phase_markers == expected_phase_markers
                 else "fail"
             )
             modules.append(
@@ -242,6 +253,8 @@ def run_plan(
                     "run_returncode": run_result.returncode if run_result is not None else None,
                     "expected_stdout_markers": module["verilator"]["expected_stdout_markers"],
                     "observed_stdout_markers": observed_markers,
+                    "expected_phase_markers": expected_phase_markers,
+                    "observed_phase_markers": observed_phase_markers,
                     "build_stdout_tail": [] if build.returncode == 0 else tail_lines(build.stdout),
                     "run_stdout_tail": []
                     if run_result is not None and run_result.returncode == 0
@@ -269,6 +282,16 @@ def run_plan(
                 "status": "pass"
                 if all(
                     module["observed_stdout_markers"] == module["expected_stdout_markers"]
+                    for module in modules
+                )
+                else "fail",
+            },
+            {
+                "name": "all_expected_phase_markers_observed",
+                "status": "pass"
+                if all(
+                    module["observed_phase_markers"] == module["expected_phase_markers"]
+                    and len(module["expected_phase_markers"]) > 0
                     for module in modules
                 )
                 else "fail",

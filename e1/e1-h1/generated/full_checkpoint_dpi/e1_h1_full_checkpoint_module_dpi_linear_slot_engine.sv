@@ -96,6 +96,20 @@ module e1_h1_full_checkpoint_module_dpi_linear_slot_engine;
     .array_debug_busy_o(array_debug_busy_o)
   );
 
+  function automatic string phase_name(input int cycle);
+    case (cycle % 8)
+      0: return "latch_selected_linear_slot";
+      1: return "slot_command_valid";
+      2: return "array_command_handshake";
+      3: return "latch_to_array_beat_0";
+      4: return "latch_to_array_beat_1";
+      5: return "latch_to_array_beat_2";
+      6: return "array_done_pulse";
+      7: return "slot_done_or_next_tile";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     e1_h1_full_dpi_begin("linear_slot_engine", "bounded_two_tile_linear_slot");
     clk_i = 1'b0;
@@ -112,7 +126,7 @@ module e1_h1_full_checkpoint_module_dpi_linear_slot_engine;
     rst_ni = 1'b1;
     start_i = 1'b1;
     for (int cycle = 0; cycle < 128 && !done_o; cycle++) begin
-      e1_h1_full_dpi_cycle("linear_slot_engine", cycle, "slot_local_scheduler_latch_array");
+      e1_h1_full_dpi_cycle("linear_slot_engine", cycle, phase_name(cycle));
       stream_valid_i = 1'b1;
       stream_data_i = 64'h4000 + cycle[15:0];
       tick();

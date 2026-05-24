@@ -192,6 +192,10 @@
             "status": "pass"
           },
           {
+            "name": "dpi_probe_reports_named_phases",
+            "status": "pass"
+          },
+          {
             "name": "readme_cycle_diagram_declared",
             "status": "pass"
           }
@@ -501,7 +505,15 @@
           "dut_module": "e1_h1_tinyllama_linear_scheduler",
           "expected_stdout_markers": [
             "module=linear_scheduler",
-            "E1_H1_FULL_MODULE_DPI_CYCLE"
+            "E1_H1_FULL_MODULE_DPI_CYCLE",
+            "phase=setup_tile_command",
+            "phase=assert_scheduler_valid",
+            "phase=accept_command_handshake",
+            "phase=wait_for_array_progress_0",
+            "phase=wait_for_array_progress_1",
+            "phase=wait_for_array_progress_2",
+            "phase=sample_array_done",
+            "phase=advance_tile_counters"
           ],
           "fixed_args": [
             "--cc",
@@ -549,16 +561,52 @@
         "build_returncode": 0,
         "build_stdout_tail": [],
         "dut_module": "e1_h1_tinyllama_linear_scheduler",
+        "expected_phase_markers": [
+          "phase=setup_tile_command",
+          "phase=assert_scheduler_valid",
+          "phase=accept_command_handshake",
+          "phase=wait_for_array_progress_0",
+          "phase=wait_for_array_progress_1",
+          "phase=wait_for_array_progress_2",
+          "phase=sample_array_done",
+          "phase=advance_tile_counters"
+        ],
         "expected_stdout_markers": [
           "module=linear_scheduler",
-          "E1_H1_FULL_MODULE_DPI_CYCLE"
+          "E1_H1_FULL_MODULE_DPI_CYCLE",
+          "phase=setup_tile_command",
+          "phase=assert_scheduler_valid",
+          "phase=accept_command_handshake",
+          "phase=wait_for_array_progress_0",
+          "phase=wait_for_array_progress_1",
+          "phase=wait_for_array_progress_2",
+          "phase=sample_array_done",
+          "phase=advance_tile_counters"
         ],
         "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_scheduler.f",
         "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_scheduler_main.cpp",
         "name": "linear_scheduler",
+        "observed_phase_markers": [
+          "phase=setup_tile_command",
+          "phase=assert_scheduler_valid",
+          "phase=accept_command_handshake",
+          "phase=wait_for_array_progress_0",
+          "phase=wait_for_array_progress_1",
+          "phase=wait_for_array_progress_2",
+          "phase=sample_array_done",
+          "phase=advance_tile_counters"
+        ],
         "observed_stdout_markers": [
           "module=linear_scheduler",
-          "E1_H1_FULL_MODULE_DPI_CYCLE"
+          "E1_H1_FULL_MODULE_DPI_CYCLE",
+          "phase=setup_tile_command",
+          "phase=assert_scheduler_valid",
+          "phase=accept_command_handshake",
+          "phase=wait_for_array_progress_0",
+          "phase=wait_for_array_progress_1",
+          "phase=wait_for_array_progress_2",
+          "phase=sample_array_done",
+          "phase=advance_tile_counters"
         ],
         "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_linear_scheduler/Ve1_h1_full_checkpoint_module_dpi_linear_scheduler",
         "run_returncode": 0,
@@ -593,7 +641,15 @@
         "dut_module": "e1_h1_tinyllama_linear_scheduler",
         "expected_stdout_markers": [
           "module=linear_scheduler",
-          "E1_H1_FULL_MODULE_DPI_CYCLE"
+          "E1_H1_FULL_MODULE_DPI_CYCLE",
+          "phase=setup_tile_command",
+          "phase=assert_scheduler_valid",
+          "phase=accept_command_handshake",
+          "phase=wait_for_array_progress_0",
+          "phase=wait_for_array_progress_1",
+          "phase=wait_for_array_progress_2",
+          "phase=sample_array_done",
+          "phase=advance_tile_counters"
         ],
         "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_scheduler.f",
         "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_scheduler_main.cpp",
@@ -693,6 +749,10 @@
           },
           {
             "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_named_phases",
             "status": "pass"
           },
           {
@@ -1057,7 +1117,15 @@
           "dut_module": "e1_h1_tinyllama_linear_tile_engine",
           "expected_stdout_markers": [
             "module=linear_tile_engine",
-            "E1_H1_FULL_MODULE_DPI_CYCLE"
+            "E1_H1_FULL_MODULE_DPI_CYCLE",
+            "phase=setup_tile_engine",
+            "phase=scheduler_valid_visible",
+            "phase=array_command_handshake",
+            "phase=latch_to_array_beat_0",
+            "phase=latch_to_array_beat_1",
+            "phase=latch_to_array_beat_2",
+            "phase=array_done_pulse",
+            "phase=return_ready"
           ],
           "fixed_args": [
             "--cc",
@@ -1105,16 +1173,52 @@
         "build_returncode": 0,
         "build_stdout_tail": [],
         "dut_module": "e1_h1_tinyllama_linear_tile_engine",
+        "expected_phase_markers": [
+          "phase=setup_tile_engine",
+          "phase=scheduler_valid_visible",
+          "phase=array_command_handshake",
+          "phase=latch_to_array_beat_0",
+          "phase=latch_to_array_beat_1",
+          "phase=latch_to_array_beat_2",
+          "phase=array_done_pulse",
+          "phase=return_ready"
+        ],
         "expected_stdout_markers": [
           "module=linear_tile_engine",
-          "E1_H1_FULL_MODULE_DPI_CYCLE"
+          "E1_H1_FULL_MODULE_DPI_CYCLE",
+          "phase=setup_tile_engine",
+          "phase=scheduler_valid_visible",
+          "phase=array_command_handshake",
+          "phase=latch_to_array_beat_0",
+          "phase=latch_to_array_beat_1",
+          "phase=latch_to_array_beat_2",
+          "phase=array_done_pulse",
+          "phase=return_ready"
         ],
         "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_tile_engine.f",
         "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine_main.cpp",
         "name": "linear_tile_engine",
+        "observed_phase_markers": [
+          "phase=setup_tile_engine",
+          "phase=scheduler_valid_visible",
+          "phase=array_command_handshake",
+          "phase=latch_to_array_beat_0",
+          "phase=latch_to_array_beat_1",
+          "phase=latch_to_array_beat_2",
+          "phase=array_done_pulse",
+          "phase=return_ready"
+        ],
         "observed_stdout_markers": [
           "module=linear_tile_engine",
-          "E1_H1_FULL_MODULE_DPI_CYCLE"
+          "E1_H1_FULL_MODULE_DPI_CYCLE",
+          "phase=setup_tile_engine",
+          "phase=scheduler_valid_visible",
+          "phase=array_command_handshake",
+          "phase=latch_to_array_beat_0",
+          "phase=latch_to_array_beat_1",
+          "phase=latch_to_array_beat_2",
+          "phase=array_done_pulse",
+          "phase=return_ready"
         ],
         "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_linear_tile_engine/Ve1_h1_full_checkpoint_module_dpi_linear_tile_engine",
         "run_returncode": 0,
@@ -1149,7 +1253,15 @@
         "dut_module": "e1_h1_tinyllama_linear_tile_engine",
         "expected_stdout_markers": [
           "module=linear_tile_engine",
-          "E1_H1_FULL_MODULE_DPI_CYCLE"
+          "E1_H1_FULL_MODULE_DPI_CYCLE",
+          "phase=setup_tile_engine",
+          "phase=scheduler_valid_visible",
+          "phase=array_command_handshake",
+          "phase=latch_to_array_beat_0",
+          "phase=latch_to_array_beat_1",
+          "phase=latch_to_array_beat_2",
+          "phase=array_done_pulse",
+          "phase=return_ready"
         ],
         "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_tile_engine.f",
         "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine_main.cpp",
@@ -1238,6 +1350,10 @@
           },
           {
             "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_named_phases",
             "status": "pass"
           },
           {
@@ -1478,7 +1594,11 @@
           "dut_module": "e1_h1_tinyllama_control_scheduler",
           "expected_stdout_markers": [
             "module=control_scheduler",
-            "E1_H1_FULL_MODULE_DPI_CYCLE"
+            "E1_H1_FULL_MODULE_DPI_CYCLE",
+            "phase=issue_control_op",
+            "phase=read_control_metadata",
+            "phase=execute_control_op",
+            "phase=commit_control_op"
           ],
           "fixed_args": [
             "--cc",
@@ -1526,16 +1646,36 @@
         "build_returncode": 0,
         "build_stdout_tail": [],
         "dut_module": "e1_h1_tinyllama_control_scheduler",
+        "expected_phase_markers": [
+          "phase=issue_control_op",
+          "phase=read_control_metadata",
+          "phase=execute_control_op",
+          "phase=commit_control_op"
+        ],
         "expected_stdout_markers": [
           "module=control_scheduler",
-          "E1_H1_FULL_MODULE_DPI_CYCLE"
+          "E1_H1_FULL_MODULE_DPI_CYCLE",
+          "phase=issue_control_op",
+          "phase=read_control_metadata",
+          "phase=execute_control_op",
+          "phase=commit_control_op"
         ],
         "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_scheduler.f",
         "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_scheduler_main.cpp",
         "name": "control_scheduler",
+        "observed_phase_markers": [
+          "phase=issue_control_op",
+          "phase=read_control_metadata",
+          "phase=execute_control_op",
+          "phase=commit_control_op"
+        ],
         "observed_stdout_markers": [
           "module=control_scheduler",
-          "E1_H1_FULL_MODULE_DPI_CYCLE"
+          "E1_H1_FULL_MODULE_DPI_CYCLE",
+          "phase=issue_control_op",
+          "phase=read_control_metadata",
+          "phase=execute_control_op",
+          "phase=commit_control_op"
         ],
         "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_control_scheduler/Ve1_h1_full_checkpoint_module_dpi_control_scheduler",
         "run_returncode": 0,
@@ -1570,7 +1710,11 @@
         "dut_module": "e1_h1_tinyllama_control_scheduler",
         "expected_stdout_markers": [
           "module=control_scheduler",
-          "E1_H1_FULL_MODULE_DPI_CYCLE"
+          "E1_H1_FULL_MODULE_DPI_CYCLE",
+          "phase=issue_control_op",
+          "phase=read_control_metadata",
+          "phase=execute_control_op",
+          "phase=commit_control_op"
         ],
         "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_scheduler.f",
         "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_scheduler_main.cpp",
@@ -1659,6 +1803,10 @@
           },
           {
             "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_named_phases",
             "status": "pass"
           },
           {
@@ -1920,7 +2068,11 @@
           "dut_module": "e1_h1_tinyllama_graph_sequencer",
           "expected_stdout_markers": [
             "module=graph_sequencer",
-            "E1_H1_FULL_MODULE_DPI_CYCLE"
+            "E1_H1_FULL_MODULE_DPI_CYCLE",
+            "phase=present_graph_slot",
+            "phase=launch_selected_engine",
+            "phase=wait_for_slot_done",
+            "phase=commit_graph_slot"
           ],
           "fixed_args": [
             "--cc",
@@ -1968,16 +2120,36 @@
         "build_returncode": 0,
         "build_stdout_tail": [],
         "dut_module": "e1_h1_tinyllama_graph_sequencer",
+        "expected_phase_markers": [
+          "phase=present_graph_slot",
+          "phase=launch_selected_engine",
+          "phase=wait_for_slot_done",
+          "phase=commit_graph_slot"
+        ],
         "expected_stdout_markers": [
           "module=graph_sequencer",
-          "E1_H1_FULL_MODULE_DPI_CYCLE"
+          "E1_H1_FULL_MODULE_DPI_CYCLE",
+          "phase=present_graph_slot",
+          "phase=launch_selected_engine",
+          "phase=wait_for_slot_done",
+          "phase=commit_graph_slot"
         ],
         "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/graph_sequencer.f",
         "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_graph_sequencer_main.cpp",
         "name": "graph_sequencer",
+        "observed_phase_markers": [
+          "phase=present_graph_slot",
+          "phase=launch_selected_engine",
+          "phase=wait_for_slot_done",
+          "phase=commit_graph_slot"
+        ],
         "observed_stdout_markers": [
           "module=graph_sequencer",
-          "E1_H1_FULL_MODULE_DPI_CYCLE"
+          "E1_H1_FULL_MODULE_DPI_CYCLE",
+          "phase=present_graph_slot",
+          "phase=launch_selected_engine",
+          "phase=wait_for_slot_done",
+          "phase=commit_graph_slot"
         ],
         "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_graph_sequencer/Ve1_h1_full_checkpoint_module_dpi_graph_sequencer",
         "run_returncode": 0,
@@ -2012,7 +2184,11 @@
         "dut_module": "e1_h1_tinyllama_graph_sequencer",
         "expected_stdout_markers": [
           "module=graph_sequencer",
-          "E1_H1_FULL_MODULE_DPI_CYCLE"
+          "E1_H1_FULL_MODULE_DPI_CYCLE",
+          "phase=present_graph_slot",
+          "phase=launch_selected_engine",
+          "phase=wait_for_slot_done",
+          "phase=commit_graph_slot"
         ],
         "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/graph_sequencer.f",
         "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_graph_sequencer_main.cpp",
@@ -2110,6 +2286,10 @@
           },
           {
             "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_named_phases",
             "status": "pass"
           },
           {
@@ -2487,7 +2667,15 @@
           "dut_module": "e1_h1_tinyllama_linear_slot_engine",
           "expected_stdout_markers": [
             "module=linear_slot_engine",
-            "E1_H1_FULL_MODULE_DPI_CYCLE"
+            "E1_H1_FULL_MODULE_DPI_CYCLE",
+            "phase=latch_selected_linear_slot",
+            "phase=slot_command_valid",
+            "phase=array_command_handshake",
+            "phase=latch_to_array_beat_0",
+            "phase=latch_to_array_beat_1",
+            "phase=latch_to_array_beat_2",
+            "phase=array_done_pulse",
+            "phase=slot_done_or_next_tile"
           ],
           "fixed_args": [
             "--cc",
@@ -2535,16 +2723,52 @@
         "build_returncode": 0,
         "build_stdout_tail": [],
         "dut_module": "e1_h1_tinyllama_linear_slot_engine",
+        "expected_phase_markers": [
+          "phase=latch_selected_linear_slot",
+          "phase=slot_command_valid",
+          "phase=array_command_handshake",
+          "phase=latch_to_array_beat_0",
+          "phase=latch_to_array_beat_1",
+          "phase=latch_to_array_beat_2",
+          "phase=array_done_pulse",
+          "phase=slot_done_or_next_tile"
+        ],
         "expected_stdout_markers": [
           "module=linear_slot_engine",
-          "E1_H1_FULL_MODULE_DPI_CYCLE"
+          "E1_H1_FULL_MODULE_DPI_CYCLE",
+          "phase=latch_selected_linear_slot",
+          "phase=slot_command_valid",
+          "phase=array_command_handshake",
+          "phase=latch_to_array_beat_0",
+          "phase=latch_to_array_beat_1",
+          "phase=latch_to_array_beat_2",
+          "phase=array_done_pulse",
+          "phase=slot_done_or_next_tile"
         ],
         "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_slot_engine.f",
         "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine_main.cpp",
         "name": "linear_slot_engine",
+        "observed_phase_markers": [
+          "phase=latch_selected_linear_slot",
+          "phase=slot_command_valid",
+          "phase=array_command_handshake",
+          "phase=latch_to_array_beat_0",
+          "phase=latch_to_array_beat_1",
+          "phase=latch_to_array_beat_2",
+          "phase=array_done_pulse",
+          "phase=slot_done_or_next_tile"
+        ],
         "observed_stdout_markers": [
           "module=linear_slot_engine",
-          "E1_H1_FULL_MODULE_DPI_CYCLE"
+          "E1_H1_FULL_MODULE_DPI_CYCLE",
+          "phase=latch_selected_linear_slot",
+          "phase=slot_command_valid",
+          "phase=array_command_handshake",
+          "phase=latch_to_array_beat_0",
+          "phase=latch_to_array_beat_1",
+          "phase=latch_to_array_beat_2",
+          "phase=array_done_pulse",
+          "phase=slot_done_or_next_tile"
         ],
         "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_linear_slot_engine/Ve1_h1_full_checkpoint_module_dpi_linear_slot_engine",
         "run_returncode": 0,
@@ -2579,7 +2803,15 @@
         "dut_module": "e1_h1_tinyllama_linear_slot_engine",
         "expected_stdout_markers": [
           "module=linear_slot_engine",
-          "E1_H1_FULL_MODULE_DPI_CYCLE"
+          "E1_H1_FULL_MODULE_DPI_CYCLE",
+          "phase=latch_selected_linear_slot",
+          "phase=slot_command_valid",
+          "phase=array_command_handshake",
+          "phase=latch_to_array_beat_0",
+          "phase=latch_to_array_beat_1",
+          "phase=latch_to_array_beat_2",
+          "phase=array_done_pulse",
+          "phase=slot_done_or_next_tile"
         ],
         "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_slot_engine.f",
         "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine_main.cpp",
@@ -2668,6 +2900,10 @@
           },
           {
             "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_named_phases",
             "status": "pass"
           },
           {
@@ -2918,7 +3154,11 @@
           "dut_module": "e1_h1_tinyllama_control_slot_engine",
           "expected_stdout_markers": [
             "module=control_slot_engine",
-            "E1_H1_FULL_MODULE_DPI_CYCLE"
+            "E1_H1_FULL_MODULE_DPI_CYCLE",
+            "phase=issue_selected_control_slot",
+            "phase=read_selected_control_metadata",
+            "phase=execute_selected_control_slot",
+            "phase=commit_selected_control_slot"
           ],
           "fixed_args": [
             "--cc",
@@ -2966,16 +3206,36 @@
         "build_returncode": 0,
         "build_stdout_tail": [],
         "dut_module": "e1_h1_tinyllama_control_slot_engine",
+        "expected_phase_markers": [
+          "phase=issue_selected_control_slot",
+          "phase=read_selected_control_metadata",
+          "phase=execute_selected_control_slot",
+          "phase=commit_selected_control_slot"
+        ],
         "expected_stdout_markers": [
           "module=control_slot_engine",
-          "E1_H1_FULL_MODULE_DPI_CYCLE"
+          "E1_H1_FULL_MODULE_DPI_CYCLE",
+          "phase=issue_selected_control_slot",
+          "phase=read_selected_control_metadata",
+          "phase=execute_selected_control_slot",
+          "phase=commit_selected_control_slot"
         ],
         "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_slot_engine.f",
         "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine_main.cpp",
         "name": "control_slot_engine",
+        "observed_phase_markers": [
+          "phase=issue_selected_control_slot",
+          "phase=read_selected_control_metadata",
+          "phase=execute_selected_control_slot",
+          "phase=commit_selected_control_slot"
+        ],
         "observed_stdout_markers": [
           "module=control_slot_engine",
-          "E1_H1_FULL_MODULE_DPI_CYCLE"
+          "E1_H1_FULL_MODULE_DPI_CYCLE",
+          "phase=issue_selected_control_slot",
+          "phase=read_selected_control_metadata",
+          "phase=execute_selected_control_slot",
+          "phase=commit_selected_control_slot"
         ],
         "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_control_slot_engine/Ve1_h1_full_checkpoint_module_dpi_control_slot_engine",
         "run_returncode": 0,
@@ -3010,7 +3270,11 @@
         "dut_module": "e1_h1_tinyllama_control_slot_engine",
         "expected_stdout_markers": [
           "module=control_slot_engine",
-          "E1_H1_FULL_MODULE_DPI_CYCLE"
+          "E1_H1_FULL_MODULE_DPI_CYCLE",
+          "phase=issue_selected_control_slot",
+          "phase=read_selected_control_metadata",
+          "phase=execute_selected_control_slot",
+          "phase=commit_selected_control_slot"
         ],
         "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_slot_engine.f",
         "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine_main.cpp",
@@ -3110,6 +3374,10 @@
           },
           {
             "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_named_phases",
             "status": "pass"
           },
           {
@@ -3494,7 +3762,11 @@
           "dut_module": "e1_h1_tinyllama_full_checkpoint_top",
           "expected_stdout_markers": [
             "module=full_checkpoint_top",
-            "E1_H1_FULL_MODULE_DPI_CYCLE"
+            "E1_H1_FULL_MODULE_DPI_CYCLE",
+            "phase=present_top_graph_slot",
+            "phase=start_selected_slot_engine",
+            "phase=run_selected_slot_engine",
+            "phase=commit_top_graph_slot"
           ],
           "fixed_args": [
             "--cc",
@@ -3542,16 +3814,36 @@
         "build_returncode": 0,
         "build_stdout_tail": [],
         "dut_module": "e1_h1_tinyllama_full_checkpoint_top",
+        "expected_phase_markers": [
+          "phase=present_top_graph_slot",
+          "phase=start_selected_slot_engine",
+          "phase=run_selected_slot_engine",
+          "phase=commit_top_graph_slot"
+        ],
         "expected_stdout_markers": [
           "module=full_checkpoint_top",
-          "E1_H1_FULL_MODULE_DPI_CYCLE"
+          "E1_H1_FULL_MODULE_DPI_CYCLE",
+          "phase=present_top_graph_slot",
+          "phase=start_selected_slot_engine",
+          "phase=run_selected_slot_engine",
+          "phase=commit_top_graph_slot"
         ],
         "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/full_checkpoint_top.f",
         "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_full_checkpoint_top_main.cpp",
         "name": "full_checkpoint_top",
+        "observed_phase_markers": [
+          "phase=present_top_graph_slot",
+          "phase=start_selected_slot_engine",
+          "phase=run_selected_slot_engine",
+          "phase=commit_top_graph_slot"
+        ],
         "observed_stdout_markers": [
           "module=full_checkpoint_top",
-          "E1_H1_FULL_MODULE_DPI_CYCLE"
+          "E1_H1_FULL_MODULE_DPI_CYCLE",
+          "phase=present_top_graph_slot",
+          "phase=start_selected_slot_engine",
+          "phase=run_selected_slot_engine",
+          "phase=commit_top_graph_slot"
         ],
         "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_full_checkpoint_top/Ve1_h1_full_checkpoint_module_dpi_full_checkpoint_top",
         "run_returncode": 0,
@@ -3586,7 +3878,11 @@
         "dut_module": "e1_h1_tinyllama_full_checkpoint_top",
         "expected_stdout_markers": [
           "module=full_checkpoint_top",
-          "E1_H1_FULL_MODULE_DPI_CYCLE"
+          "E1_H1_FULL_MODULE_DPI_CYCLE",
+          "phase=present_top_graph_slot",
+          "phase=start_selected_slot_engine",
+          "phase=run_selected_slot_engine",
+          "phase=commit_top_graph_slot"
         ],
         "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/full_checkpoint_top.f",
         "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_full_checkpoint_top_main.cpp",

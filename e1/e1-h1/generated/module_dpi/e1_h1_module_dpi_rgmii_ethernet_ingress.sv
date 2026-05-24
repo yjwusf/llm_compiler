@@ -71,6 +71,22 @@ module e1_h1_module_dpi_rgmii_ethernet_ingress;
     check32("stream_error_o", cycle, {31'd0, stream_error_imp1}, {31'd0, stream_error_imp2});
   endtask
 
+  function automatic string phase_name(input int cycle);
+    case (cycle)
+      0: return "idle_after_reset";
+      1: return "frame_nibble_0";
+      2: return "frame_nibble_1";
+      3: return "frame_nibble_2";
+      4: return "frame_nibble_3";
+      5: return "frame_nibble_4";
+      6: return "frame_gap";
+      7: return "downstream_accept";
+      8: return "drain_stream";
+      9: return "return_idle";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     e1_h1_module_dpi_begin("rgmii_ethernet_ingress", "module_only_rgmii_ingress");
     clk_i = 1'b0;
@@ -83,12 +99,11 @@ module e1_h1_module_dpi_rgmii_ethernet_ingress;
     tick_rgmii();
     rst_ni = 1'b1;
     for (int cycle = 0; cycle < 10; cycle++) begin
-      e1_h1_module_dpi_cycle("rgmii_ethernet_ingress", cycle, "drive_rgmii");
+      e1_h1_module_dpi_cycle("rgmii_ethernet_ingress", cycle, phase_name(cycle));
       rgmii_rx_ctl_i = (cycle >= 1 && cycle <= 5);
       stream_ready_i = (cycle >= 7);
       rgmii_rxd_i = cycle[3:0];
       tick_rgmii();
-      e1_h1_module_dpi_cycle("rgmii_ethernet_ingress", cycle, "sample_stream");
       check_outputs(cycle);
     end
     $finish;

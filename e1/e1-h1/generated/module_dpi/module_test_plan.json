@@ -17,7 +17,7 @@
         "obj_dir_placeholder": "<obj_dir>",
         "run_executable": "Ve1_h1_module_dpi_control_cpu",
         "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
-        "expected_stdout_markers": ["module=control_cpu", "E1_H1_MODULE_DPI_CYCLE"]
+        "expected_stdout_markers": ["module=control_cpu", "E1_H1_MODULE_DPI_CYCLE", "phase=reset_release", "phase=command_backpressure", "phase=command_handshake", "phase=wait_for_array", "phase=wait_for_array_stable", "phase=array_completion", "phase=halt_transition", "phase=halted_idle"]
       },
       "checks": [
         {"name": "probe_exists", "status": "pass"},
@@ -40,7 +40,7 @@
         "obj_dir_placeholder": "<obj_dir>",
         "run_executable": "Ve1_h1_module_dpi_rgmii_ethernet_ingress",
         "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
-        "expected_stdout_markers": ["module=rgmii_ethernet_ingress", "E1_H1_MODULE_DPI_CYCLE"]
+        "expected_stdout_markers": ["module=rgmii_ethernet_ingress", "E1_H1_MODULE_DPI_CYCLE", "phase=idle_after_reset", "phase=frame_nibble_0", "phase=frame_nibble_1", "phase=frame_nibble_2", "phase=frame_nibble_3", "phase=frame_nibble_4", "phase=frame_gap", "phase=downstream_accept", "phase=drain_stream", "phase=return_idle"]
       },
       "checks": [
         {"name": "probe_exists", "status": "pass"},
@@ -63,7 +63,7 @@
         "obj_dir_placeholder": "<obj_dir>",
         "run_executable": "Ve1_h1_module_dpi_ingress_sram",
         "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
-        "expected_stdout_markers": ["module=ingress_sram", "E1_H1_MODULE_DPI_CYCLE"]
+        "expected_stdout_markers": ["module=ingress_sram", "E1_H1_MODULE_DPI_CYCLE", "phase=latch_first_word", "phase=hold_latched_word", "phase=release_latched_word", "phase=latch_next_clean_word", "phase=reject_error_word", "phase=empty_or_ready"]
       },
       "checks": [
         {"name": "probe_exists", "status": "pass"},
@@ -86,7 +86,7 @@
         "obj_dir_placeholder": "<obj_dir>",
         "run_executable": "Ve1_h1_module_dpi_activation_sram",
         "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
-        "expected_stdout_markers": ["module=activation_sram", "E1_H1_MODULE_DPI_CYCLE"]
+        "expected_stdout_markers": ["module=activation_sram", "E1_H1_MODULE_DPI_CYCLE", "phase=initialization_latch", "phase=initialized_hold_0", "phase=initialized_hold_1"]
       },
       "checks": [
         {"name": "probe_exists", "status": "pass"},
@@ -109,7 +109,7 @@
         "obj_dir_placeholder": "<obj_dir>",
         "run_executable": "Ve1_h1_module_dpi_accumulator_sram",
         "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
-        "expected_stdout_markers": ["module=accumulator_sram", "E1_H1_MODULE_DPI_CYCLE"]
+        "expected_stdout_markers": ["module=accumulator_sram", "E1_H1_MODULE_DPI_CYCLE", "phase=initialization_latch", "phase=initialized_hold_0", "phase=initialized_hold_1"]
       },
       "checks": [
         {"name": "probe_exists", "status": "pass"},
@@ -132,7 +132,7 @@
         "obj_dir_placeholder": "<obj_dir>",
         "run_executable": "Ve1_h1_module_dpi_systolic_array",
         "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
-        "expected_stdout_markers": ["module=systolic_array", "E1_H1_MODULE_DPI_CYCLE"]
+        "expected_stdout_markers": ["module=systolic_array", "E1_H1_MODULE_DPI_CYCLE", "phase=array_idle", "phase=accept_array_command", "phase=enter_busy", "phase=consume_input_beat_0", "phase=consume_input_beat_1", "phase=consume_input_beat_2", "phase=completion_pulse", "phase=return_ready"]
       },
       "checks": [
         {"name": "probe_exists", "status": "pass"},

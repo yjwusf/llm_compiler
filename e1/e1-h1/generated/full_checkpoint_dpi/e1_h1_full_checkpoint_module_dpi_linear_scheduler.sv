@@ -70,6 +70,20 @@ module e1_h1_full_checkpoint_module_dpi_linear_scheduler;
     .cycle_phase_o(cycle_phase_o)
   );
 
+  function automatic string phase_name(input int cycle);
+    case (cycle % 8)
+      0: return "setup_tile_command";
+      1: return "assert_scheduler_valid";
+      2: return "accept_command_handshake";
+      3: return "wait_for_array_progress_0";
+      4: return "wait_for_array_progress_1";
+      5: return "wait_for_array_progress_2";
+      6: return "sample_array_done";
+      7: return "advance_tile_counters";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     e1_h1_full_dpi_begin("linear_scheduler", "first_four_tile_commands");
     clk_i = 1'b0;
@@ -85,7 +99,7 @@ module e1_h1_full_checkpoint_module_dpi_linear_scheduler;
     tick();
     start_i = 1'b0;
     for (int cycle = 0; cycle < 128 && issued_commands_o < 32'd4; cycle++) begin
-      e1_h1_full_dpi_cycle("linear_scheduler", cycle, "cpu_tile_command_template");
+      e1_h1_full_dpi_cycle("linear_scheduler", cycle, phase_name(cycle));
       array_done_i = (cycle_phase_o == 3'd6);
       tick();
       array_done_i = 1'b0;

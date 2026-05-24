@@ -88,6 +88,20 @@ module e1_h1_full_checkpoint_module_dpi_linear_tile_engine;
     .array_debug_busy_o(array_debug_busy_o)
   );
 
+  function automatic string phase_name(input int cycle);
+    case (cycle % 8)
+      0: return "setup_tile_engine";
+      1: return "scheduler_valid_visible";
+      2: return "array_command_handshake";
+      3: return "latch_to_array_beat_0";
+      4: return "latch_to_array_beat_1";
+      5: return "latch_to_array_beat_2";
+      6: return "array_done_pulse";
+      7: return "return_ready";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     e1_h1_full_dpi_begin("linear_tile_engine", "first_four_composed_tile_commands");
     clk_i = 1'b0;
@@ -102,7 +116,7 @@ module e1_h1_full_checkpoint_module_dpi_linear_tile_engine;
     rst_ni = 1'b1;
     start_i = 1'b1;
     for (int cycle = 0; cycle < 256 && issued_commands_o < 32'd4; cycle++) begin
-      e1_h1_full_dpi_cycle("linear_tile_engine", cycle, "scheduler_latch_array_composition");
+      e1_h1_full_dpi_cycle("linear_tile_engine", cycle, phase_name(cycle));
       stream_valid_i = 1'b1;
       stream_data_i = 64'h3000 + cycle[15:0];
       tick();

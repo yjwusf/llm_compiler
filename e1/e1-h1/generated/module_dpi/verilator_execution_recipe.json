@@ -17,7 +17,7 @@
       "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu_main.cpp",
       "build_command": ["verilator", "--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing", "--top-module", "e1_h1_module_dpi_control_cpu", "-Mdir", "<build-root>/obj_module_dpi_control_cpu", "-f", "e1/e1-h1/generated/module_dpi/flists/control_cpu.f", "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp", "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu_main.cpp"],
       "run_executable": "<build-root>/obj_module_dpi_control_cpu/Ve1_h1_module_dpi_control_cpu",
-      "expected_stdout_markers": ["module=control_cpu", "E1_H1_MODULE_DPI_CYCLE"]
+      "expected_stdout_markers": ["module=control_cpu", "E1_H1_MODULE_DPI_CYCLE", "phase=reset_release", "phase=command_backpressure", "phase=command_handshake", "phase=wait_for_array", "phase=wait_for_array_stable", "phase=array_completion", "phase=halt_transition", "phase=halted_idle"]
     },
     {
       "name": "rgmii_ethernet_ingress",
@@ -29,7 +29,7 @@
       "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_rgmii_ethernet_ingress_main.cpp",
       "build_command": ["verilator", "--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing", "--top-module", "e1_h1_module_dpi_rgmii_ethernet_ingress", "-Mdir", "<build-root>/obj_module_dpi_rgmii_ethernet_ingress", "-f", "e1/e1-h1/generated/module_dpi/flists/rgmii_ethernet_ingress.f", "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp", "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_rgmii_ethernet_ingress_main.cpp"],
       "run_executable": "<build-root>/obj_module_dpi_rgmii_ethernet_ingress/Ve1_h1_module_dpi_rgmii_ethernet_ingress",
-      "expected_stdout_markers": ["module=rgmii_ethernet_ingress", "E1_H1_MODULE_DPI_CYCLE"]
+      "expected_stdout_markers": ["module=rgmii_ethernet_ingress", "E1_H1_MODULE_DPI_CYCLE", "phase=idle_after_reset", "phase=frame_nibble_0", "phase=frame_nibble_1", "phase=frame_nibble_2", "phase=frame_nibble_3", "phase=frame_nibble_4", "phase=frame_gap", "phase=downstream_accept", "phase=drain_stream", "phase=return_idle"]
     },
     {
       "name": "ingress_sram",
@@ -41,7 +41,7 @@
       "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram_main.cpp",
       "build_command": ["verilator", "--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing", "--top-module", "e1_h1_module_dpi_ingress_sram", "-Mdir", "<build-root>/obj_module_dpi_ingress_sram", "-f", "e1/e1-h1/generated/module_dpi/flists/ingress_sram.f", "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp", "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram_main.cpp"],
       "run_executable": "<build-root>/obj_module_dpi_ingress_sram/Ve1_h1_module_dpi_ingress_sram",
-      "expected_stdout_markers": ["module=ingress_sram", "E1_H1_MODULE_DPI_CYCLE"]
+      "expected_stdout_markers": ["module=ingress_sram", "E1_H1_MODULE_DPI_CYCLE", "phase=latch_first_word", "phase=hold_latched_word", "phase=release_latched_word", "phase=latch_next_clean_word", "phase=reject_error_word", "phase=empty_or_ready"]
     },
     {
       "name": "activation_sram",
@@ -53,7 +53,7 @@
       "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_activation_sram_main.cpp",
       "build_command": ["verilator", "--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing", "--top-module", "e1_h1_module_dpi_activation_sram", "-Mdir", "<build-root>/obj_module_dpi_activation_sram", "-f", "e1/e1-h1/generated/module_dpi/flists/activation_sram.f", "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp", "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_activation_sram_main.cpp"],
       "run_executable": "<build-root>/obj_module_dpi_activation_sram/Ve1_h1_module_dpi_activation_sram",
-      "expected_stdout_markers": ["module=activation_sram", "E1_H1_MODULE_DPI_CYCLE"]
+      "expected_stdout_markers": ["module=activation_sram", "E1_H1_MODULE_DPI_CYCLE", "phase=initialization_latch", "phase=initialized_hold_0", "phase=initialized_hold_1"]
     },
     {
       "name": "accumulator_sram",
@@ -65,7 +65,7 @@
       "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_accumulator_sram_main.cpp",
       "build_command": ["verilator", "--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing", "--top-module", "e1_h1_module_dpi_accumulator_sram", "-Mdir", "<build-root>/obj_module_dpi_accumulator_sram", "-f", "e1/e1-h1/generated/module_dpi/flists/accumulator_sram.f", "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp", "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_accumulator_sram_main.cpp"],
       "run_executable": "<build-root>/obj_module_dpi_accumulator_sram/Ve1_h1_module_dpi_accumulator_sram",
-      "expected_stdout_markers": ["module=accumulator_sram", "E1_H1_MODULE_DPI_CYCLE"]
+      "expected_stdout_markers": ["module=accumulator_sram", "E1_H1_MODULE_DPI_CYCLE", "phase=initialization_latch", "phase=initialized_hold_0", "phase=initialized_hold_1"]
     },
     {
       "name": "systolic_array",
@@ -77,7 +77,7 @@
       "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array_main.cpp",
       "build_command": ["verilator", "--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing", "--top-module", "e1_h1_module_dpi_systolic_array", "-Mdir", "<build-root>/obj_module_dpi_systolic_array", "-f", "e1/e1-h1/generated/module_dpi/flists/systolic_array.f", "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp", "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array_main.cpp"],
       "run_executable": "<build-root>/obj_module_dpi_systolic_array/Ve1_h1_module_dpi_systolic_array",
-      "expected_stdout_markers": ["module=systolic_array", "E1_H1_MODULE_DPI_CYCLE"]
+      "expected_stdout_markers": ["module=systolic_array", "E1_H1_MODULE_DPI_CYCLE", "phase=array_idle", "phase=accept_array_command", "phase=enter_busy", "phase=consume_input_beat_0", "phase=consume_input_beat_1", "phase=consume_input_beat_2", "phase=completion_pulse", "phase=return_ready"]
     }
   ]
 }

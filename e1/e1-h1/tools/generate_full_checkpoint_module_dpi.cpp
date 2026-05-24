@@ -162,9 +162,7 @@ extern "C" void e1_h1_full_dpi_begin(const char* module_name, const char* vip_ca
 }
 
 extern "C" void e1_h1_full_dpi_cycle(const char* module_name, int cycle, const char* phase) {
-  if (cycle < 4 || (cycle % 256) == 0) {
-    std::printf("E1_H1_FULL_MODULE_DPI_CYCLE module=%s cycle=%d phase=%s\n", module_name, cycle, phase);
-  }
+  std::printf("E1_H1_FULL_MODULE_DPI_CYCLE module=%s cycle=%d phase=%s\n", module_name, cycle, phase);
 }
 
 extern "C" int e1_h1_full_dpi_expect_u32(
@@ -408,6 +406,11 @@ void validate_cycle_contract(const ModuleSpec& spec) {
   if (spec.probe_sv.find(expected_dpi) == std::string::npos) {
     throw std::runtime_error(spec.name + " probe does not report DPI cycles");
   }
+  for (const CycleStep& step : steps) {
+    if (spec.probe_sv.find("\"" + step.phase + "\"") == std::string::npos) {
+      throw std::runtime_error(spec.name + " probe does not report named phase " + step.phase);
+    }
+  }
 }
 
 void write_cycle_steps_json(std::ostringstream& out,
@@ -604,6 +607,7 @@ std::string cycle_contract_json(const std::vector<ModuleSpec>& specs) {
     out << "        {\"name\": \"cycle_indices_contiguous\", \"status\": \"pass\"},\n";
     out << "        {\"name\": \"cycle_phase_signals_documented\", \"status\": \"pass\"},\n";
     out << "        {\"name\": \"dpi_probe_reports_cycles\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"dpi_probe_reports_named_phases\", \"status\": \"pass\"},\n";
     out << "        {\"name\": \"readme_cycle_diagram_declared\", \"status\": \"pass\"}\n";
     out << "      ]\n";
     out << "    }" << (i + 1 == specs.size() ? "\n" : ",\n");
@@ -685,10 +689,14 @@ std::vector<std::string> verilator_fixed_args() {
 }
 
 std::vector<std::string> expected_stdout_markers(const ModuleSpec& spec) {
-  return {
+  std::vector<std::string> markers = {
       "module=" + spec.name,
       "E1_H1_FULL_MODULE_DPI_CYCLE",
   };
+  for (const CycleStep& step : cycle_steps(spec)) {
+    markers.push_back("phase=" + step.phase);
+  }
+  return markers;
 }
 
 std::string flist_path(const ModuleSpec& spec) {
@@ -965,6 +973,16 @@ std::string sv_graph_sequencer() {
     .cycle_phase_o(cycle_phase_o)
   );
 
+  function automatic string phase_name(input int cycle);
+    case (cycle % 4)
+      0: return "present_graph_slot";
+      1: return "launch_selected_engine";
+      2: return "wait_for_slot_done";
+      3: return "commit_graph_slot";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     int linear_launches;
     int control_launches;
@@ -983,7 +1001,7 @@ std::string sv_graph_sequencer() {
     tick();
     start_i = 1'b0;
     for (int cycle = 0; cycle < 1600 && !done_o; cycle++) begin
-      e1_h1_full_dpi_cycle("graph_sequencer", cycle, "drive_ready_and_engine_done");
+      e1_h1_full_dpi_cycle("graph_sequencer", cycle, phase_name(cycle));
       op_done_i = (cycle_phase_o == 2'd2);
       if (launch_linear_o) linear_launches++;
       if (launch_control_o) control_launches++;
@@ -1039,6 +1057,16 @@ std::string sv_control_slot_engine() {
     .cycle_phase_o(cycle_phase_o)
   );
 
+  function automatic string phase_name(input int cycle);
+    case (cycle % 4)
+      0: return "issue_selected_control_slot";
+      1: return "read_selected_control_metadata";
+      2: return "execute_selected_control_slot";
+      3: return "commit_selected_control_slot";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     e1_h1_full_dpi_begin("control_slot_engine", "single_control_slot");
     clk_i = 1'b0;
@@ -1055,7 +1083,7 @@ std::string sv_control_slot_engine() {
     tick();
     start_i = 1'b0;
     for (int cycle = 0; cycle < 16 && !done_o; cycle++) begin
-      e1_h1_full_dpi_cycle("control_slot_engine", cycle, "single_slot_cpu_control");
+      e1_h1_full_dpi_cycle("control_slot_engine", cycle, phase_name(cycle));
       control_ready_i = (cycle >= 1);
       tick();
     end
@@ -1106,6 +1134,16 @@ std::string sv_control_scheduler() {
     .cycle_phase_o(cycle_phase_o)
   );
 
+  function automatic string phase_name(input int cycle);
+    case (cycle % 4)
+      0: return "issue_control_op";
+      1: return "read_control_metadata";
+      2: return "execute_control_op";
+      3: return "commit_control_op";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     e1_h1_full_dpi_begin("control_scheduler", "all_154_control_ops");
     clk_i = 1'b0;
@@ -1119,7 +1157,7 @@ std::string sv_control_scheduler() {
     tick();
     start_i = 1'b0;
     for (int cycle = 0; cycle < 900 && !done_o; cycle++) begin
-      e1_h1_full_dpi_cycle("control_scheduler", cycle, "issue_execute_commit_control");
+      e1_h1_full_dpi_cycle("control_scheduler", cycle, phase_name(cycle));
       tick();
     end
     expect_u32("issued_control_ops_o", 0, 154, issued_control_ops_o);
@@ -1182,6 +1220,20 @@ std::string sv_linear_scheduler() {
     .cycle_phase_o(cycle_phase_o)
   );
 
+  function automatic string phase_name(input int cycle);
+    case (cycle % 8)
+      0: return "setup_tile_command";
+      1: return "assert_scheduler_valid";
+      2: return "accept_command_handshake";
+      3: return "wait_for_array_progress_0";
+      4: return "wait_for_array_progress_1";
+      5: return "wait_for_array_progress_2";
+      6: return "sample_array_done";
+      7: return "advance_tile_counters";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     e1_h1_full_dpi_begin("linear_scheduler", "first_four_tile_commands");
     clk_i = 1'b0;
@@ -1197,7 +1249,7 @@ std::string sv_linear_scheduler() {
     tick();
     start_i = 1'b0;
     for (int cycle = 0; cycle < 128 && issued_commands_o < 32'd4; cycle++) begin
-      e1_h1_full_dpi_cycle("linear_scheduler", cycle, "cpu_tile_command_template");
+      e1_h1_full_dpi_cycle("linear_scheduler", cycle, phase_name(cycle));
       array_done_i = (cycle_phase_o == 3'd6);
       tick();
       array_done_i = 1'b0;
@@ -1283,6 +1335,20 @@ std::string sv_linear_tile_engine() {
     .array_debug_busy_o(array_debug_busy_o)
   );
 
+  function automatic string phase_name(input int cycle);
+    case (cycle % 8)
+      0: return "setup_tile_engine";
+      1: return "scheduler_valid_visible";
+      2: return "array_command_handshake";
+      3: return "latch_to_array_beat_0";
+      4: return "latch_to_array_beat_1";
+      5: return "latch_to_array_beat_2";
+      6: return "array_done_pulse";
+      7: return "return_ready";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     e1_h1_full_dpi_begin("linear_tile_engine", "first_four_composed_tile_commands");
     clk_i = 1'b0;
@@ -1297,7 +1363,7 @@ std::string sv_linear_tile_engine() {
     rst_ni = 1'b1;
     start_i = 1'b1;
     for (int cycle = 0; cycle < 256 && issued_commands_o < 32'd4; cycle++) begin
-      e1_h1_full_dpi_cycle("linear_tile_engine", cycle, "scheduler_latch_array_composition");
+      e1_h1_full_dpi_cycle("linear_tile_engine", cycle, phase_name(cycle));
       stream_valid_i = 1'b1;
       stream_data_i = 64'h3000 + cycle[15:0];
       tick();
@@ -1389,6 +1455,20 @@ std::string sv_linear_slot_engine() {
     .array_debug_busy_o(array_debug_busy_o)
   );
 
+  function automatic string phase_name(input int cycle);
+    case (cycle % 8)
+      0: return "latch_selected_linear_slot";
+      1: return "slot_command_valid";
+      2: return "array_command_handshake";
+      3: return "latch_to_array_beat_0";
+      4: return "latch_to_array_beat_1";
+      5: return "latch_to_array_beat_2";
+      6: return "array_done_pulse";
+      7: return "slot_done_or_next_tile";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     e1_h1_full_dpi_begin("linear_slot_engine", "bounded_two_tile_linear_slot");
     clk_i = 1'b0;
@@ -1405,7 +1485,7 @@ std::string sv_linear_slot_engine() {
     rst_ni = 1'b1;
     start_i = 1'b1;
     for (int cycle = 0; cycle < 128 && !done_o; cycle++) begin
-      e1_h1_full_dpi_cycle("linear_slot_engine", cycle, "slot_local_scheduler_latch_array");
+      e1_h1_full_dpi_cycle("linear_slot_engine", cycle, phase_name(cycle));
       stream_valid_i = 1'b1;
       stream_data_i = 64'h4000 + cycle[15:0];
       tick();
@@ -1511,6 +1591,16 @@ std::string sv_full_top() {
     .debug_linear_output_tile_o(debug_linear_output_tile_o)
   );
 
+  function automatic string phase_name(input int cycle);
+    case (cycle % 4)
+      0: return "present_top_graph_slot";
+      1: return "start_selected_slot_engine";
+      2: return "run_selected_slot_engine";
+      3: return "commit_top_graph_slot";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     int linear_launches;
     int control_launches;
@@ -1529,7 +1619,7 @@ std::string sv_full_top() {
     rst_ni = 1'b1;
     start_i = 1'b1;
     for (int cycle = 0; cycle < 10000 && !done_o; cycle++) begin
-      e1_h1_full_dpi_cycle("full_checkpoint_top", cycle, "graph_dispatch_to_slot_engines");
+      e1_h1_full_dpi_cycle("full_checkpoint_top", cycle, phase_name(cycle));
       stream_valid_i = 1'b1;
       stream_data_i = 64'h5000 + cycle[15:0];
       if (launch_linear_o) linear_launches++;

@@ -347,6 +347,11 @@ void validate_cycle_contract(const ModuleSpec& spec) {
   if (spec.probe_sv.find(expected_dpi) == std::string::npos) {
     throw std::runtime_error(spec.name + " probe does not report DPI cycles");
   }
+  for (const CycleStep& step : steps) {
+    if (spec.probe_sv.find("\"" + step.phase + "\"") == std::string::npos) {
+      throw std::runtime_error(spec.name + " probe does not report named phase " + step.phase);
+    }
+  }
 }
 
 void validate_isolation(const fs::path& repo_root, const ModuleSpec& spec) {
@@ -457,6 +462,7 @@ std::string cycle_contract_json(const std::vector<ModuleSpec>& specs) {
     out << "      \"checks\": [\n";
     out << "        {\"name\": \"cycle_indices_contiguous\", \"status\": \"pass\"},\n";
     out << "        {\"name\": \"dpi_probe_reports_cycles\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"dpi_probe_reports_named_phases\", \"status\": \"pass\"},\n";
     out << "        {\"name\": \"readme_cycle_diagram_declared\", \"status\": \"pass\"}\n";
     out << "      ]\n";
     out << "    }" << (i + 1 == specs.size() ? "\n" : ",\n");
@@ -538,10 +544,14 @@ std::vector<std::string> verilator_fixed_args() {
 }
 
 std::vector<std::string> expected_stdout_markers(const ModuleSpec& spec) {
-  return {
+  std::vector<std::string> markers = {
       "module=" + spec.name,
       "E1_H1_MODULE_DPI_CYCLE",
   };
+  for (const CycleStep& step : cycle_steps(spec)) {
+    markers.push_back("phase=" + step.phase);
+  }
+  return markers;
 }
 
 std::string flist_path(const ModuleSpec& spec) {
@@ -883,6 +893,20 @@ module e1_h1_module_dpi_control_cpu;
     check32("debug_halted_o", cycle, {31'd0, debug_halted_imp1}, {31'd0, debug_halted_imp2});
   endtask
 
+  function automatic string phase_name(input int cycle);
+    case (cycle)
+      0: return "reset_release";
+      1: return "command_backpressure";
+      2: return "command_handshake";
+      3: return "wait_for_array";
+      4: return "wait_for_array_stable";
+      5: return "array_completion";
+      6: return "halt_transition";
+      7: return "halted_idle";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     e1_h1_module_dpi_begin("control_cpu", "module_only_control_cpu");
     clk_i = 1'b0;
@@ -893,12 +917,11 @@ module e1_h1_module_dpi_control_cpu;
     tick();
     rst_ni = 1'b1;
     for (int cycle = 0; cycle < 8; cycle++) begin
-      e1_h1_module_dpi_cycle("control_cpu", cycle, "drive");
+      e1_h1_module_dpi_cycle("control_cpu", cycle, phase_name(cycle));
       cmd_ready_i = (cycle >= 1 && cycle <= 2);
       array_done_i = (cycle == 5);
       array_error_i = 1'b0;
       tick();
-      e1_h1_module_dpi_cycle("control_cpu", cycle, "sample");
       check_outputs(cycle);
     end
     $finish;
@@ -996,6 +1019,20 @@ module e1_h1_module_dpi_systolic_array;
     check1("debug_busy_o", cycle, debug_busy_imp1, debug_busy_imp2);
   endtask
 
+  function automatic string phase_name(input int cycle);
+    case (cycle)
+      0: return "array_idle";
+      1: return "accept_array_command";
+      2: return "enter_busy";
+      3: return "consume_input_beat_0";
+      4: return "consume_input_beat_1";
+      5: return "consume_input_beat_2";
+      6: return "completion_pulse";
+      7: return "return_ready";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     e1_h1_module_dpi_begin("systolic_array", "module_only_systolic_array");
     clk_i = 1'b0;
@@ -1012,12 +1049,11 @@ module e1_h1_module_dpi_systolic_array;
     tick();
     rst_ni = 1'b1;
     for (int cycle = 0; cycle < 8; cycle++) begin
-      e1_h1_module_dpi_cycle("systolic_array", cycle, "drive");
+      e1_h1_module_dpi_cycle("systolic_array", cycle, phase_name(cycle));
       cmd_valid_i = (cycle == 1);
       input_valid_i = (cycle >= 3 && cycle <= 6);
       input_data_i = 64'h1000 + cycle[7:0];
       tick();
-      e1_h1_module_dpi_cycle("systolic_array", cycle, "sample");
       check_outputs(cycle);
     end
     $finish;
@@ -1096,6 +1132,18 @@ module e1_h1_module_dpi_ingress_sram;
     check32("array_data_o.hi", cycle, array_data_imp1[63:32], array_data_imp2[63:32]);
   endtask
 
+  function automatic string phase_name(input int cycle);
+    case (cycle)
+      0: return "latch_first_word";
+      1: return "hold_latched_word";
+      2: return "release_latched_word";
+      3: return "latch_next_clean_word";
+      4: return "reject_error_word";
+      5: return "empty_or_ready";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     e1_h1_module_dpi_begin("ingress_sram", "module_only_latched_buffer");
     clk_i = 1'b0;
@@ -1108,14 +1156,13 @@ module e1_h1_module_dpi_ingress_sram;
     tick();
     rst_ni = 1'b1;
     for (int cycle = 0; cycle < 6; cycle++) begin
-      e1_h1_module_dpi_cycle("ingress_sram", cycle, "drive_latch_boundary");
+      e1_h1_module_dpi_cycle("ingress_sram", cycle, phase_name(cycle));
       stream_valid_i = (cycle == 0 || cycle == 3 || cycle == 4);
       stream_data_i = 64'h2000 + cycle[7:0];
       stream_last_i = (cycle == 4);
       stream_error_i = (cycle == 4);
       array_ready_i = (cycle >= 2);
       tick();
-      e1_h1_module_dpi_cycle("ingress_sram", cycle, "sample_latched_output");
       check_outputs(cycle);
     end
     $finish;
@@ -1200,6 +1247,22 @@ module e1_h1_module_dpi_rgmii_ethernet_ingress;
     check32("stream_error_o", cycle, {31'd0, stream_error_imp1}, {31'd0, stream_error_imp2});
   endtask
 
+  function automatic string phase_name(input int cycle);
+    case (cycle)
+      0: return "idle_after_reset";
+      1: return "frame_nibble_0";
+      2: return "frame_nibble_1";
+      3: return "frame_nibble_2";
+      4: return "frame_nibble_3";
+      5: return "frame_nibble_4";
+      6: return "frame_gap";
+      7: return "downstream_accept";
+      8: return "drain_stream";
+      9: return "return_idle";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     e1_h1_module_dpi_begin("rgmii_ethernet_ingress", "module_only_rgmii_ingress");
     clk_i = 1'b0;
@@ -1212,12 +1275,11 @@ module e1_h1_module_dpi_rgmii_ethernet_ingress;
     tick_rgmii();
     rst_ni = 1'b1;
     for (int cycle = 0; cycle < 10; cycle++) begin
-      e1_h1_module_dpi_cycle("rgmii_ethernet_ingress", cycle, "drive_rgmii");
+      e1_h1_module_dpi_cycle("rgmii_ethernet_ingress", cycle, phase_name(cycle));
       rgmii_rx_ctl_i = (cycle >= 1 && cycle <= 5);
       stream_ready_i = (cycle >= 7);
       rgmii_rxd_i = cycle[3:0];
       tick_rgmii();
-      e1_h1_module_dpi_cycle("rgmii_ethernet_ingress", cycle, "sample_stream");
       check_outputs(cycle);
     end
     $finish;
@@ -1271,6 +1333,14 @@ std::string sv_config_sram(const std::string& probe_module,
   out << "      $fatal(1, \"" << module_name << " mismatch initialized_q cycle %0d\", cycle);\n";
   out << "    end\n";
   out << "  endtask\n\n";
+  out << "  function automatic string phase_name(input int cycle);\n";
+  out << "    case (cycle)\n";
+  out << "      0: return \"initialization_latch\";\n";
+  out << "      1: return \"initialized_hold_0\";\n";
+  out << "      2: return \"initialized_hold_1\";\n";
+  out << "      default: return \"invalid_cycle\";\n";
+  out << "    endcase\n";
+  out << "  endfunction\n\n";
   out << "  initial begin\n";
   out << "    e1_h1_module_dpi_begin(\"" << module_name << "\", \"module_only_config_sram\");\n";
   out << "    clk_i = 1'b0;\n";
@@ -1279,7 +1349,7 @@ std::string sv_config_sram(const std::string& probe_module,
   out << "    check_initialized(-1);\n";
   out << "    rst_ni = 1'b1;\n";
   out << "    for (int cycle = 0; cycle < 3; cycle++) begin\n";
-  out << "      e1_h1_module_dpi_cycle(\"" << module_name << "\", cycle, \"sample_initialized_latch\");\n";
+  out << "      e1_h1_module_dpi_cycle(\"" << module_name << "\", cycle, phase_name(cycle));\n";
   out << "      tick();\n";
   out << "      check_initialized(cycle);\n";
   out << "    end\n";

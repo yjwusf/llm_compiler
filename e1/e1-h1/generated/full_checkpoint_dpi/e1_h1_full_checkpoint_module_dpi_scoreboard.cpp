@@ -8,9 +8,7 @@ extern "C" void e1_h1_full_dpi_begin(const char* module_name, const char* vip_ca
 }
 
 extern "C" void e1_h1_full_dpi_cycle(const char* module_name, int cycle, const char* phase) {
-  if (cycle < 4 || (cycle % 256) == 0) {
-    std::printf("E1_H1_FULL_MODULE_DPI_CYCLE module=%s cycle=%d phase=%s\n", module_name, cycle, phase);
-  }
+  std::printf("E1_H1_FULL_MODULE_DPI_CYCLE module=%s cycle=%d phase=%s\n", module_name, cycle, phase);
 }
 
 extern "C" int e1_h1_full_dpi_expect_u32(

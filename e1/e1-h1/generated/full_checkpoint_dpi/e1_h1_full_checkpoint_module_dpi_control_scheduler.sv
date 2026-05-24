@@ -54,6 +54,16 @@ module e1_h1_full_checkpoint_module_dpi_control_scheduler;
     .cycle_phase_o(cycle_phase_o)
   );
 
+  function automatic string phase_name(input int cycle);
+    case (cycle % 4)
+      0: return "issue_control_op";
+      1: return "read_control_metadata";
+      2: return "execute_control_op";
+      3: return "commit_control_op";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     e1_h1_full_dpi_begin("control_scheduler", "all_154_control_ops");
     clk_i = 1'b0;
@@ -67,7 +77,7 @@ module e1_h1_full_checkpoint_module_dpi_control_scheduler;
     tick();
     start_i = 1'b0;
     for (int cycle = 0; cycle < 900 && !done_o; cycle++) begin
-      e1_h1_full_dpi_cycle("control_scheduler", cycle, "issue_execute_commit_control");
+      e1_h1_full_dpi_cycle("control_scheduler", cycle, phase_name(cycle));
       tick();
     end
     expect_u32("issued_control_ops_o", 0, 154, issued_control_ops_o);

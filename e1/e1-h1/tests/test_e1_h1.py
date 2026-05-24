@@ -551,6 +551,17 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual({check["status"] for check in ledger["checks"]}, {"pass"})
             for artifact in ledger["derived_artifacts"]:
                 self.assertTrue((REPO_ROOT / artifact).exists(), artifact)
+            phase_markers = [f"phase={phase}" for phase in readme_coverage_by_name[name]["phase_names"]]
+            self.assertEqual(
+                [
+                    marker
+                    for marker in test_plan_by_name[name]["verilator"]["expected_stdout_markers"]
+                    if marker.startswith("phase=")
+                ],
+                phase_markers,
+            )
+            self.assertEqual(verilator_execution_by_name[name]["expected_phase_markers"], phase_markers)
+            self.assertEqual(verilator_execution_by_name[name]["observed_phase_markers"], phase_markers)
             self.assertEqual(test_plan_by_name[name]["verilator"]["top_module"], module["probe_module"])
             self.assertEqual(test_plan_by_name[name]["verilator"]["flist"], module["flist"])
             self.assertEqual(test_plan_by_name[name]["verilator"]["main"], module["main"])
@@ -603,6 +614,8 @@ class E1H1Tests(unittest.TestCase):
             self.assertIn("e1_h1_module_dpi_cycle", probe_text)
             self.assertIn(module["reference_module"], probe_text)
             self.assertIn(module["top_module"], probe_text)
+            for phase in readme_coverage_by_name[name]["phase_names"]:
+                self.assertIn(f"return \"{phase}\";", probe_text)
             for forbidden in isolation_by_name[name]["forbidden_design_neighbors"]:
                 self.assertNotIn(forbidden, probe_text)
 
@@ -613,8 +626,8 @@ class E1H1Tests(unittest.TestCase):
         self.assertNotIn("e1_h1_control_cpu", array_probe)
         self.assertNotIn("e1_h1_control_cpu", buffer_probe)
         self.assertNotIn("e1_h1_systolic_array", buffer_probe)
-        self.assertIn("drive_latch_boundary", buffer_probe)
-        self.assertIn("sample_latched_output", buffer_probe)
+        self.assertIn("return \"latch_first_word\";", buffer_probe)
+        self.assertIn("return \"empty_or_ready\";", buffer_probe)
         self.assertIn("array_ready_i = (cycle >= 2);", buffer_probe)
 
     def test_generated_module_dpi_probes_run_under_verilator(self) -> None:
@@ -641,8 +654,12 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual(report["status"], "pass")
             self.assertEqual(report["execution_recipe"], "e1/e1-h1/generated/module_dpi/verilator_execution_recipe.json")
             self.assertIn("cpp_execution_recipe_commands_match_runner", {check["name"] for check in report["checks"]})
+            self.assertIn("all_expected_phase_markers_observed", {check["name"] for check in report["checks"]})
             self.assertEqual({check["status"] for check in report["checks"]}, {"pass"})
             self.assertEqual({module["status"] for module in report["modules"]}, {"pass"})
+            for module in report["modules"]:
+                self.assertGreater(len(module["expected_phase_markers"]), 0, module)
+                self.assertEqual(module["observed_phase_markers"], module["expected_phase_markers"])
             self.assertEqual(report["module_count"], len(report["modules"]))
 
     def test_full_checkpoint_module_dpi_generator_outputs_generated_probes(self) -> None:
@@ -815,6 +832,10 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual({check["status"] for check in ledger["checks"]}, {"pass"})
             for artifact in ledger["derived_artifacts"]:
                 self.assertTrue((REPO_ROOT / artifact).exists(), artifact)
+            phase_markers = [
+                f"phase={phase}"
+                for phase in readme_coverage_by_name[module["name"]]["phase_names"]
+            ]
             self.assertEqual(
                 [step["cycle"] for step in module["cycle_contract"]["cycles"]],
                 list(range(module["cycle_contract"]["cycle_period"])),
@@ -843,6 +864,14 @@ class E1H1Tests(unittest.TestCase):
                 recipe_by_name[module["name"]]["expected_stdout_markers"],
                 test_plan_by_name[module["name"]]["verilator"]["expected_stdout_markers"],
             )
+            self.assertEqual(
+                [
+                    marker
+                    for marker in test_plan_by_name[module["name"]]["verilator"]["expected_stdout_markers"]
+                    if marker.startswith("phase=")
+                ],
+                phase_markers,
+            )
             self.assertEqual(verilator_execution_by_name[module["name"]]["status"], "pass")
             self.assertEqual(
                 verilator_execution_by_name[module["name"]]["build_command"],
@@ -856,6 +885,8 @@ class E1H1Tests(unittest.TestCase):
                 verilator_execution_by_name[module["name"]]["observed_stdout_markers"],
                 test_plan_by_name[module["name"]]["verilator"]["expected_stdout_markers"],
             )
+            self.assertEqual(verilator_execution_by_name[module["name"]]["expected_phase_markers"], phase_markers)
+            self.assertEqual(verilator_execution_by_name[module["name"]]["observed_phase_markers"], phase_markers)
             self.assertGreater(len(module["cycle_notes"]), 0, module)
             self.assertGreater(len(module["input_signals"]), 0, module)
             self.assertGreater(len(module["output_signals"]), 0, module)
@@ -880,6 +911,8 @@ class E1H1Tests(unittest.TestCase):
             self.assertIn(f"module {module['probe_module']};", probe_text)
             self.assertIn("e1_h1_full_dpi_begin", probe_text)
             self.assertIn("e1_h1_full_dpi_cycle", probe_text)
+            for phase in readme_coverage_by_name[module["name"]]["phase_names"]:
+                self.assertIn(f"return \"{phase}\";", probe_text)
             for signal in [*module["input_signals"], *module["output_signals"]]:
                 self.assertEqual(set(signal), {"name", "width", "description"})
                 self.assertTrue(signal["name"], signal)
@@ -946,8 +979,12 @@ class E1H1Tests(unittest.TestCase):
                 "e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_recipe.json",
             )
             self.assertIn("cpp_execution_recipe_commands_match_runner", {check["name"] for check in report["checks"]})
+            self.assertIn("all_expected_phase_markers_observed", {check["name"] for check in report["checks"]})
             self.assertEqual({check["status"] for check in report["checks"]}, {"pass"})
             self.assertEqual({module["status"] for module in report["modules"]}, {"pass"})
+            for module in report["modules"]:
+                self.assertGreater(len(module["expected_phase_markers"]), 0, module)
+                self.assertEqual(module["observed_phase_markers"], module["expected_phase_markers"])
             self.assertEqual(report["module_count"], len(report["modules"]))
 
     def test_implementation_matrix_and_flists_define_imp1_imp2(self) -> None:
@@ -1673,6 +1710,12 @@ class E1H1Tests(unittest.TestCase):
                 module["verilator_execution"]["observed_stdout_markers"],
                 module["test_plan"]["verilator"]["expected_stdout_markers"],
             )
+            expected_phase_markers = [
+                f"phase={step['phase']}"
+                for step in module["cycle_contract"]["cycles"]
+            ]
+            self.assertEqual(module["verilator_execution"]["expected_phase_markers"], expected_phase_markers)
+            self.assertEqual(module["verilator_execution"]["observed_phase_markers"], expected_phase_markers)
             self.assertEqual({check["status"] for check in module["readme_cycle_coverage"]["checks"]}, {"pass"})
             self.assertEqual(
                 module["readme_cycle_coverage"]["phase_names"],
@@ -1683,6 +1726,14 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual(module["construction_ledger"]["flist"], module["flist"])
             self.assertEqual(module["construction_ledger"]["phase_names"], [step["phase"] for step in module["cycle_contract"]["cycles"]])
             self.assertEqual({check["status"] for check in module["construction_ledger"]["checks"]}, {"pass"})
+            self.assertEqual(
+                [
+                    marker
+                    for marker in module["test_plan"]["verilator"]["expected_stdout_markers"]
+                    if marker.startswith("phase=")
+                ],
+                expected_phase_markers,
+            )
             self.assertEqual(module["test_plan"]["verilator"]["top_module"], module["probe"].split("/")[-1][:-3])
             self.assertEqual(module["test_plan"]["verilator"]["flist"], module["flist"])
             self.assertEqual(module["test_plan"]["verilator"]["main"], module["main"])
@@ -2296,6 +2347,12 @@ class E1H1Tests(unittest.TestCase):
                 module["verilator_execution"]["observed_stdout_markers"],
                 module["test_plan"]["verilator"]["expected_stdout_markers"],
             )
+            expected_phase_markers = [
+                f"phase={step['phase']}"
+                for step in module["cycle_contract"]["cycles"]
+            ]
+            self.assertEqual(module["verilator_execution"]["expected_phase_markers"], expected_phase_markers)
+            self.assertEqual(module["verilator_execution"]["observed_phase_markers"], expected_phase_markers)
             self.assertEqual({check["status"] for check in module["readme_cycle_coverage"]["checks"]}, {"pass"})
             self.assertEqual(
                 module["readme_cycle_coverage"]["phase_names"],
@@ -2310,6 +2367,14 @@ class E1H1Tests(unittest.TestCase):
                 [step["phase"] for step in module["cycle_contract"]["cycles"]],
             )
             self.assertEqual({check["status"] for check in module["construction_ledger"]["checks"]}, {"pass"})
+            self.assertEqual(
+                [
+                    marker
+                    for marker in module["test_plan"]["verilator"]["expected_stdout_markers"]
+                    if marker.startswith("phase=")
+                ],
+                expected_phase_markers,
+            )
             self.assertEqual(module["test_plan"]["verilator"]["top_module"], module["probe_module"])
             self.assertEqual(module["test_plan"]["verilator"]["flist"], module["flist"])
             self.assertEqual(module["test_plan"]["verilator"]["main"], module["main"])

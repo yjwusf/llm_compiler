@@ -78,6 +78,20 @@ module e1_h1_module_dpi_control_cpu;
     check32("debug_halted_o", cycle, {31'd0, debug_halted_imp1}, {31'd0, debug_halted_imp2});
   endtask
 
+  function automatic string phase_name(input int cycle);
+    case (cycle)
+      0: return "reset_release";
+      1: return "command_backpressure";
+      2: return "command_handshake";
+      3: return "wait_for_array";
+      4: return "wait_for_array_stable";
+      5: return "array_completion";
+      6: return "halt_transition";
+      7: return "halted_idle";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     e1_h1_module_dpi_begin("control_cpu", "module_only_control_cpu");
     clk_i = 1'b0;
@@ -88,12 +102,11 @@ module e1_h1_module_dpi_control_cpu;
     tick();
     rst_ni = 1'b1;
     for (int cycle = 0; cycle < 8; cycle++) begin
-      e1_h1_module_dpi_cycle("control_cpu", cycle, "drive");
+      e1_h1_module_dpi_cycle("control_cpu", cycle, phase_name(cycle));
       cmd_ready_i = (cycle >= 1 && cycle <= 2);
       array_done_i = (cycle == 5);
       array_error_i = 1'b0;
       tick();
-      e1_h1_module_dpi_cycle("control_cpu", cycle, "sample");
       check_outputs(cycle);
     end
     $finish;

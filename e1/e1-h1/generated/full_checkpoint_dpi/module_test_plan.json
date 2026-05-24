@@ -17,7 +17,7 @@
         "obj_dir_placeholder": "<obj_dir>",
         "run_executable": "Ve1_h1_full_checkpoint_module_dpi_linear_scheduler",
         "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
-        "expected_stdout_markers": ["module=linear_scheduler", "E1_H1_FULL_MODULE_DPI_CYCLE"]
+        "expected_stdout_markers": ["module=linear_scheduler", "E1_H1_FULL_MODULE_DPI_CYCLE", "phase=setup_tile_command", "phase=assert_scheduler_valid", "phase=accept_command_handshake", "phase=wait_for_array_progress_0", "phase=wait_for_array_progress_1", "phase=wait_for_array_progress_2", "phase=sample_array_done", "phase=advance_tile_counters"]
       },
       "checks": [
         {"name": "probe_exists", "status": "pass"},
@@ -40,7 +40,7 @@
         "obj_dir_placeholder": "<obj_dir>",
         "run_executable": "Ve1_h1_full_checkpoint_module_dpi_linear_tile_engine",
         "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
-        "expected_stdout_markers": ["module=linear_tile_engine", "E1_H1_FULL_MODULE_DPI_CYCLE"]
+        "expected_stdout_markers": ["module=linear_tile_engine", "E1_H1_FULL_MODULE_DPI_CYCLE", "phase=setup_tile_engine", "phase=scheduler_valid_visible", "phase=array_command_handshake", "phase=latch_to_array_beat_0", "phase=latch_to_array_beat_1", "phase=latch_to_array_beat_2", "phase=array_done_pulse", "phase=return_ready"]
       },
       "checks": [
         {"name": "probe_exists", "status": "pass"},
@@ -63,7 +63,7 @@
         "obj_dir_placeholder": "<obj_dir>",
         "run_executable": "Ve1_h1_full_checkpoint_module_dpi_control_scheduler",
         "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
-        "expected_stdout_markers": ["module=control_scheduler", "E1_H1_FULL_MODULE_DPI_CYCLE"]
+        "expected_stdout_markers": ["module=control_scheduler", "E1_H1_FULL_MODULE_DPI_CYCLE", "phase=issue_control_op", "phase=read_control_metadata", "phase=execute_control_op", "phase=commit_control_op"]
       },
       "checks": [
         {"name": "probe_exists", "status": "pass"},
@@ -86,7 +86,7 @@
         "obj_dir_placeholder": "<obj_dir>",
         "run_executable": "Ve1_h1_full_checkpoint_module_dpi_graph_sequencer",
         "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
-        "expected_stdout_markers": ["module=graph_sequencer", "E1_H1_FULL_MODULE_DPI_CYCLE"]
+        "expected_stdout_markers": ["module=graph_sequencer", "E1_H1_FULL_MODULE_DPI_CYCLE", "phase=present_graph_slot", "phase=launch_selected_engine", "phase=wait_for_slot_done", "phase=commit_graph_slot"]
       },
       "checks": [
         {"name": "probe_exists", "status": "pass"},
@@ -109,7 +109,7 @@
         "obj_dir_placeholder": "<obj_dir>",
         "run_executable": "Ve1_h1_full_checkpoint_module_dpi_linear_slot_engine",
         "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
-        "expected_stdout_markers": ["module=linear_slot_engine", "E1_H1_FULL_MODULE_DPI_CYCLE"]
+        "expected_stdout_markers": ["module=linear_slot_engine", "E1_H1_FULL_MODULE_DPI_CYCLE", "phase=latch_selected_linear_slot", "phase=slot_command_valid", "phase=array_command_handshake", "phase=latch_to_array_beat_0", "phase=latch_to_array_beat_1", "phase=latch_to_array_beat_2", "phase=array_done_pulse", "phase=slot_done_or_next_tile"]
       },
       "checks": [
         {"name": "probe_exists", "status": "pass"},
@@ -132,7 +132,7 @@
         "obj_dir_placeholder": "<obj_dir>",
         "run_executable": "Ve1_h1_full_checkpoint_module_dpi_control_slot_engine",
         "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
-        "expected_stdout_markers": ["module=control_slot_engine", "E1_H1_FULL_MODULE_DPI_CYCLE"]
+        "expected_stdout_markers": ["module=control_slot_engine", "E1_H1_FULL_MODULE_DPI_CYCLE", "phase=issue_selected_control_slot", "phase=read_selected_control_metadata", "phase=execute_selected_control_slot", "phase=commit_selected_control_slot"]
       },
       "checks": [
         {"name": "probe_exists", "status": "pass"},
@@ -155,7 +155,7 @@
         "obj_dir_placeholder": "<obj_dir>",
         "run_executable": "Ve1_h1_full_checkpoint_module_dpi_full_checkpoint_top",
         "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
-        "expected_stdout_markers": ["module=full_checkpoint_top", "E1_H1_FULL_MODULE_DPI_CYCLE"]
+        "expected_stdout_markers": ["module=full_checkpoint_top", "E1_H1_FULL_MODULE_DPI_CYCLE", "phase=present_top_graph_slot", "phase=start_selected_slot_engine", "phase=run_selected_slot_engine", "phase=commit_top_graph_slot"]
       },
       "checks": [
         {"name": "probe_exists", "status": "pass"},

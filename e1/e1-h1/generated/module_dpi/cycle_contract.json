@@ -25,6 +25,7 @@
       "checks": [
         {"name": "cycle_indices_contiguous", "status": "pass"},
         {"name": "dpi_probe_reports_cycles", "status": "pass"},
+        {"name": "dpi_probe_reports_named_phases", "status": "pass"},
         {"name": "readme_cycle_diagram_declared", "status": "pass"}
       ]
     },
@@ -51,6 +52,7 @@
       "checks": [
         {"name": "cycle_indices_contiguous", "status": "pass"},
         {"name": "dpi_probe_reports_cycles", "status": "pass"},
+        {"name": "dpi_probe_reports_named_phases", "status": "pass"},
         {"name": "readme_cycle_diagram_declared", "status": "pass"}
       ]
     },
@@ -73,6 +75,7 @@
       "checks": [
         {"name": "cycle_indices_contiguous", "status": "pass"},
         {"name": "dpi_probe_reports_cycles", "status": "pass"},
+        {"name": "dpi_probe_reports_named_phases", "status": "pass"},
         {"name": "readme_cycle_diagram_declared", "status": "pass"}
       ]
     },
@@ -92,6 +95,7 @@
       "checks": [
         {"name": "cycle_indices_contiguous", "status": "pass"},
         {"name": "dpi_probe_reports_cycles", "status": "pass"},
+        {"name": "dpi_probe_reports_named_phases", "status": "pass"},
         {"name": "readme_cycle_diagram_declared", "status": "pass"}
       ]
     },
@@ -111,6 +115,7 @@
       "checks": [
         {"name": "cycle_indices_contiguous", "status": "pass"},
         {"name": "dpi_probe_reports_cycles", "status": "pass"},
+        {"name": "dpi_probe_reports_named_phases", "status": "pass"},
         {"name": "readme_cycle_diagram_declared", "status": "pass"}
       ]
     },
@@ -135,6 +140,7 @@
       "checks": [
         {"name": "cycle_indices_contiguous", "status": "pass"},
         {"name": "dpi_probe_reports_cycles", "status": "pass"},
+        {"name": "dpi_probe_reports_named_phases", "status": "pass"},
         {"name": "readme_cycle_diagram_declared", "status": "pass"}
       ]
     }

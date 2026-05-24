@@ -84,6 +84,20 @@ module e1_h1_module_dpi_systolic_array;
     check1("debug_busy_o", cycle, debug_busy_imp1, debug_busy_imp2);
   endtask
 
+  function automatic string phase_name(input int cycle);
+    case (cycle)
+      0: return "array_idle";
+      1: return "accept_array_command";
+      2: return "enter_busy";
+      3: return "consume_input_beat_0";
+      4: return "consume_input_beat_1";
+      5: return "consume_input_beat_2";
+      6: return "completion_pulse";
+      7: return "return_ready";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     e1_h1_module_dpi_begin("systolic_array", "module_only_systolic_array");
     clk_i = 1'b0;
@@ -100,12 +114,11 @@ module e1_h1_module_dpi_systolic_array;
     tick();
     rst_ni = 1'b1;
     for (int cycle = 0; cycle < 8; cycle++) begin
-      e1_h1_module_dpi_cycle("systolic_array", cycle, "drive");
+      e1_h1_module_dpi_cycle("systolic_array", cycle, phase_name(cycle));
       cmd_valid_i = (cycle == 1);
       input_valid_i = (cycle >= 3 && cycle <= 6);
       input_data_i = 64'h1000 + cycle[7:0];
       tick();
-      e1_h1_module_dpi_cycle("systolic_array", cycle, "sample");
       check_outputs(cycle);
     end
     $finish;

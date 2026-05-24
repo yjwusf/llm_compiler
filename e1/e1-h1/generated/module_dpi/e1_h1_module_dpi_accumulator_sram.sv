@@ -42,6 +42,15 @@ module e1_h1_module_dpi_accumulator_sram;
     end
   endtask
 
+  function automatic string phase_name(input int cycle);
+    case (cycle)
+      0: return "initialization_latch";
+      1: return "initialized_hold_0";
+      2: return "initialized_hold_1";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     e1_h1_module_dpi_begin("accumulator_sram", "module_only_config_sram");
     clk_i = 1'b0;
@@ -50,7 +59,7 @@ module e1_h1_module_dpi_accumulator_sram;
     check_initialized(-1);
     rst_ni = 1'b1;
     for (int cycle = 0; cycle < 3; cycle++) begin
-      e1_h1_module_dpi_cycle("accumulator_sram", cycle, "sample_initialized_latch");
+      e1_h1_module_dpi_cycle("accumulator_sram", cycle, phase_name(cycle));
       tick();
       check_initialized(cycle);
     end

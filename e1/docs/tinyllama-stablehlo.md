@@ -113,7 +113,8 @@ coverage, and Verilator recipe. `e1/tools/run_module_dpi_verilator.py`
 consumes that generated recipe with the test plan and emits
 `e1/e1-h1/generated/module_dpi/verilator_execution_report.json`, which records
 the actual module-only Verilator build/run result and observed DPI stdout
-markers for every base IP.
+markers for every base IP, including one `phase=<name>` marker for every named
+cycle phase in the generated cycle contract.
 
 The RTL-lowering artifact maps each checked-in StableHLO fixture operation to
 an active `imp2` RTL module, its imp2 flist, and its generated module-DPI proof.
@@ -228,7 +229,8 @@ records the C++-generated commands and expected DPI markers consumed by the
 runner. The execution report
 `e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_report.json`
 records the actual Verilator build/run result for each generated module-only
-probe. The generated
+probe and requires every generated cycle-contract phase name to appear as an
+observed DPI phase marker. The generated
 `e1/e1-h1/generated/full_checkpoint_dpi/construction_ledger.json` is the
 per-module source-of-truth ledger tying the C++ spec to probes, flists,
 interfaces, isolation, cycle phases, README coverage, and Verilator recipes.

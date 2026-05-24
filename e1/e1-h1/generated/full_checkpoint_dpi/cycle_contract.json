@@ -26,6 +26,7 @@
         {"name": "cycle_indices_contiguous", "status": "pass"},
         {"name": "cycle_phase_signals_documented", "status": "pass"},
         {"name": "dpi_probe_reports_cycles", "status": "pass"},
+        {"name": "dpi_probe_reports_named_phases", "status": "pass"},
         {"name": "readme_cycle_diagram_declared", "status": "pass"}
       ]
     },
@@ -51,6 +52,7 @@
         {"name": "cycle_indices_contiguous", "status": "pass"},
         {"name": "cycle_phase_signals_documented", "status": "pass"},
         {"name": "dpi_probe_reports_cycles", "status": "pass"},
+        {"name": "dpi_probe_reports_named_phases", "status": "pass"},
         {"name": "readme_cycle_diagram_declared", "status": "pass"}
       ]
     },
@@ -72,6 +74,7 @@
         {"name": "cycle_indices_contiguous", "status": "pass"},
         {"name": "cycle_phase_signals_documented", "status": "pass"},
         {"name": "dpi_probe_reports_cycles", "status": "pass"},
+        {"name": "dpi_probe_reports_named_phases", "status": "pass"},
         {"name": "readme_cycle_diagram_declared", "status": "pass"}
       ]
     },
@@ -93,6 +96,7 @@
         {"name": "cycle_indices_contiguous", "status": "pass"},
         {"name": "cycle_phase_signals_documented", "status": "pass"},
         {"name": "dpi_probe_reports_cycles", "status": "pass"},
+        {"name": "dpi_probe_reports_named_phases", "status": "pass"},
         {"name": "readme_cycle_diagram_declared", "status": "pass"}
       ]
     },
@@ -118,6 +122,7 @@
         {"name": "cycle_indices_contiguous", "status": "pass"},
         {"name": "cycle_phase_signals_documented", "status": "pass"},
         {"name": "dpi_probe_reports_cycles", "status": "pass"},
+        {"name": "dpi_probe_reports_named_phases", "status": "pass"},
         {"name": "readme_cycle_diagram_declared", "status": "pass"}
       ]
     },
@@ -139,6 +144,7 @@
         {"name": "cycle_indices_contiguous", "status": "pass"},
         {"name": "cycle_phase_signals_documented", "status": "pass"},
         {"name": "dpi_probe_reports_cycles", "status": "pass"},
+        {"name": "dpi_probe_reports_named_phases", "status": "pass"},
         {"name": "readme_cycle_diagram_declared", "status": "pass"}
       ]
     },
@@ -160,6 +166,7 @@
         {"name": "cycle_indices_contiguous", "status": "pass"},
         {"name": "cycle_phase_signals_documented", "status": "pass"},
         {"name": "dpi_probe_reports_cycles", "status": "pass"},
+        {"name": "dpi_probe_reports_named_phases", "status": "pass"},
         {"name": "readme_cycle_diagram_declared", "status": "pass"}
       ]
     }

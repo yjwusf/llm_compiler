@@ -58,6 +58,16 @@ module e1_h1_full_checkpoint_module_dpi_control_slot_engine;
     .cycle_phase_o(cycle_phase_o)
   );
 
+  function automatic string phase_name(input int cycle);
+    case (cycle % 4)
+      0: return "issue_selected_control_slot";
+      1: return "read_selected_control_metadata";
+      2: return "execute_selected_control_slot";
+      3: return "commit_selected_control_slot";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     e1_h1_full_dpi_begin("control_slot_engine", "single_control_slot");
     clk_i = 1'b0;
@@ -74,7 +84,7 @@ module e1_h1_full_checkpoint_module_dpi_control_slot_engine;
     tick();
     start_i = 1'b0;
     for (int cycle = 0; cycle < 16 && !done_o; cycle++) begin
-      e1_h1_full_dpi_cycle("control_slot_engine", cycle, "single_slot_cpu_control");
+      e1_h1_full_dpi_cycle("control_slot_engine", cycle, phase_name(cycle));
       control_ready_i = (cycle >= 1);
       tick();
     end

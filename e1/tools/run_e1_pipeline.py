@@ -82,6 +82,34 @@ def load_optional_json(path: Path) -> dict[str, Any]:
     return load_json(path)
 
 
+def run_module_dpi_verilator_runner(
+    test_plan_path: Path,
+    recipe_path: Path,
+    report_path: Path,
+    suite: str,
+) -> None:
+    runner = REPO_ROOT / "e1" / "tools" / "run_module_dpi_verilator.py"
+    subprocess.run(
+        [
+            "python3",
+            repo_rel(runner),
+            "--test-plan",
+            repo_rel(test_plan_path),
+            "--recipe",
+            repo_rel(recipe_path),
+            "--report",
+            repo_rel(report_path),
+            "--suite",
+            suite,
+        ],
+        cwd=REPO_ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=True,
+    )
+
+
 def implementation_scheme(ip: dict[str, Any]) -> dict[str, Any]:
     scheme = ip.get("implementation_scheme")
     if not isinstance(scheme, dict):
@@ -589,6 +617,12 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
     verilator_execution_path = module_dpi_dir / "verilator_execution_report.json"
     readme_cycle_coverage_path = module_dpi_dir / "readme_cycle_coverage.json"
     construction_ledger_path = module_dpi_dir / "construction_ledger.json"
+    run_module_dpi_verilator_runner(
+        module_test_plan_path,
+        verilator_execution_recipe_path,
+        verilator_execution_path,
+        "module_dpi",
+    )
     module_isolation = load_json(module_isolation_path)
     cycle_contract = load_json(cycle_contract_path)
     module_test_plan = load_json(module_test_plan_path)
@@ -720,6 +754,9 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
                 == test_plan_by_name[module["name"]]["verilator"]["flist"]
                 and verilator_execution_by_name[module["name"]]["observed_stdout_markers"]
                 == test_plan_by_name[module["name"]]["verilator"]["expected_stdout_markers"]
+                and verilator_execution_by_name[module["name"]]["observed_phase_markers"]
+                == verilator_execution_by_name[module["name"]]["expected_phase_markers"]
+                and len(verilator_execution_by_name[module["name"]]["expected_phase_markers"]) > 0
                 for module in module_dpi_manifest["modules"]
             )
             else "fail",
@@ -738,6 +775,12 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
                 == recipe_by_name[module["name"]]["run_executable"]
                 and verilator_execution_by_name[module["name"]]["expected_stdout_markers"]
                 == recipe_by_name[module["name"]]["expected_stdout_markers"]
+                and verilator_execution_by_name[module["name"]]["expected_phase_markers"]
+                == [
+                    marker
+                    for marker in recipe_by_name[module["name"]]["expected_stdout_markers"]
+                    if marker.startswith("phase=")
+                ]
                 for module in module_dpi_manifest["modules"]
             )
             else "fail",
@@ -892,6 +935,12 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
     verilator_execution_path = module_dpi_dir / "verilator_execution_report.json"
     readme_cycle_coverage_path = module_dpi_dir / "readme_cycle_coverage.json"
     construction_ledger_path = module_dpi_dir / "construction_ledger.json"
+    run_module_dpi_verilator_runner(
+        module_test_plan_path,
+        verilator_execution_recipe_path,
+        verilator_execution_path,
+        "full_checkpoint_module_dpi",
+    )
     module_isolation = load_json(module_isolation_path)
     cycle_contract = load_json(cycle_contract_path)
     module_test_plan = load_json(module_test_plan_path)
@@ -1046,6 +1095,9 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
                 == test_plan_by_name[module["name"]]["verilator"]["flist"]
                 and verilator_execution_by_name[module["name"]]["observed_stdout_markers"]
                 == test_plan_by_name[module["name"]]["verilator"]["expected_stdout_markers"]
+                and verilator_execution_by_name[module["name"]]["observed_phase_markers"]
+                == verilator_execution_by_name[module["name"]]["expected_phase_markers"]
+                and len(verilator_execution_by_name[module["name"]]["expected_phase_markers"]) > 0
                 for module in manifest["modules"]
             )
             else "fail",
@@ -1063,6 +1115,12 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
                 == recipe_by_name[module["name"]]["run_executable"]
                 and verilator_execution_by_name[module["name"]]["expected_stdout_markers"]
                 == recipe_by_name[module["name"]]["expected_stdout_markers"]
+                and verilator_execution_by_name[module["name"]]["expected_phase_markers"]
+                == [
+                    marker
+                    for marker in recipe_by_name[module["name"]]["expected_stdout_markers"]
+                    if marker.startswith("phase=")
+                ]
                 for module in manifest["modules"]
             )
             else "fail",
@@ -1256,8 +1314,9 @@ def emit_rtl_lowering(
         {
             "name": "latch_buffer_probe_is_explicit",
             "status": "pass"
-            if "drive_latch_boundary" in buffer_probe
-            and "sample_latched_output" in buffer_probe
+            if 'return "latch_first_word";' in buffer_probe
+            and 'return "hold_latched_word";' in buffer_probe
+            and 'return "release_latched_word";' in buffer_probe
             and "array_ready_i = (cycle >= 2);" in buffer_probe
             else "fail",
         },

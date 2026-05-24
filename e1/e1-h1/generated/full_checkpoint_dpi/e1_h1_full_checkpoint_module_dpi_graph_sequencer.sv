@@ -62,6 +62,16 @@ module e1_h1_full_checkpoint_module_dpi_graph_sequencer;
     .cycle_phase_o(cycle_phase_o)
   );
 
+  function automatic string phase_name(input int cycle);
+    case (cycle % 4)
+      0: return "present_graph_slot";
+      1: return "launch_selected_engine";
+      2: return "wait_for_slot_done";
+      3: return "commit_graph_slot";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     int linear_launches;
     int control_launches;
@@ -80,7 +90,7 @@ module e1_h1_full_checkpoint_module_dpi_graph_sequencer;
     tick();
     start_i = 1'b0;
     for (int cycle = 0; cycle < 1600 && !done_o; cycle++) begin
-      e1_h1_full_dpi_cycle("graph_sequencer", cycle, "drive_ready_and_engine_done");
+      e1_h1_full_dpi_cycle("graph_sequencer", cycle, phase_name(cycle));
       op_done_i = (cycle_phase_o == 2'd2);
       if (launch_linear_o) linear_launches++;
       if (launch_control_o) control_launches++;

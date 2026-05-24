@@ -248,6 +248,10 @@
               "status": "pass"
             },
             {
+              "name": "dpi_probe_reports_named_phases",
+              "status": "pass"
+            },
+            {
               "name": "readme_cycle_diagram_declared",
               "status": "pass"
             }
@@ -437,7 +441,15 @@
             "dut_module": "e1_h1_control_cpu",
             "expected_stdout_markers": [
               "module=control_cpu",
-              "E1_H1_MODULE_DPI_CYCLE"
+              "E1_H1_MODULE_DPI_CYCLE",
+              "phase=reset_release",
+              "phase=command_backpressure",
+              "phase=command_handshake",
+              "phase=wait_for_array",
+              "phase=wait_for_array_stable",
+              "phase=array_completion",
+              "phase=halt_transition",
+              "phase=halted_idle"
             ],
             "fixed_args": [
               "--cc",
@@ -485,16 +497,52 @@
           "build_returncode": 0,
           "build_stdout_tail": [],
           "dut_module": "e1_h1_control_cpu",
+          "expected_phase_markers": [
+            "phase=reset_release",
+            "phase=command_backpressure",
+            "phase=command_handshake",
+            "phase=wait_for_array",
+            "phase=wait_for_array_stable",
+            "phase=array_completion",
+            "phase=halt_transition",
+            "phase=halted_idle"
+          ],
           "expected_stdout_markers": [
             "module=control_cpu",
-            "E1_H1_MODULE_DPI_CYCLE"
+            "E1_H1_MODULE_DPI_CYCLE",
+            "phase=reset_release",
+            "phase=command_backpressure",
+            "phase=command_handshake",
+            "phase=wait_for_array",
+            "phase=wait_for_array_stable",
+            "phase=array_completion",
+            "phase=halt_transition",
+            "phase=halted_idle"
           ],
           "flist": "e1/e1-h1/generated/module_dpi/flists/control_cpu.f",
           "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu_main.cpp",
           "name": "control_cpu",
+          "observed_phase_markers": [
+            "phase=reset_release",
+            "phase=command_backpressure",
+            "phase=command_handshake",
+            "phase=wait_for_array",
+            "phase=wait_for_array_stable",
+            "phase=array_completion",
+            "phase=halt_transition",
+            "phase=halted_idle"
+          ],
           "observed_stdout_markers": [
             "module=control_cpu",
-            "E1_H1_MODULE_DPI_CYCLE"
+            "E1_H1_MODULE_DPI_CYCLE",
+            "phase=reset_release",
+            "phase=command_backpressure",
+            "phase=command_handshake",
+            "phase=wait_for_array",
+            "phase=wait_for_array_stable",
+            "phase=array_completion",
+            "phase=halt_transition",
+            "phase=halted_idle"
           ],
           "run_executable": "<build-root>/obj_module_dpi_control_cpu/Ve1_h1_module_dpi_control_cpu",
           "run_returncode": 0,
@@ -529,7 +577,15 @@
           "dut_module": "e1_h1_control_cpu",
           "expected_stdout_markers": [
             "module=control_cpu",
-            "E1_H1_MODULE_DPI_CYCLE"
+            "E1_H1_MODULE_DPI_CYCLE",
+            "phase=reset_release",
+            "phase=command_backpressure",
+            "phase=command_handshake",
+            "phase=wait_for_array",
+            "phase=wait_for_array_stable",
+            "phase=array_completion",
+            "phase=halt_transition",
+            "phase=halted_idle"
           ],
           "flist": "e1/e1-h1/generated/module_dpi/flists/control_cpu.f",
           "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu_main.cpp",
@@ -615,6 +671,10 @@
             },
             {
               "name": "dpi_probe_reports_cycles",
+              "status": "pass"
+            },
+            {
+              "name": "dpi_probe_reports_named_phases",
               "status": "pass"
             },
             {
@@ -823,7 +883,17 @@
             "dut_module": "e1_h1_rgmii_ethernet_ingress",
             "expected_stdout_markers": [
               "module=rgmii_ethernet_ingress",
-              "E1_H1_MODULE_DPI_CYCLE"
+              "E1_H1_MODULE_DPI_CYCLE",
+              "phase=idle_after_reset",
+              "phase=frame_nibble_0",
+              "phase=frame_nibble_1",
+              "phase=frame_nibble_2",
+              "phase=frame_nibble_3",
+              "phase=frame_nibble_4",
+              "phase=frame_gap",
+              "phase=downstream_accept",
+              "phase=drain_stream",
+              "phase=return_idle"
             ],
             "fixed_args": [
               "--cc",
@@ -871,16 +941,60 @@
           "build_returncode": 0,
           "build_stdout_tail": [],
           "dut_module": "e1_h1_rgmii_ethernet_ingress",
+          "expected_phase_markers": [
+            "phase=idle_after_reset",
+            "phase=frame_nibble_0",
+            "phase=frame_nibble_1",
+            "phase=frame_nibble_2",
+            "phase=frame_nibble_3",
+            "phase=frame_nibble_4",
+            "phase=frame_gap",
+            "phase=downstream_accept",
+            "phase=drain_stream",
+            "phase=return_idle"
+          ],
           "expected_stdout_markers": [
             "module=rgmii_ethernet_ingress",
-            "E1_H1_MODULE_DPI_CYCLE"
+            "E1_H1_MODULE_DPI_CYCLE",
+            "phase=idle_after_reset",
+            "phase=frame_nibble_0",
+            "phase=frame_nibble_1",
+            "phase=frame_nibble_2",
+            "phase=frame_nibble_3",
+            "phase=frame_nibble_4",
+            "phase=frame_gap",
+            "phase=downstream_accept",
+            "phase=drain_stream",
+            "phase=return_idle"
           ],
           "flist": "e1/e1-h1/generated/module_dpi/flists/rgmii_ethernet_ingress.f",
           "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_rgmii_ethernet_ingress_main.cpp",
           "name": "rgmii_ethernet_ingress",
+          "observed_phase_markers": [
+            "phase=idle_after_reset",
+            "phase=frame_nibble_0",
+            "phase=frame_nibble_1",
+            "phase=frame_nibble_2",
+            "phase=frame_nibble_3",
+            "phase=frame_nibble_4",
+            "phase=frame_gap",
+            "phase=downstream_accept",
+            "phase=drain_stream",
+            "phase=return_idle"
+          ],
           "observed_stdout_markers": [
             "module=rgmii_ethernet_ingress",
-            "E1_H1_MODULE_DPI_CYCLE"
+            "E1_H1_MODULE_DPI_CYCLE",
+            "phase=idle_after_reset",
+            "phase=frame_nibble_0",
+            "phase=frame_nibble_1",
+            "phase=frame_nibble_2",
+            "phase=frame_nibble_3",
+            "phase=frame_nibble_4",
+            "phase=frame_gap",
+            "phase=downstream_accept",
+            "phase=drain_stream",
+            "phase=return_idle"
           ],
           "run_executable": "<build-root>/obj_module_dpi_rgmii_ethernet_ingress/Ve1_h1_module_dpi_rgmii_ethernet_ingress",
           "run_returncode": 0,
@@ -915,7 +1029,17 @@
           "dut_module": "e1_h1_rgmii_ethernet_ingress",
           "expected_stdout_markers": [
             "module=rgmii_ethernet_ingress",
-            "E1_H1_MODULE_DPI_CYCLE"
+            "E1_H1_MODULE_DPI_CYCLE",
+            "phase=idle_after_reset",
+            "phase=frame_nibble_0",
+            "phase=frame_nibble_1",
+            "phase=frame_nibble_2",
+            "phase=frame_nibble_3",
+            "phase=frame_nibble_4",
+            "phase=frame_gap",
+            "phase=downstream_accept",
+            "phase=drain_stream",
+            "phase=return_idle"
           ],
           "flist": "e1/e1-h1/generated/module_dpi/flists/rgmii_ethernet_ingress.f",
           "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_rgmii_ethernet_ingress_main.cpp",
@@ -997,6 +1121,10 @@
             },
             {
               "name": "dpi_probe_reports_cycles",
+              "status": "pass"
+            },
+            {
+              "name": "dpi_probe_reports_named_phases",
               "status": "pass"
             },
             {
@@ -1173,7 +1301,13 @@
             "dut_module": "e1_h1_stream_sram",
             "expected_stdout_markers": [
               "module=ingress_sram",
-              "E1_H1_MODULE_DPI_CYCLE"
+              "E1_H1_MODULE_DPI_CYCLE",
+              "phase=latch_first_word",
+              "phase=hold_latched_word",
+              "phase=release_latched_word",
+              "phase=latch_next_clean_word",
+              "phase=reject_error_word",
+              "phase=empty_or_ready"
             ],
             "fixed_args": [
               "--cc",
@@ -1221,16 +1355,44 @@
           "build_returncode": 0,
           "build_stdout_tail": [],
           "dut_module": "e1_h1_stream_sram",
+          "expected_phase_markers": [
+            "phase=latch_first_word",
+            "phase=hold_latched_word",
+            "phase=release_latched_word",
+            "phase=latch_next_clean_word",
+            "phase=reject_error_word",
+            "phase=empty_or_ready"
+          ],
           "expected_stdout_markers": [
             "module=ingress_sram",
-            "E1_H1_MODULE_DPI_CYCLE"
+            "E1_H1_MODULE_DPI_CYCLE",
+            "phase=latch_first_word",
+            "phase=hold_latched_word",
+            "phase=release_latched_word",
+            "phase=latch_next_clean_word",
+            "phase=reject_error_word",
+            "phase=empty_or_ready"
           ],
           "flist": "e1/e1-h1/generated/module_dpi/flists/ingress_sram.f",
           "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram_main.cpp",
           "name": "ingress_sram",
+          "observed_phase_markers": [
+            "phase=latch_first_word",
+            "phase=hold_latched_word",
+            "phase=release_latched_word",
+            "phase=latch_next_clean_word",
+            "phase=reject_error_word",
+            "phase=empty_or_ready"
+          ],
           "observed_stdout_markers": [
             "module=ingress_sram",
-            "E1_H1_MODULE_DPI_CYCLE"
+            "E1_H1_MODULE_DPI_CYCLE",
+            "phase=latch_first_word",
+            "phase=hold_latched_word",
+            "phase=release_latched_word",
+            "phase=latch_next_clean_word",
+            "phase=reject_error_word",
+            "phase=empty_or_ready"
           ],
           "run_executable": "<build-root>/obj_module_dpi_ingress_sram/Ve1_h1_module_dpi_ingress_sram",
           "run_returncode": 0,
@@ -1265,7 +1427,13 @@
           "dut_module": "e1_h1_stream_sram",
           "expected_stdout_markers": [
             "module=ingress_sram",
-            "E1_H1_MODULE_DPI_CYCLE"
+            "E1_H1_MODULE_DPI_CYCLE",
+            "phase=latch_first_word",
+            "phase=hold_latched_word",
+            "phase=release_latched_word",
+            "phase=latch_next_clean_word",
+            "phase=reject_error_word",
+            "phase=empty_or_ready"
           ],
           "flist": "e1/e1-h1/generated/module_dpi/flists/ingress_sram.f",
           "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram_main.cpp",
@@ -1344,6 +1512,10 @@
             },
             {
               "name": "dpi_probe_reports_cycles",
+              "status": "pass"
+            },
+            {
+              "name": "dpi_probe_reports_named_phases",
               "status": "pass"
             },
             {
@@ -1496,7 +1668,10 @@
             "dut_module": "e1_h1_config_sram",
             "expected_stdout_markers": [
               "module=activation_sram",
-              "E1_H1_MODULE_DPI_CYCLE"
+              "E1_H1_MODULE_DPI_CYCLE",
+              "phase=initialization_latch",
+              "phase=initialized_hold_0",
+              "phase=initialized_hold_1"
             ],
             "fixed_args": [
               "--cc",
@@ -1544,16 +1719,32 @@
           "build_returncode": 0,
           "build_stdout_tail": [],
           "dut_module": "e1_h1_config_sram",
+          "expected_phase_markers": [
+            "phase=initialization_latch",
+            "phase=initialized_hold_0",
+            "phase=initialized_hold_1"
+          ],
           "expected_stdout_markers": [
             "module=activation_sram",
-            "E1_H1_MODULE_DPI_CYCLE"
+            "E1_H1_MODULE_DPI_CYCLE",
+            "phase=initialization_latch",
+            "phase=initialized_hold_0",
+            "phase=initialized_hold_1"
           ],
           "flist": "e1/e1-h1/generated/module_dpi/flists/activation_sram.f",
           "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_activation_sram_main.cpp",
           "name": "activation_sram",
+          "observed_phase_markers": [
+            "phase=initialization_latch",
+            "phase=initialized_hold_0",
+            "phase=initialized_hold_1"
+          ],
           "observed_stdout_markers": [
             "module=activation_sram",
-            "E1_H1_MODULE_DPI_CYCLE"
+            "E1_H1_MODULE_DPI_CYCLE",
+            "phase=initialization_latch",
+            "phase=initialized_hold_0",
+            "phase=initialized_hold_1"
           ],
           "run_executable": "<build-root>/obj_module_dpi_activation_sram/Ve1_h1_module_dpi_activation_sram",
           "run_returncode": 0,
@@ -1588,7 +1779,10 @@
           "dut_module": "e1_h1_config_sram",
           "expected_stdout_markers": [
             "module=activation_sram",
-            "E1_H1_MODULE_DPI_CYCLE"
+            "E1_H1_MODULE_DPI_CYCLE",
+            "phase=initialization_latch",
+            "phase=initialized_hold_0",
+            "phase=initialized_hold_1"
           ],
           "flist": "e1/e1-h1/generated/module_dpi/flists/activation_sram.f",
           "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_activation_sram_main.cpp",
@@ -1667,6 +1861,10 @@
             },
             {
               "name": "dpi_probe_reports_cycles",
+              "status": "pass"
+            },
+            {
+              "name": "dpi_probe_reports_named_phases",
               "status": "pass"
             },
             {
@@ -1819,7 +2017,10 @@
             "dut_module": "e1_h1_config_sram",
             "expected_stdout_markers": [
               "module=accumulator_sram",
-              "E1_H1_MODULE_DPI_CYCLE"
+              "E1_H1_MODULE_DPI_CYCLE",
+              "phase=initialization_latch",
+              "phase=initialized_hold_0",
+              "phase=initialized_hold_1"
             ],
             "fixed_args": [
               "--cc",
@@ -1867,16 +2068,32 @@
           "build_returncode": 0,
           "build_stdout_tail": [],
           "dut_module": "e1_h1_config_sram",
+          "expected_phase_markers": [
+            "phase=initialization_latch",
+            "phase=initialized_hold_0",
+            "phase=initialized_hold_1"
+          ],
           "expected_stdout_markers": [
             "module=accumulator_sram",
-            "E1_H1_MODULE_DPI_CYCLE"
+            "E1_H1_MODULE_DPI_CYCLE",
+            "phase=initialization_latch",
+            "phase=initialized_hold_0",
+            "phase=initialized_hold_1"
           ],
           "flist": "e1/e1-h1/generated/module_dpi/flists/accumulator_sram.f",
           "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_accumulator_sram_main.cpp",
           "name": "accumulator_sram",
+          "observed_phase_markers": [
+            "phase=initialization_latch",
+            "phase=initialized_hold_0",
+            "phase=initialized_hold_1"
+          ],
           "observed_stdout_markers": [
             "module=accumulator_sram",
-            "E1_H1_MODULE_DPI_CYCLE"
+            "E1_H1_MODULE_DPI_CYCLE",
+            "phase=initialization_latch",
+            "phase=initialized_hold_0",
+            "phase=initialized_hold_1"
           ],
           "run_executable": "<build-root>/obj_module_dpi_accumulator_sram/Ve1_h1_module_dpi_accumulator_sram",
           "run_returncode": 0,
@@ -1911,7 +2128,10 @@
           "dut_module": "e1_h1_config_sram",
           "expected_stdout_markers": [
             "module=accumulator_sram",
-            "E1_H1_MODULE_DPI_CYCLE"
+            "E1_H1_MODULE_DPI_CYCLE",
+            "phase=initialization_latch",
+            "phase=initialized_hold_0",
+            "phase=initialized_hold_1"
           ],
           "flist": "e1/e1-h1/generated/module_dpi/flists/accumulator_sram.f",
           "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_accumulator_sram_main.cpp",
@@ -1995,6 +2215,10 @@
             },
             {
               "name": "dpi_probe_reports_cycles",
+              "status": "pass"
+            },
+            {
+              "name": "dpi_probe_reports_named_phases",
               "status": "pass"
             },
             {
@@ -2187,7 +2411,15 @@
             "dut_module": "e1_h1_systolic_array",
             "expected_stdout_markers": [
               "module=systolic_array",
-              "E1_H1_MODULE_DPI_CYCLE"
+              "E1_H1_MODULE_DPI_CYCLE",
+              "phase=array_idle",
+              "phase=accept_array_command",
+              "phase=enter_busy",
+              "phase=consume_input_beat_0",
+              "phase=consume_input_beat_1",
+              "phase=consume_input_beat_2",
+              "phase=completion_pulse",
+              "phase=return_ready"
             ],
             "fixed_args": [
               "--cc",
@@ -2235,16 +2467,52 @@
           "build_returncode": 0,
           "build_stdout_tail": [],
           "dut_module": "e1_h1_systolic_array",
+          "expected_phase_markers": [
+            "phase=array_idle",
+            "phase=accept_array_command",
+            "phase=enter_busy",
+            "phase=consume_input_beat_0",
+            "phase=consume_input_beat_1",
+            "phase=consume_input_beat_2",
+            "phase=completion_pulse",
+            "phase=return_ready"
+          ],
           "expected_stdout_markers": [
             "module=systolic_array",
-            "E1_H1_MODULE_DPI_CYCLE"
+            "E1_H1_MODULE_DPI_CYCLE",
+            "phase=array_idle",
+            "phase=accept_array_command",
+            "phase=enter_busy",
+            "phase=consume_input_beat_0",
+            "phase=consume_input_beat_1",
+            "phase=consume_input_beat_2",
+            "phase=completion_pulse",
+            "phase=return_ready"
           ],
           "flist": "e1/e1-h1/generated/module_dpi/flists/systolic_array.f",
           "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array_main.cpp",
           "name": "systolic_array",
+          "observed_phase_markers": [
+            "phase=array_idle",
+            "phase=accept_array_command",
+            "phase=enter_busy",
+            "phase=consume_input_beat_0",
+            "phase=consume_input_beat_1",
+            "phase=consume_input_beat_2",
+            "phase=completion_pulse",
+            "phase=return_ready"
+          ],
           "observed_stdout_markers": [
             "module=systolic_array",
-            "E1_H1_MODULE_DPI_CYCLE"
+            "E1_H1_MODULE_DPI_CYCLE",
+            "phase=array_idle",
+            "phase=accept_array_command",
+            "phase=enter_busy",
+            "phase=consume_input_beat_0",
+            "phase=consume_input_beat_1",
+            "phase=consume_input_beat_2",
+            "phase=completion_pulse",
+            "phase=return_ready"
           ],
           "run_executable": "<build-root>/obj_module_dpi_systolic_array/Ve1_h1_module_dpi_systolic_array",
           "run_returncode": 0,
@@ -2279,7 +2547,15 @@
           "dut_module": "e1_h1_systolic_array",
           "expected_stdout_markers": [
             "module=systolic_array",
-            "E1_H1_MODULE_DPI_CYCLE"
+            "E1_H1_MODULE_DPI_CYCLE",
+            "phase=array_idle",
+            "phase=accept_array_command",
+            "phase=enter_busy",
+            "phase=consume_input_beat_0",
+            "phase=consume_input_beat_1",
+            "phase=consume_input_beat_2",
+            "phase=completion_pulse",
+            "phase=return_ready"
           ],
           "flist": "e1/e1-h1/generated/module_dpi/flists/systolic_array.f",
           "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array_main.cpp",

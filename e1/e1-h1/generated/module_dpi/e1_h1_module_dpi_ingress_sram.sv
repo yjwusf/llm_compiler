@@ -65,6 +65,18 @@ module e1_h1_module_dpi_ingress_sram;
     check32("array_data_o.hi", cycle, array_data_imp1[63:32], array_data_imp2[63:32]);
   endtask
 
+  function automatic string phase_name(input int cycle);
+    case (cycle)
+      0: return "latch_first_word";
+      1: return "hold_latched_word";
+      2: return "release_latched_word";
+      3: return "latch_next_clean_word";
+      4: return "reject_error_word";
+      5: return "empty_or_ready";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     e1_h1_module_dpi_begin("ingress_sram", "module_only_latched_buffer");
     clk_i = 1'b0;
@@ -77,14 +89,13 @@ module e1_h1_module_dpi_ingress_sram;
     tick();
     rst_ni = 1'b1;
     for (int cycle = 0; cycle < 6; cycle++) begin
-      e1_h1_module_dpi_cycle("ingress_sram", cycle, "drive_latch_boundary");
+      e1_h1_module_dpi_cycle("ingress_sram", cycle, phase_name(cycle));
       stream_valid_i = (cycle == 0 || cycle == 3 || cycle == 4);
       stream_data_i = 64'h2000 + cycle[7:0];
       stream_last_i = (cycle == 4);
       stream_error_i = (cycle == 4);
       array_ready_i = (cycle >= 2);
       tick();
-      e1_h1_module_dpi_cycle("ingress_sram", cycle, "sample_latched_output");
       check_outputs(cycle);
     end
     $finish;

@@ -108,6 +108,16 @@ module e1_h1_full_checkpoint_module_dpi_full_checkpoint_top;
     .debug_linear_output_tile_o(debug_linear_output_tile_o)
   );
 
+  function automatic string phase_name(input int cycle);
+    case (cycle % 4)
+      0: return "present_top_graph_slot";
+      1: return "start_selected_slot_engine";
+      2: return "run_selected_slot_engine";
+      3: return "commit_top_graph_slot";
+      default: return "invalid_cycle";
+    endcase
+  endfunction
+
   initial begin
     int linear_launches;
     int control_launches;
@@ -126,7 +136,7 @@ module e1_h1_full_checkpoint_module_dpi_full_checkpoint_top;
     rst_ni = 1'b1;
     start_i = 1'b1;
     for (int cycle = 0; cycle < 10000 && !done_o; cycle++) begin
-      e1_h1_full_dpi_cycle("full_checkpoint_top", cycle, "graph_dispatch_to_slot_engines");
+      e1_h1_full_dpi_cycle("full_checkpoint_top", cycle, phase_name(cycle));
       stream_valid_i = 1'b1;
       stream_data_i = 64'h5000 + cycle[15:0];
       if (launch_linear_o) linear_launches++;

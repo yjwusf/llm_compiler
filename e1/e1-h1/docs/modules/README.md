@@ -270,7 +270,8 @@ the exact build command, obj-dir convention, and run executable consumed by the
 runner. The companion
 `e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_report.json`
 records the actual build/run result for each generated module-only Verilator
-probe.
+probe and records `phase=<name>` markers proving that every named phase in the
+generated cycle contract was emitted by the DPI trace.
 The generated
 `e1/e1-h1/generated/full_checkpoint_dpi/construction_ledger.json` ties each C++
 module spec to its emitted probe, flist, interface docs, cycle contract, README

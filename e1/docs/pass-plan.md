@@ -141,7 +141,8 @@ hardware and device code.
       manifest, generated input/output signal documentation, and generated
       isolation, cycle-contract, Verilator test-plan, C++-owned Verilator
       execution recipe, C++ construction ledger, and Verilator execution proof
-      for each generated full-checkpoint RTL module.
+      for each generated full-checkpoint RTL module. The Verilator proof must
+      observe every named phase marker from the generated cycle contract.
 27. `e1_bind_full_graph_module_dpi`
     - Input: full graph RTL lowering proof, base module-DPI report, and
       generated full-checkpoint module-DPI report.
@@ -199,7 +200,8 @@ E1 is complete when TinyLlama-derived reduced workloads can run through:
   notes, plus generated isolation proof showing each DUT's allowed and
   forbidden child modules and a generated cycle contract naming every phase in
   each module template, with generated construction ledgers and Verilator test
-  plans for every module.
+  plans for every module. The generated module-only Verilator reports must
+  observe all named phase markers from those cycle contracts.
 - Full-graph module-DPI binding proof tying generated full-graph RTL artifacts
   and separated base modules to module-only Verilator/DPI execution reports and
   C++ construction-ledger checks.
