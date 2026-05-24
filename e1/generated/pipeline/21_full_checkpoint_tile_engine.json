@@ -1,0 +1,47 @@
+{
+  "checks": [
+    {
+      "name": "scheduler_rtl_present",
+      "status": "pass"
+    },
+    {
+      "name": "tile_engine_rtl_generated",
+      "status": "pass"
+    },
+    {
+      "name": "engine_flist_wires_scheduler_latch_and_array",
+      "status": "pass"
+    },
+    {
+      "name": "tile_engine_preserves_separation",
+      "status": "pass"
+    },
+    {
+      "name": "command_stream_covered_by_engine_plan",
+      "status": "pass"
+    }
+  ],
+  "command_stream": "e1/generated/pipeline/19_full_checkpoint_command_stream.json",
+  "cycles_per_tile_command": 8,
+  "engine_rtl": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_tile_engine.sv",
+  "flist": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_tile_engine.f",
+  "full_checkpoint_graph_lowering": false,
+  "full_checkpoint_linear_tile_engine_rtl": true,
+  "full_checkpoint_rtl_execution": false,
+  "latch_buffer_rtl": "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv",
+  "model_id": "tinyllama-1.1b-chat-v1.0",
+  "rtl_cycle_lowering": "e1/generated/pipeline/20_full_checkpoint_rtl_cycle_lowering.json",
+  "scheduler_rtl": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler.sv",
+  "schema": "e1-full-checkpoint-tile-engine-v0",
+  "separation": {
+    "latch_buffer": "Stages external stream data before the systolic array input.",
+    "scheduler": "Generates CPU-side tile commands and counters only.",
+    "systolic_array": "Consumes gated tile commands and latched input beats."
+  },
+  "status": "pass",
+  "systolic_array_rtl": "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
+  "total_rtl_cycles": 30277632,
+  "total_tile_commands": 3784704,
+  "truth_boundary": "scheduler_latch_buffer_systolic_array_rtl_composition",
+  "verilator_tb": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_tile_engine_tb.cpp"
+}

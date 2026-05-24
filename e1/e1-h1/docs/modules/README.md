@@ -95,8 +95,17 @@ The generated artifacts are:
 - `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler.sv`
 - `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler.f`
 - `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler_tb.cpp`
+- `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_tile_engine.sv`
+- `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_tile_engine.f`
+- `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_tile_engine_tb.cpp`
 
 The Verilator harness checks sampled RTL command payloads against
 `e1/code/program/e1_tinyllama_full_schedule.hpp`; the pipeline report records
 3,784,704 tile commands and 30,277,632 planned tile-template cycles. This is
 linear-command RTL lowering evidence, not yet full graph RTL execution.
+
+The tile-engine harness additionally wires the scheduler to the explicit
+`ingress_sram` latch buffer and `systolic_array` RTL. It checks that the
+scheduler command-valid phase remains separate from the array handshake phase,
+that the latch buffer holds data while the array is not ready, and that the
+array consumes latched input beats after command acceptance.

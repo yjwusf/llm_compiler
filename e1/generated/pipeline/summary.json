@@ -1,7 +1,7 @@
 {
   "all_current_modules_have_l1_5_harnesses": true,
   "architecture_id": "e1-h1",
-  "end_to_end_smoke": "e1/generated/pipeline/21_end_to_end_smoke.json",
+  "end_to_end_smoke": "e1/generated/pipeline/22_end_to_end_smoke.json",
   "end_to_end_status": "pass",
   "full_checkpoint_command_stream": "e1/generated/pipeline/19_full_checkpoint_command_stream.json",
   "full_checkpoint_command_stream_status": "pass",
@@ -10,6 +10,8 @@
   "full_checkpoint_rtl_cycle_lowering_status": "pass",
   "full_checkpoint_rtl_lowering_plan": "e1/generated/pipeline/18_full_checkpoint_rtl_lowering_plan.json",
   "full_checkpoint_rtl_lowering_status": "planned",
+  "full_checkpoint_tile_engine": "e1/generated/pipeline/21_full_checkpoint_tile_engine.json",
+  "full_checkpoint_tile_engine_status": "pass",
   "full_checkpoint_total_rtl_cycles": 30277632,
   "full_checkpoint_total_tile_commands": 3784704,
   "full_tinyllama_checkpoint_execution": "e1/generated/pipeline/17_full_tinyllama_checkpoint_execution.json",
@@ -26,7 +28,7 @@
     "multiply": 2,
     "tanh": 1
   },
-  "pass_count": 21,
+  "pass_count": 22,
   "passes": [
     {
       "artifact": "e1/generated/pipeline/01_fetch_model.json",
@@ -109,7 +111,11 @@
       "pass": "e1_lower_full_checkpoint_command_stream_to_rtl_cycles"
     },
     {
-      "artifact": "e1/generated/pipeline/21_end_to_end_smoke.json",
+      "artifact": "e1/generated/pipeline/21_full_checkpoint_tile_engine.json",
+      "pass": "e1_wire_full_checkpoint_tile_engine"
+    },
+    {
+      "artifact": "e1/generated/pipeline/22_end_to_end_smoke.json",
       "pass": "e1_end_to_end_smoke"
     }
   ],

@@ -81,7 +81,8 @@ StableHLO fixture, not the full TinyLlama checkpoint. The pipeline emits:
 - `e1/generated/pipeline/18_full_checkpoint_rtl_lowering_plan.json`
 - `e1/generated/pipeline/19_full_checkpoint_command_stream.json`
 - `e1/generated/pipeline/20_full_checkpoint_rtl_cycle_lowering.json`
-- `e1/generated/pipeline/21_end_to_end_smoke.json`
+- `e1/generated/pipeline/21_full_checkpoint_tile_engine.json`
+- `e1/generated/pipeline/22_end_to_end_smoke.json`
 
 The coverage artifact requires every StableHLO operation in
 `tinyllama_block.mlir` to bind to an accepted active `imp2` implementation and
@@ -122,6 +123,16 @@ planned RTL cycles. It still records `full_checkpoint_graph_lowering: false`
 and `full_checkpoint_rtl_execution: false` because RMSNorm, RoPE, attention
 softmax, KV/cache updates, and end-to-end checkpoint comparison are not yet RTL
 executed.
+
+The full-checkpoint tile-engine artifact emits
+`e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_tile_engine.sv`, a
+matching flist, and a Verilator C++ harness. The engine wires the generated
+scheduler to the active `imp2` latch buffer (`e1_h1_stream_sram`) and active
+`imp2` systolic array while gating array command acceptance to the documented
+handshake cycle. Its harness checks real RTL command handshakes, latch-buffer
+hold behavior, array input consumption, and command payloads against the
+generated C++ schedule. It is still scoped to the full linear tile stream, not
+the complete TinyLlama graph.
 
 ## Full Checkpoint Execution
 
