@@ -111,7 +111,12 @@ hardware and device code.
       report.
     - Output: generated RTL graph sequencer, flist, and Verilator C++ harness
       for the ordered 14-slot TinyLlama layer template across 22 layers.
-24. `e1_end_to_end_smoke`
+24. `e1_integrate_full_checkpoint_rtl_top`
+    - Input: graph sequencer report and full-checkpoint command stream.
+    - Output: generated full-checkpoint RTL top, slot-scoped linear/control
+      engines, flist, and Verilator C++ harness. The bounded harness runs all
+      308 graph slots while limiting each linear slot to a short tile smoke.
+25. `e1_end_to_end_smoke`
     - Input: all prior pass artifacts.
     - Output: one evidence report tying StableHLO, E1-H1 binding, device code,
       C++ chip model, generated SystemVerilog top, and target packages together.
@@ -149,6 +154,10 @@ E1 is complete when TinyLlama-derived reduced workloads can run through:
 - Full-checkpoint graph sequencer RTL that preserves the ordered 14-slot
   layer template and launches either CPU/control work or linear tile work in
   the correct layer order.
+- Full-checkpoint RTL top that wires the ordered graph sequencer to
+  slot-scoped CPU/control and linear engines, keeping the latch buffer and
+  systolic array as separated modules and passing a bounded full-graph
+  Verilator smoke.
 - Implementation matrix showing active `imp2` candidates and `imp1` mock
   references.
 - Generated SystemVerilog mocks.

@@ -2839,6 +2839,804 @@ int main(int argc, char** argv) {{
     return report
 
 
+def emit_full_checkpoint_rtl_top(
+    output_path: Path,
+    manifest: dict[str, Any],
+    command_stream: dict[str, Any],
+    graph_sequencer: dict[str, Any],
+) -> dict[str, Any]:
+    generated_dir = REPO_ROOT / "e1/e1-h1/generated/full_checkpoint"
+    linear_slot_path = generated_dir / "e1_h1_tinyllama_linear_slot_engine.sv"
+    control_slot_path = generated_dir / "e1_h1_tinyllama_control_slot_engine.sv"
+    top_path = generated_dir / "e1_h1_tinyllama_full_checkpoint_top.sv"
+    tb_path = generated_dir / "e1_h1_tinyllama_full_checkpoint_top_tb.cpp"
+    flist_path = generated_dir / "e1_h1_tinyllama_full_checkpoint_top.f"
+    graph_path = REPO_ROOT / graph_sequencer["scheduler_rtl"]
+    buffer_path = REPO_ROOT / "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv"
+    array_path = REPO_ROOT / "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+
+    linear_ops = command_stream["linear_ops"]
+    layers = int(command_stream["layers"])
+    total_graph_slots = int(graph_sequencer["total_graph_slots"])
+    total_linear_slots = int(graph_sequencer["total_linear_slots"])
+    total_control_slots = int(graph_sequencer["total_control_slots"])
+    smoke_max_tiles_per_linear_slot = 2
+    smoke_linear_commands = total_linear_slots * smoke_max_tiles_per_linear_slot
+
+    input_tile_cases = "\n".join(
+        f"      3'd{index}: input_tiles_for = 9'd{int(op['input_tiles'])};"
+        for index, op in enumerate(linear_ops)
+    )
+    output_tile_cases = "\n".join(
+        f"      3'd{index}: output_tiles_for = 9'd{int(op['output_tiles'])};"
+        for index, op in enumerate(linear_ops)
+    )
+
+    write_text(
+        linear_slot_path,
+        f"""`default_nettype none
+
+module e1_h1_tinyllama_linear_slot_engine #(
+  parameter int unsigned SmokeMaxTilesPerLinearSlot = 0
+) (
+  input  logic        clk_i,
+  input  logic        rst_ni,
+  input  logic        start_i,
+  input  logic [31:0] layer_i,
+  input  logic [2:0]  op_index_i,
+  input  logic        stream_valid_i,
+  output logic        stream_ready_o,
+  input  logic [63:0] stream_data_i,
+  input  logic        stream_last_i,
+  input  logic        stream_error_i,
+  output logic        busy_o,
+  output logic        done_o,
+  output logic        error_o,
+  output logic [31:0] issued_commands_o,
+  output logic [31:0] expected_commands_o,
+  output logic [2:0]  cycle_phase_o,
+  output logic [31:0] layer_o,
+  output logic [2:0]  op_index_o,
+  output logic [8:0]  input_tile_o,
+  output logic [8:0]  output_tile_o,
+  output logic        scheduler_cmd_valid_o,
+  output logic        array_cmd_valid_o,
+  output logic        array_cmd_ready_o,
+  output logic [31:0] cmd_input_addr_o,
+  output logic [31:0] cmd_weight_addr_o,
+  output logic [31:0] cmd_output_addr_o,
+  output logic [15:0] cmd_rows_o,
+  output logic [15:0] cmd_cols_o,
+  output logic [15:0] cmd_depth_o,
+  output logic        buffer_array_valid_o,
+  output logic        buffer_array_ready_o,
+  output logic [63:0] buffer_array_data_o,
+  output logic        array_done_o,
+  output logic        array_debug_busy_o
+);
+
+  localparam logic [31:0] InputBase = 32'h0100_0000;
+  localparam logic [31:0] WeightBase = 32'h1000_0000;
+  localparam logic [31:0] OutputBase = 32'h3000_0000;
+  localparam logic [31:0] LayerInputStride = 32'h0010_0000;
+  localparam logic [31:0] LayerWeightStride = 32'h0100_0000;
+  localparam logic [31:0] LayerOutputStride = 32'h0010_0000;
+  localparam logic [31:0] OpInputStride = 32'h0001_0000;
+  localparam logic [31:0] OpWeightStride = 32'h0010_0000;
+  localparam logic [31:0] OpOutputStride = 32'h0001_0000;
+  localparam logic [31:0] TileBytes = 32'd64;
+  localparam logic [31:0] SmokeMaxTiles = 32'(SmokeMaxTilesPerLinearSlot);
+
+  typedef enum logic [1:0] {{
+    StateIdle,
+    StateRun,
+    StateDone,
+    StateError
+  }} state_e;
+
+  state_e state_q;
+  logic [2:0]  phase_q;
+  logic [31:0] layer_q;
+  logic [2:0]  op_index_q;
+  logic [8:0]  input_tile_q;
+  logic [8:0]  output_tile_q;
+  logic [31:0] issued_commands_q;
+  logic        array_error;
+
+  function automatic logic [31:0] zext3(input logic [2:0] value);
+    zext3 = {{29'd0, value}};
+  endfunction
+
+  function automatic logic [31:0] zext9(input logic [8:0] value);
+    zext9 = {{23'd0, value}};
+  endfunction
+
+  function automatic logic [8:0] input_tiles_for(input logic [2:0] op_index);
+    unique case (op_index)
+{input_tile_cases}
+      default: input_tiles_for = 9'd0;
+    endcase
+  endfunction
+
+  function automatic logic [8:0] output_tiles_for(input logic [2:0] op_index);
+    unique case (op_index)
+{output_tile_cases}
+      default: output_tiles_for = 9'd0;
+    endcase
+  endfunction
+
+  function automatic logic [31:0] natural_commands_for(input logic [2:0] op_index);
+    natural_commands_for = zext9(input_tiles_for(op_index)) * zext9(output_tiles_for(op_index));
+  endfunction
+
+  function automatic logic [31:0] effective_commands_for(input logic [2:0] op_index);
+    logic [31:0] natural_commands;
+    natural_commands = natural_commands_for(op_index);
+    if (SmokeMaxTiles != 32'd0 && SmokeMaxTiles < natural_commands) begin
+      effective_commands_for = SmokeMaxTiles;
+    end else begin
+      effective_commands_for = natural_commands;
+    end
+  endfunction
+
+  function automatic logic is_last_natural_command(
+      input logic [2:0] op_index,
+      input logic [8:0] input_tile,
+      input logic [8:0] output_tile);
+    is_last_natural_command =
+        input_tile == (input_tiles_for(op_index) - 9'd1) &&
+        output_tile == (output_tiles_for(op_index) - 9'd1);
+  endfunction
+
+  assign cmd_input_addr_o =
+      InputBase + layer_q * LayerInputStride + zext3(op_index_q) * OpInputStride +
+      zext9(input_tile_q) * TileBytes;
+  assign cmd_weight_addr_o =
+      WeightBase + layer_q * LayerWeightStride + zext3(op_index_q) * OpWeightStride +
+      ((zext9(output_tile_q) * zext9(input_tiles_for(op_index_q))) + zext9(input_tile_q)) *
+      TileBytes;
+  assign cmd_output_addr_o =
+      OutputBase + layer_q * LayerOutputStride + zext3(op_index_q) * OpOutputStride +
+      zext9(output_tile_q) * TileBytes;
+  assign cmd_rows_o = 16'd16;
+  assign cmd_cols_o = 16'd16;
+  assign cmd_depth_o = 16'd16;
+
+  assign busy_o = state_q == StateRun;
+  assign done_o = state_q == StateDone;
+  assign error_o = state_q == StateError;
+  assign scheduler_cmd_valid_o = state_q == StateRun && (phase_q == 3'd1 || phase_q == 3'd2);
+  assign array_cmd_valid_o = scheduler_cmd_valid_o && phase_q == 3'd2;
+  assign issued_commands_o = issued_commands_q;
+  assign expected_commands_o = effective_commands_for(op_index_q);
+  assign cycle_phase_o = phase_q;
+  assign layer_o = layer_q;
+  assign op_index_o = op_index_q;
+  assign input_tile_o = input_tile_q;
+  assign output_tile_o = output_tile_q;
+
+  e1_h1_stream_sram u_latch_buffer (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .stream_valid_i(stream_valid_i),
+    .stream_ready_o(stream_ready_o),
+    .stream_data_i(stream_data_i),
+    .stream_last_i(stream_last_i),
+    .stream_error_i(stream_error_i),
+    .array_valid_o(buffer_array_valid_o),
+    .array_ready_i(buffer_array_ready_o),
+    .array_data_o(buffer_array_data_o)
+  );
+
+  e1_h1_systolic_array u_systolic_array (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .cmd_valid_i(array_cmd_valid_o),
+    .cmd_ready_o(array_cmd_ready_o),
+    .cmd_input_addr_i(cmd_input_addr_o),
+    .cmd_weight_addr_i(cmd_weight_addr_o),
+    .cmd_output_addr_i(cmd_output_addr_o),
+    .cmd_rows_i(cmd_rows_o),
+    .cmd_cols_i(cmd_cols_o),
+    .cmd_depth_i(cmd_depth_o),
+    .input_valid_i(buffer_array_valid_o),
+    .input_ready_o(buffer_array_ready_o),
+    .input_data_i(buffer_array_data_o),
+    .done_o(array_done_o),
+    .error_o(array_error),
+    .debug_busy_o(array_debug_busy_o)
+  );
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      state_q <= StateIdle;
+      phase_q <= 3'd0;
+      layer_q <= 32'd0;
+      op_index_q <= 3'd0;
+      input_tile_q <= 9'd0;
+      output_tile_q <= 9'd0;
+      issued_commands_q <= 32'd0;
+    end else begin
+      unique case (state_q)
+        StateIdle: begin
+          if (start_i) begin
+            state_q <= StateRun;
+            phase_q <= 3'd0;
+            layer_q <= layer_i;
+            op_index_q <= op_index_i;
+            input_tile_q <= 9'd0;
+            output_tile_q <= 9'd0;
+            issued_commands_q <= 32'd0;
+          end
+        end
+        StateRun: begin
+          if (phase_q == 3'd2 && !array_cmd_ready_o) begin
+            phase_q <= 3'd2;
+          end else if (phase_q == 3'd6 && array_error) begin
+            state_q <= StateError;
+          end else if (phase_q == 3'd6 && !array_done_o) begin
+            phase_q <= 3'd6;
+          end else if (phase_q == 3'd7) begin
+            if (issued_commands_q >= effective_commands_for(op_index_q) ||
+                is_last_natural_command(op_index_q, input_tile_q, output_tile_q)) begin
+              state_q <= StateDone;
+            end else begin
+              phase_q <= 3'd0;
+              if (zext9(input_tile_q) + 32'd1 < zext9(input_tiles_for(op_index_q))) begin
+                input_tile_q <= input_tile_q + 9'd1;
+              end else begin
+                input_tile_q <= 9'd0;
+                output_tile_q <= output_tile_q + 9'd1;
+              end
+            end
+          end else begin
+            if (phase_q == 3'd2 && array_cmd_ready_o) begin
+              issued_commands_q <= issued_commands_q + 32'd1;
+            end
+            phase_q <= phase_q + 3'd1;
+          end
+        end
+        StateDone: begin
+          if (!start_i) begin
+            state_q <= StateIdle;
+          end
+        end
+        StateError: begin
+          if (!start_i) begin
+            state_q <= StateIdle;
+          end
+        end
+        default: begin
+          state_q <= StateIdle;
+        end
+      endcase
+    end
+  end
+
+endmodule
+
+`default_nettype wire
+""",
+    )
+
+    write_text(
+        control_slot_path,
+        """`default_nettype none
+
+module e1_h1_tinyllama_control_slot_engine (
+  input  logic        clk_i,
+  input  logic        rst_ni,
+  input  logic        start_i,
+  input  logic [31:0] layer_i,
+  input  logic [2:0]  control_op_index_i,
+  input  logic [3:0]  control_kind_i,
+  output logic        busy_o,
+  output logic        done_o,
+  output logic        control_valid_o,
+  input  logic        control_ready_i,
+  output logic        control_commit_o,
+  output logic [31:0] layer_o,
+  output logic [2:0]  control_op_index_o,
+  output logic [3:0]  control_kind_o,
+  output logic [31:0] issued_control_ops_o,
+  output logic [1:0]  cycle_phase_o
+);
+
+  typedef enum logic [1:0] {
+    StateIdle,
+    StateRun,
+    StateDone
+  } state_e;
+
+  state_e state_q;
+  logic [31:0] layer_q;
+  logic [2:0]  control_op_index_q;
+  logic [3:0]  control_kind_q;
+  logic [31:0] issued_control_ops_q;
+  logic [1:0]  phase_q;
+
+  assign busy_o = state_q == StateRun;
+  assign done_o = state_q == StateDone;
+  assign control_valid_o = state_q == StateRun && phase_q == 2'd0;
+  assign control_commit_o = state_q == StateRun && phase_q == 2'd3;
+  assign layer_o = layer_q;
+  assign control_op_index_o = control_op_index_q;
+  assign control_kind_o = control_kind_q;
+  assign issued_control_ops_o = issued_control_ops_q;
+  assign cycle_phase_o = phase_q;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      state_q <= StateIdle;
+      layer_q <= 32'd0;
+      control_op_index_q <= 3'd0;
+      control_kind_q <= 4'd0;
+      issued_control_ops_q <= 32'd0;
+      phase_q <= 2'd0;
+    end else begin
+      unique case (state_q)
+        StateIdle: begin
+          if (start_i) begin
+            state_q <= StateRun;
+            layer_q <= layer_i;
+            control_op_index_q <= control_op_index_i;
+            control_kind_q <= control_kind_i;
+            issued_control_ops_q <= 32'd0;
+            phase_q <= 2'd0;
+          end
+        end
+        StateRun: begin
+          if (phase_q == 2'd0 && !control_ready_i) begin
+            phase_q <= 2'd0;
+          end else if (phase_q == 2'd3) begin
+            issued_control_ops_q <= 32'd1;
+            state_q <= StateDone;
+          end else begin
+            phase_q <= phase_q + 2'd1;
+          end
+        end
+        StateDone: begin
+          if (!start_i) begin
+            state_q <= StateIdle;
+          end
+        end
+        default: begin
+          state_q <= StateIdle;
+        end
+      endcase
+    end
+  end
+
+endmodule
+
+`default_nettype wire
+""",
+    )
+
+    write_text(
+        top_path,
+        """`default_nettype none
+
+module e1_h1_tinyllama_full_checkpoint_top #(
+  parameter int unsigned SmokeMaxTilesPerLinearSlot = 0
+) (
+  input  logic        clk_i,
+  input  logic        rst_ni,
+  input  logic        start_i,
+  input  logic        stream_valid_i,
+  output logic        stream_ready_o,
+  input  logic [63:0] stream_data_i,
+  input  logic        stream_last_i,
+  input  logic        stream_error_i,
+  output logic        busy_o,
+  output logic        done_o,
+  output logic        error_o,
+  output logic [31:0] issued_graph_slots_o,
+  output logic [31:0] issued_linear_commands_o,
+  output logic [31:0] issued_control_ops_o,
+  output logic [31:0] active_layer_o,
+  output logic [3:0]  active_slot_o,
+  output logic [1:0]  graph_cycle_phase_o,
+  output logic [2:0]  linear_cycle_phase_o,
+  output logic [1:0]  control_cycle_phase_o,
+  output logic        launch_linear_o,
+  output logic        launch_control_o,
+  output logic        linear_busy_o,
+  output logic        control_busy_o,
+  output logic        buffer_array_valid_o,
+  output logic        buffer_array_ready_o,
+  output logic        array_done_o,
+  output logic        array_debug_busy_o
+);
+
+  logic        graph_slot_valid;
+  logic        graph_busy;
+  logic        graph_op_done;
+  logic [2:0]  graph_linear_op_index;
+  logic [2:0]  graph_control_op_index;
+  logic [3:0]  graph_control_kind;
+  logic [31:0] graph_linear_tile_count;
+  logic [31:0] linear_slot_issued_commands;
+  logic [31:0] linear_slot_expected_commands;
+  logic        linear_done;
+  logic        linear_error;
+  logic        control_done;
+  logic        active_is_linear;
+  logic        control_valid;
+  logic        control_commit;
+  logic [31:0] control_slot_issued_ops;
+  logic [63:0] buffer_array_data;
+  logic        scheduler_cmd_valid;
+  logic        array_cmd_valid;
+  logic        array_cmd_ready;
+  logic [31:0] cmd_input_addr;
+  logic [31:0] cmd_weight_addr;
+  logic [31:0] cmd_output_addr;
+  logic [15:0] cmd_rows;
+  logic [15:0] cmd_cols;
+  logic [15:0] cmd_depth;
+  logic [31:0] linear_layer;
+  logic [2:0]  linear_op_index;
+  logic [8:0]  linear_input_tile;
+  logic [8:0]  linear_output_tile;
+  logic [31:0] control_layer;
+  logic [2:0]  control_op_index;
+  logic [3:0]  control_kind;
+
+  assign active_is_linear = graph_linear_tile_count != 32'd0;
+  assign graph_op_done = active_is_linear ? linear_done : control_done;
+  assign busy_o = graph_busy || linear_busy_o || control_busy_o;
+  assign error_o = linear_error;
+
+  e1_h1_tinyllama_graph_sequencer u_graph_sequencer (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .start_i(start_i),
+    .busy_o(graph_busy),
+    .done_o(done_o),
+    .slot_valid_o(graph_slot_valid),
+    .slot_ready_i(1'b1),
+    .launch_control_o(launch_control_o),
+    .launch_linear_o(launch_linear_o),
+    .op_done_i(graph_op_done),
+    .layer_o(active_layer_o),
+    .layer_slot_o(active_slot_o),
+    .linear_op_index_o(graph_linear_op_index),
+    .control_op_index_o(graph_control_op_index),
+    .control_kind_o(graph_control_kind),
+    .linear_tile_count_o(graph_linear_tile_count),
+    .issued_graph_slots_o(issued_graph_slots_o),
+    .cycle_phase_o(graph_cycle_phase_o)
+  );
+
+  e1_h1_tinyllama_linear_slot_engine #(
+    .SmokeMaxTilesPerLinearSlot(SmokeMaxTilesPerLinearSlot)
+  ) u_linear_slot_engine (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .start_i(launch_linear_o),
+    .layer_i(active_layer_o),
+    .op_index_i(graph_linear_op_index),
+    .stream_valid_i(stream_valid_i),
+    .stream_ready_o(stream_ready_o),
+    .stream_data_i(stream_data_i),
+    .stream_last_i(stream_last_i),
+    .stream_error_i(stream_error_i),
+    .busy_o(linear_busy_o),
+    .done_o(linear_done),
+    .error_o(linear_error),
+    .issued_commands_o(linear_slot_issued_commands),
+    .expected_commands_o(linear_slot_expected_commands),
+    .cycle_phase_o(linear_cycle_phase_o),
+    .layer_o(linear_layer),
+    .op_index_o(linear_op_index),
+    .input_tile_o(linear_input_tile),
+    .output_tile_o(linear_output_tile),
+    .scheduler_cmd_valid_o(scheduler_cmd_valid),
+    .array_cmd_valid_o(array_cmd_valid),
+    .array_cmd_ready_o(array_cmd_ready),
+    .cmd_input_addr_o(cmd_input_addr),
+    .cmd_weight_addr_o(cmd_weight_addr),
+    .cmd_output_addr_o(cmd_output_addr),
+    .cmd_rows_o(cmd_rows),
+    .cmd_cols_o(cmd_cols),
+    .cmd_depth_o(cmd_depth),
+    .buffer_array_valid_o(buffer_array_valid_o),
+    .buffer_array_ready_o(buffer_array_ready_o),
+    .buffer_array_data_o(buffer_array_data),
+    .array_done_o(array_done_o),
+    .array_debug_busy_o(array_debug_busy_o)
+  );
+
+  e1_h1_tinyllama_control_slot_engine u_control_slot_engine (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .start_i(launch_control_o),
+    .layer_i(active_layer_o),
+    .control_op_index_i(graph_control_op_index),
+    .control_kind_i(graph_control_kind),
+    .busy_o(control_busy_o),
+    .done_o(control_done),
+    .control_valid_o(control_valid),
+    .control_ready_i(1'b1),
+    .control_commit_o(control_commit),
+    .layer_o(control_layer),
+    .control_op_index_o(control_op_index),
+    .control_kind_o(control_kind),
+    .issued_control_ops_o(control_slot_issued_ops),
+    .cycle_phase_o(control_cycle_phase_o)
+  );
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      issued_linear_commands_o <= 32'd0;
+      issued_control_ops_o <= 32'd0;
+    end else if (start_i && issued_graph_slots_o == 32'd0) begin
+      issued_linear_commands_o <= 32'd0;
+      issued_control_ops_o <= 32'd0;
+    end else begin
+      if (graph_cycle_phase_o == 2'd2 && active_is_linear && linear_done) begin
+        issued_linear_commands_o <= issued_linear_commands_o + linear_slot_issued_commands;
+      end
+      if (graph_cycle_phase_o == 2'd2 && !active_is_linear && control_done) begin
+        issued_control_ops_o <= issued_control_ops_o + control_slot_issued_ops;
+      end
+    end
+  end
+
+  logic [439:0] unused_debug;
+  assign unused_debug = {
+    graph_busy,
+    graph_slot_valid,
+    linear_slot_expected_commands,
+    control_valid,
+    control_commit,
+    buffer_array_data,
+    scheduler_cmd_valid,
+    array_cmd_valid,
+    array_cmd_ready,
+    cmd_input_addr,
+    cmd_weight_addr,
+    cmd_output_addr,
+    cmd_rows,
+    cmd_cols,
+    cmd_depth,
+    linear_layer,
+    linear_op_index,
+    linear_input_tile,
+    linear_output_tile,
+    control_layer,
+    control_op_index,
+    control_kind
+  };
+
+endmodule
+
+`default_nettype wire
+""",
+    )
+
+    write_text(
+        tb_path,
+        f"""// Generated by e1/tools/run_e1_pipeline.py.
+
+#include "Ve1_h1_tinyllama_full_checkpoint_top.h"
+#include "verilated.h"
+
+#include <cstdint>
+#include <iostream>
+
+namespace {{
+
+constexpr std::uint32_t kLayers = {layers};
+constexpr std::uint32_t kTotalGraphSlots = {total_graph_slots};
+constexpr std::uint32_t kTotalLinearSlots = {total_linear_slots};
+constexpr std::uint32_t kTotalControlSlots = {total_control_slots};
+constexpr std::uint32_t kSmokeMaxTilesPerLinearSlot = {smoke_max_tiles_per_linear_slot};
+constexpr std::uint32_t kExpectedLinearCommands = {smoke_linear_commands};
+
+void tick(VerilatedContext& context, Ve1_h1_tinyllama_full_checkpoint_top& top) {{
+  top.clk_i = 0;
+  top.eval();
+  context.timeInc(1);
+  top.clk_i = 1;
+  top.eval();
+  context.timeInc(1);
+  top.clk_i = 0;
+  top.eval();
+}}
+
+}}  // namespace
+
+int main(int argc, char** argv) {{
+  VerilatedContext context;
+  context.commandArgs(argc, argv);
+  Ve1_h1_tinyllama_full_checkpoint_top top{{&context}};
+
+  bool pass = true;
+  auto fail = [&](const char* message) {{
+    std::cerr << "E1_FULL_RTL_TOP_FAIL " << message << "\\n";
+    pass = false;
+  }};
+
+  top.clk_i = 0;
+  top.rst_ni = 0;
+  top.start_i = 0;
+  top.stream_valid_i = 0;
+  top.stream_data_i = 0;
+  top.stream_last_i = 0;
+  top.stream_error_i = 0;
+  tick(context, top);
+  tick(context, top);
+  top.rst_ni = 1;
+  top.start_i = 1;
+  tick(context, top);
+  top.start_i = 0;
+
+  std::uint32_t launch_linear = 0;
+  std::uint32_t launch_control = 0;
+  bool saw_latched_hold = false;
+  bool saw_array_consume = false;
+  bool saw_linear_busy = false;
+  bool saw_control_busy = false;
+
+  for (std::uint32_t cycle = 0; cycle < 20000 && !top.done_o; ++cycle) {{
+    top.stream_valid_i = 1;
+    top.stream_data_i = 0x50000000ull + cycle;
+    top.stream_last_i = 0;
+    top.stream_error_i = 0;
+    top.eval();
+
+    if (top.launch_linear_o) {{
+      ++launch_linear;
+      if (top.launch_control_o) {{
+        fail("linear and control launch overlapped");
+      }}
+    }}
+    if (top.launch_control_o) {{
+      ++launch_control;
+    }}
+    if (top.buffer_array_valid_o && !top.buffer_array_ready_o) {{
+      saw_latched_hold = true;
+    }}
+    if (top.buffer_array_valid_o && top.buffer_array_ready_o) {{
+      saw_array_consume = true;
+    }}
+    saw_linear_busy = saw_linear_busy || top.linear_busy_o;
+    saw_control_busy = saw_control_busy || top.control_busy_o;
+    tick(context, top);
+  }}
+
+  top.eval();
+  if (!top.done_o) {{
+    fail("full checkpoint RTL top did not finish bounded graph smoke");
+  }}
+  if (top.error_o) {{
+    fail("full checkpoint RTL top reported error");
+  }}
+  if (top.issued_graph_slots_o != kTotalGraphSlots) {{
+    fail("issued graph slot count mismatch");
+  }}
+  if (launch_linear != kTotalLinearSlots || launch_control != kTotalControlSlots) {{
+    fail("launch count mismatch");
+  }}
+  if (top.issued_linear_commands_o != kExpectedLinearCommands) {{
+    fail("bounded linear command count mismatch");
+  }}
+  if (top.issued_control_ops_o != kTotalControlSlots) {{
+    fail("control op count mismatch");
+  }}
+  if (!saw_latched_hold || !saw_array_consume || !saw_linear_busy || !saw_control_busy) {{
+    fail("full RTL top did not exercise separated engines and latch buffer");
+  }}
+
+  std::cout
+      << "{{\\n"
+      << "  \\"schema\\": \\"e1-full-checkpoint-rtl-top-smoke-v0\\",\\n"
+      << "  \\"status\\": \\"" << (pass ? "pass" : "fail") << "\\",\\n"
+      << "  \\"layers\\": " << kLayers << ",\\n"
+      << "  \\"total_graph_slots\\": " << kTotalGraphSlots << ",\\n"
+      << "  \\"launch_linear\\": " << launch_linear << ",\\n"
+      << "  \\"launch_control\\": " << launch_control << ",\\n"
+      << "  \\"smoke_max_tiles_per_linear_slot\\": " << kSmokeMaxTilesPerLinearSlot << ",\\n"
+      << "  \\"issued_linear_commands\\": " << top.issued_linear_commands_o << ",\\n"
+      << "  \\"issued_control_ops\\": " << top.issued_control_ops_o << ",\\n"
+      << "  \\"issued_graph_slots\\": " << top.issued_graph_slots_o << ",\\n"
+      << "  \\"saw_latched_hold\\": " << (saw_latched_hold ? "true" : "false") << ",\\n"
+      << "  \\"saw_array_consume\\": " << (saw_array_consume ? "true" : "false") << "\\n"
+      << "}}\\n";
+
+  return pass ? 0 : 1;
+}}
+""",
+    )
+
+    flist_entries = [
+        repo_rel(graph_path),
+        repo_rel(buffer_path),
+        repo_rel(array_path),
+        repo_rel(linear_slot_path),
+        repo_rel(control_slot_path),
+        repo_rel(top_path),
+    ]
+    write_text(flist_path, "\n".join(flist_entries + [""]))
+
+    phase_template = [
+        {"cycle": 0, "module": "graph_sequencer", "phase": "present next graph slot"},
+        {"cycle": 1, "module": "graph_sequencer", "phase": "pulse one slot engine start"},
+        {"cycle": 2, "module": "linear_or_control_slot_engine", "phase": "hold graph slot until selected engine done"},
+        {"cycle": 3, "module": "graph_sequencer", "phase": "commit slot and advance"},
+    ]
+    checks = [
+        {
+            "name": "full_rtl_top_generated",
+            "status": "pass"
+            if top_path.exists() and tb_path.exists() and flist_path.exists() and linear_slot_path.exists() and control_slot_path.exists()
+            else "fail",
+        },
+        {
+            "name": "flist_contains_separated_engines_and_ip",
+            "status": "pass"
+            if {
+                repo_rel(graph_path),
+                repo_rel(buffer_path),
+                repo_rel(array_path),
+                repo_rel(linear_slot_path),
+                repo_rel(control_slot_path),
+                repo_rel(top_path),
+            }.issubset(set(flist_entries))
+            else "fail",
+        },
+        {
+            "name": "graph_slots_match_sequencer",
+            "status": "pass" if total_graph_slots == total_linear_slots + total_control_slots else "fail",
+        },
+        {
+            "name": "bounded_smoke_keeps_full_graph_shape",
+            "status": "pass" if smoke_linear_commands == total_linear_slots * smoke_max_tiles_per_linear_slot else "fail",
+        },
+        {
+            "name": "phase_template_names_each_cycle",
+            "status": "pass" if [entry["cycle"] for entry in phase_template] == [0, 1, 2, 3] else "fail",
+        },
+    ]
+    report = {
+        "schema": "e1-full-checkpoint-rtl-top-v0",
+        "status": "pass" if all(check["status"] == "pass" for check in checks) else "fail",
+        "model_id": manifest["model_id"],
+        "truth_boundary": "ordered_graph_slot_dispatch_to_slot_scoped_rtl_engines",
+        "full_checkpoint_ordered_graph_integrated_rtl": True,
+        "full_checkpoint_graph_lowering": False,
+        "full_checkpoint_rtl_execution": False,
+        "top_rtl": repo_rel(top_path),
+        "linear_slot_engine_rtl": repo_rel(linear_slot_path),
+        "control_slot_engine_rtl": repo_rel(control_slot_path),
+        "graph_sequencer_rtl": repo_rel(graph_path),
+        "latch_buffer_rtl": repo_rel(buffer_path),
+        "systolic_array_rtl": repo_rel(array_path),
+        "verilator_tb": repo_rel(tb_path),
+        "flist": repo_rel(flist_path),
+        "layers": layers,
+        "total_graph_slots": total_graph_slots,
+        "total_linear_slots": total_linear_slots,
+        "total_control_slots": total_control_slots,
+        "total_tile_commands_full": command_stream["total_tile_commands"],
+        "smoke_max_tiles_per_linear_slot": smoke_max_tiles_per_linear_slot,
+        "smoke_expected_linear_commands": smoke_linear_commands,
+        "phase_template": phase_template,
+        "separation": {
+            "graph_sequencer": "Orders TinyLlama graph slots and selects exactly one slot engine.",
+            "control_slot_engine": "Runs CPU/control slots without instantiating systolic-array RTL.",
+            "linear_slot_engine": "Runs one linear slot through an explicit latch buffer and standalone systolic-array RTL.",
+            "latch_buffer": "Uses e1_h1_stream_sram as the separated stream latch.",
+            "systolic_array": "Uses e1_h1_systolic_array as the separated array DUT.",
+        },
+        "checks": checks,
+    }
+    write_json(output_path, report)
+    return report
+
+
 def emit_tinyllama_imp2_coverage(
     output_path: Path,
     manifest: dict[str, Any],
@@ -3277,7 +4075,21 @@ def run_pipeline(
         }
     )
 
-    e2e_out = output_dir / "24_end_to_end_smoke.json"
+    full_checkpoint_rtl_top_out = output_dir / "24_full_checkpoint_rtl_top.json"
+    full_checkpoint_rtl_top = emit_full_checkpoint_rtl_top(
+        full_checkpoint_rtl_top_out,
+        manifest,
+        full_checkpoint_command_stream,
+        full_checkpoint_graph_sequencer,
+    )
+    passes.append(
+        {
+            "pass": "e1_integrate_full_checkpoint_rtl_top",
+            "artifact": repo_rel(full_checkpoint_rtl_top_out),
+        }
+    )
+
+    e2e_out = output_dir / "25_end_to_end_smoke.json"
     target_manifest_path = "e1/e1-h1/generated/targets/manifest.json"
     generated_soc_top_exists = all(
         (REPO_ROOT / path).exists()
@@ -3359,6 +4171,10 @@ def run_pipeline(
             "name": "full_checkpoint_graph_sequencer",
             "status": full_checkpoint_graph_sequencer["status"],
         },
+        {
+            "name": "full_checkpoint_rtl_top",
+            "status": full_checkpoint_rtl_top["status"],
+        },
         {"name": "target_package", "status": "pass" if target_package_exists else "fail"},
     ]
     e2e = {
@@ -3416,6 +4232,11 @@ def run_pipeline(
         "full_checkpoint_graph_sequencer": repo_rel(full_checkpoint_graph_sequencer_out),
         "full_checkpoint_graph_sequencer_status": full_checkpoint_graph_sequencer["status"],
         "full_checkpoint_total_graph_slots": full_checkpoint_graph_sequencer["total_graph_slots"],
+        "full_checkpoint_rtl_top": repo_rel(full_checkpoint_rtl_top_out),
+        "full_checkpoint_rtl_top_status": full_checkpoint_rtl_top["status"],
+        "full_checkpoint_rtl_top_smoke_max_tiles_per_linear_slot": full_checkpoint_rtl_top[
+            "smoke_max_tiles_per_linear_slot"
+        ],
         "systemverilog_plan": repo_rel(sv_out),
         "generated_soc_top": soc_top_artifacts,
         "target_package_plan": repo_rel(target_out),
@@ -3461,6 +4282,11 @@ def run_pipeline(
         "full_checkpoint_graph_sequencer": repo_rel(full_checkpoint_graph_sequencer_out),
         "full_checkpoint_graph_sequencer_status": full_checkpoint_graph_sequencer["status"],
         "full_checkpoint_total_graph_slots": full_checkpoint_graph_sequencer["total_graph_slots"],
+        "full_checkpoint_rtl_top": repo_rel(full_checkpoint_rtl_top_out),
+        "full_checkpoint_rtl_top_status": full_checkpoint_rtl_top["status"],
+        "full_checkpoint_rtl_top_smoke_max_tiles_per_linear_slot": full_checkpoint_rtl_top[
+            "smoke_max_tiles_per_linear_slot"
+        ],
         "pipeline": architecture["pipeline"],
     }
     write_json(summary_out, summary)

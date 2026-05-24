@@ -857,17 +857,17 @@ class E1H1Tests(unittest.TestCase):
 
     def test_e1_pipeline_generates_e1_h1_artifacts(self) -> None:
         result = run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])
-        self.assertIn("PASS e1_pipeline 24 passes", result.stdout)
+        self.assertIn("PASS e1_pipeline 25 passes", result.stdout)
 
         summary = json.loads((E1_PIPELINE_OUT / "summary.json").read_text(encoding="utf-8"))
         self.assertEqual(summary["schema"], "e1-pipeline-summary-v0")
         self.assertEqual(summary["model_id"], "tinyllama-1.1b-chat-v1.0")
         self.assertEqual(summary["architecture_id"], "e1-h1")
-        self.assertEqual(summary["pass_count"], 24)
+        self.assertEqual(summary["pass_count"], 25)
         self.assertEqual(summary["operation_counts"]["dot_general"], 6)
         self.assertTrue(summary["all_current_modules_have_l1_5_harnesses"])
         self.assertEqual(summary["generated_top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
-        self.assertEqual(summary["end_to_end_smoke"], "e1/generated/pipeline/24_end_to_end_smoke.json")
+        self.assertEqual(summary["end_to_end_smoke"], "e1/generated/pipeline/25_end_to_end_smoke.json")
         self.assertEqual(summary["end_to_end_status"], "pass")
         self.assertEqual(summary["module_dpi_generation"], "e1/generated/pipeline/12_module_dpi_generation.json")
         self.assertEqual(summary["rtl_lowering"], "e1/generated/pipeline/15_rtl_lowering.json")
@@ -898,6 +898,9 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(summary["full_checkpoint_graph_sequencer"], "e1/generated/pipeline/23_full_checkpoint_graph_sequencer.json")
         self.assertEqual(summary["full_checkpoint_graph_sequencer_status"], "pass")
         self.assertEqual(summary["full_checkpoint_total_graph_slots"], 308)
+        self.assertEqual(summary["full_checkpoint_rtl_top"], "e1/generated/pipeline/24_full_checkpoint_rtl_top.json")
+        self.assertEqual(summary["full_checkpoint_rtl_top_status"], "pass")
+        self.assertEqual(summary["full_checkpoint_rtl_top_smoke_max_tiles_per_linear_slot"], 2)
         self.assertEqual(
             summary["full_tinyllama_checkpoint_execution"],
             "e1/generated/pipeline/17_full_tinyllama_checkpoint_execution.json",
@@ -935,6 +938,7 @@ class E1H1Tests(unittest.TestCase):
             "e1_wire_full_checkpoint_tile_engine",
             "e1_lower_full_checkpoint_control_ops_to_rtl",
             "e1_sequence_full_checkpoint_graph_slots",
+            "e1_integrate_full_checkpoint_rtl_top",
             "e1_end_to_end_smoke",
         ]
         self.assertEqual([entry["pass"] for entry in summary["passes"]], expected_passes)
@@ -1397,7 +1401,49 @@ class E1H1Tests(unittest.TestCase):
         for path in [graph_sequencer["scheduler_rtl"], graph_sequencer["verilator_tb"], graph_sequencer["flist"]]:
             self.assertTrue((REPO_ROOT / path).exists(), path)
 
-        e2e = json.loads((E1_PIPELINE_OUT / "24_end_to_end_smoke.json").read_text(encoding="utf-8"))
+        rtl_top = json.loads((E1_PIPELINE_OUT / "24_full_checkpoint_rtl_top.json").read_text(encoding="utf-8"))
+        self.assertEqual(rtl_top["schema"], "e1-full-checkpoint-rtl-top-v0")
+        self.assertEqual(rtl_top["status"], "pass")
+        self.assertEqual(rtl_top["truth_boundary"], "ordered_graph_slot_dispatch_to_slot_scoped_rtl_engines")
+        self.assertTrue(rtl_top["full_checkpoint_ordered_graph_integrated_rtl"])
+        self.assertFalse(rtl_top["full_checkpoint_graph_lowering"])
+        self.assertFalse(rtl_top["full_checkpoint_rtl_execution"])
+        self.assertEqual(rtl_top["top_rtl"], "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.sv")
+        self.assertEqual(
+            rtl_top["linear_slot_engine_rtl"],
+            "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv",
+        )
+        self.assertEqual(
+            rtl_top["control_slot_engine_rtl"],
+            "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv",
+        )
+        self.assertEqual(rtl_top["graph_sequencer_rtl"], graph_sequencer["scheduler_rtl"])
+        self.assertEqual(rtl_top["latch_buffer_rtl"], "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv")
+        self.assertEqual(rtl_top["systolic_array_rtl"], "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv")
+        self.assertEqual(rtl_top["flist"], "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.f")
+        self.assertEqual(rtl_top["verilator_tb"], "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top_tb.cpp")
+        self.assertEqual(rtl_top["layers"], 22)
+        self.assertEqual(rtl_top["total_graph_slots"], 308)
+        self.assertEqual(rtl_top["total_linear_slots"], 154)
+        self.assertEqual(rtl_top["total_control_slots"], 154)
+        self.assertEqual(rtl_top["total_tile_commands_full"], 3784704)
+        self.assertEqual(rtl_top["smoke_max_tiles_per_linear_slot"], 2)
+        self.assertEqual(rtl_top["smoke_expected_linear_commands"], 308)
+        self.assertEqual([entry["cycle"] for entry in rtl_top["phase_template"]], list(range(4)))
+        self.assertEqual({check["status"] for check in rtl_top["checks"]}, {"pass"})
+        for path in [
+            rtl_top["top_rtl"],
+            rtl_top["linear_slot_engine_rtl"],
+            rtl_top["control_slot_engine_rtl"],
+            rtl_top["graph_sequencer_rtl"],
+            rtl_top["latch_buffer_rtl"],
+            rtl_top["systolic_array_rtl"],
+            rtl_top["verilator_tb"],
+            rtl_top["flist"],
+        ]:
+            self.assertTrue((REPO_ROOT / path).exists(), path)
+
+        e2e = json.loads((E1_PIPELINE_OUT / "25_end_to_end_smoke.json").read_text(encoding="utf-8"))
         self.assertEqual(e2e["schema"], "e1-end-to-end-smoke-v0")
         self.assertEqual(e2e["status"], "pass")
         self.assertEqual(e2e["model_id"], summary["model_id"])
@@ -1447,6 +1493,9 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(e2e["full_checkpoint_graph_sequencer"], "e1/generated/pipeline/23_full_checkpoint_graph_sequencer.json")
         self.assertEqual(e2e["full_checkpoint_graph_sequencer_status"], "pass")
         self.assertEqual(e2e["full_checkpoint_total_graph_slots"], 308)
+        self.assertEqual(e2e["full_checkpoint_rtl_top"], "e1/generated/pipeline/24_full_checkpoint_rtl_top.json")
+        self.assertEqual(e2e["full_checkpoint_rtl_top_status"], "pass")
+        self.assertEqual(e2e["full_checkpoint_rtl_top_smoke_max_tiles_per_linear_slot"], 2)
         self.assertEqual(e2e["target_package"], "e1/e1-h1/generated/targets/manifest.json")
         self.assertIn("full_tinyllama_checkpoint", {check["name"] for check in e2e["checks"]})
         self.assertEqual({check["status"] for check in e2e["checks"]}, {"pass"})
@@ -1469,6 +1518,7 @@ class E1H1Tests(unittest.TestCase):
                 "full_checkpoint_tile_engine",
                 "full_checkpoint_control_scheduler",
                 "full_checkpoint_graph_sequencer",
+                "full_checkpoint_rtl_top",
                 "target_package",
             },
         )
@@ -1498,6 +1548,7 @@ class E1H1Tests(unittest.TestCase):
             e2e["full_checkpoint_tile_engine"],
             e2e["full_checkpoint_control_scheduler"],
             e2e["full_checkpoint_graph_sequencer"],
+            e2e["full_checkpoint_rtl_top"],
             e2e["systemverilog_plan"],
             e2e["target_package_plan"],
             e2e["target_package"],
@@ -1682,6 +1733,11 @@ class E1H1Tests(unittest.TestCase):
         graph_sequencer = FULL_CHECKPOINT_GENERATED / "e1_h1_tinyllama_graph_sequencer.sv"
         graph_sequencer_flist = FULL_CHECKPOINT_GENERATED / "e1_h1_tinyllama_graph_sequencer.f"
         graph_sequencer_tb = FULL_CHECKPOINT_GENERATED / "e1_h1_tinyllama_graph_sequencer_tb.cpp"
+        full_top = FULL_CHECKPOINT_GENERATED / "e1_h1_tinyllama_full_checkpoint_top.sv"
+        full_top_flist = FULL_CHECKPOINT_GENERATED / "e1_h1_tinyllama_full_checkpoint_top.f"
+        full_top_tb = FULL_CHECKPOINT_GENERATED / "e1_h1_tinyllama_full_checkpoint_top_tb.cpp"
+        linear_slot_engine = FULL_CHECKPOINT_GENERATED / "e1_h1_tinyllama_linear_slot_engine.sv"
+        control_slot_engine = FULL_CHECKPOINT_GENERATED / "e1_h1_tinyllama_control_slot_engine.sv"
         with tempfile.TemporaryDirectory() as tmp:
             obj_dir = Path(tmp) / "obj_dir"
             run([
@@ -1804,10 +1860,49 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual(graph_report["launched_control"], 154)
             self.assertEqual(graph_report["launched_linear"], 154)
             self.assertEqual(graph_report["issued_graph_slots"], 308)
+            full_top_obj_dir = Path(tmp) / "obj_full_checkpoint_top"
+            run([
+                verilator,
+                "--cc",
+                "--exe",
+                "--build",
+                "--sv",
+                "-Wall",
+                "-Wno-DECLFILENAME",
+                "-Wno-UNUSEDSIGNAL",
+                "-Wno-UNUSEDPARAM",
+                "-Wno-WIDTHEXPAND",
+                "--top-module",
+                "e1_h1_tinyllama_full_checkpoint_top",
+                "-GSmokeMaxTilesPerLinearSlot=2",
+                "-Mdir",
+                str(full_top_obj_dir),
+                "-CFLAGS",
+                "-std=c++17",
+                "-f",
+                str(full_top_flist.relative_to(REPO_ROOT)),
+                str(full_top_tb.relative_to(REPO_ROOT)),
+            ])
+            full_top_report = json.loads(run([str(full_top_obj_dir / "Ve1_h1_tinyllama_full_checkpoint_top")]).stdout)
+            self.assertEqual(full_top_report["schema"], "e1-full-checkpoint-rtl-top-smoke-v0")
+            self.assertEqual(full_top_report["status"], "pass")
+            self.assertEqual(full_top_report["layers"], 22)
+            self.assertEqual(full_top_report["total_graph_slots"], 308)
+            self.assertEqual(full_top_report["launch_linear"], 154)
+            self.assertEqual(full_top_report["launch_control"], 154)
+            self.assertEqual(full_top_report["smoke_max_tiles_per_linear_slot"], 2)
+            self.assertEqual(full_top_report["issued_linear_commands"], 308)
+            self.assertEqual(full_top_report["issued_control_ops"], 154)
+            self.assertEqual(full_top_report["issued_graph_slots"], 308)
+            self.assertTrue(full_top_report["saw_latched_hold"])
+            self.assertTrue(full_top_report["saw_array_consume"])
         self.assertTrue(scheduler.exists())
         self.assertTrue(tile_engine.exists())
         self.assertTrue(control_scheduler.exists())
         self.assertTrue(graph_sequencer.exists())
+        self.assertTrue(full_top.exists())
+        self.assertTrue(linear_slot_engine.exists())
+        self.assertTrue(control_slot_engine.exists())
 
     def test_cpp_chip_model_compiles_and_runs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

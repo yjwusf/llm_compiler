@@ -67,6 +67,10 @@
       "status": "pass"
     },
     {
+      "name": "full_checkpoint_rtl_top",
+      "status": "pass"
+    },
+    {
       "name": "target_package",
       "status": "pass"
     }
@@ -94,6 +98,9 @@
   "full_checkpoint_rtl_cycle_lowering_status": "pass",
   "full_checkpoint_rtl_lowering_plan": "e1/generated/pipeline/18_full_checkpoint_rtl_lowering_plan.json",
   "full_checkpoint_rtl_lowering_status": "planned",
+  "full_checkpoint_rtl_top": "e1/generated/pipeline/24_full_checkpoint_rtl_top.json",
+  "full_checkpoint_rtl_top_smoke_max_tiles_per_linear_slot": 2,
+  "full_checkpoint_rtl_top_status": "pass",
   "full_checkpoint_tile_engine": "e1/generated/pipeline/21_full_checkpoint_tile_engine.json",
   "full_checkpoint_tile_engine_status": "pass",
   "full_checkpoint_total_control_ops": 154,

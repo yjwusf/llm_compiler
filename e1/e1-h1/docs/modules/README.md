@@ -104,6 +104,11 @@ The generated artifacts are:
 - `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.sv`
 - `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.f`
 - `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer_tb.cpp`
+- `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv`
+- `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv`
+- `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.sv`
+- `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.f`
+- `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top_tb.cpp`
 
 The Verilator harness checks sampled RTL command payloads against
 `e1/code/program/e1_tinyllama_full_schedule.hpp`; the pipeline report records
@@ -149,3 +154,21 @@ This sequencer preserves the review-visible TinyLlama order:
 RMSNorm, Q/K/V projections, RoPE, attention softmax/control, output
 projection, residual, post-attention RMSNorm, MLP gate/up projections, SiLU
 gate multiply, down projection, and MLP residual.
+
+The full-checkpoint top connects that sequencer to slot-scoped engines with
+this review-visible cycle boundary:
+
+```text
+Top cycle  graph_sequencer responsibility       selected slot engine
+---------  ------------------------------       --------------------
+0          presents next graph slot              idle or finishing prior slot
+1          pulses exactly one start              latches layer/op selection
+2          holds current graph slot              runs CPU/control or linear slot
+3          commits graph slot                    returns done to sequencer
+```
+
+The linear slot engine instantiates the separated `ingress_sram` latch buffer
+and `systolic_array` modules. The control slot engine does not instantiate
+array RTL. The generated top-level Verilator harness runs all 308 graph slots
+and bounds each linear slot to a two-tile smoke so the full graph order is
+covered without claiming full checkpoint arithmetic execution.

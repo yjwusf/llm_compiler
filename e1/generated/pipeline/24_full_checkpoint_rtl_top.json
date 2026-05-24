@@ -1,0 +1,75 @@
+{
+  "checks": [
+    {
+      "name": "full_rtl_top_generated",
+      "status": "pass"
+    },
+    {
+      "name": "flist_contains_separated_engines_and_ip",
+      "status": "pass"
+    },
+    {
+      "name": "graph_slots_match_sequencer",
+      "status": "pass"
+    },
+    {
+      "name": "bounded_smoke_keeps_full_graph_shape",
+      "status": "pass"
+    },
+    {
+      "name": "phase_template_names_each_cycle",
+      "status": "pass"
+    }
+  ],
+  "control_slot_engine_rtl": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv",
+  "flist": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.f",
+  "full_checkpoint_graph_lowering": false,
+  "full_checkpoint_ordered_graph_integrated_rtl": true,
+  "full_checkpoint_rtl_execution": false,
+  "graph_sequencer_rtl": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.sv",
+  "latch_buffer_rtl": "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv",
+  "layers": 22,
+  "linear_slot_engine_rtl": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv",
+  "model_id": "tinyllama-1.1b-chat-v1.0",
+  "phase_template": [
+    {
+      "cycle": 0,
+      "module": "graph_sequencer",
+      "phase": "present next graph slot"
+    },
+    {
+      "cycle": 1,
+      "module": "graph_sequencer",
+      "phase": "pulse one slot engine start"
+    },
+    {
+      "cycle": 2,
+      "module": "linear_or_control_slot_engine",
+      "phase": "hold graph slot until selected engine done"
+    },
+    {
+      "cycle": 3,
+      "module": "graph_sequencer",
+      "phase": "commit slot and advance"
+    }
+  ],
+  "schema": "e1-full-checkpoint-rtl-top-v0",
+  "separation": {
+    "control_slot_engine": "Runs CPU/control slots without instantiating systolic-array RTL.",
+    "graph_sequencer": "Orders TinyLlama graph slots and selects exactly one slot engine.",
+    "latch_buffer": "Uses e1_h1_stream_sram as the separated stream latch.",
+    "linear_slot_engine": "Runs one linear slot through an explicit latch buffer and standalone systolic-array RTL.",
+    "systolic_array": "Uses e1_h1_systolic_array as the separated array DUT."
+  },
+  "smoke_expected_linear_commands": 308,
+  "smoke_max_tiles_per_linear_slot": 2,
+  "status": "pass",
+  "systolic_array_rtl": "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
+  "top_rtl": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.sv",
+  "total_control_slots": 154,
+  "total_graph_slots": 308,
+  "total_linear_slots": 154,
+  "total_tile_commands_full": 3784704,
+  "truth_boundary": "ordered_graph_slot_dispatch_to_slot_scoped_rtl_engines",
+  "verilator_tb": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top_tb.cpp"
+}
