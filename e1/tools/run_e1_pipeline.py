@@ -4611,6 +4611,178 @@ def emit_full_checkpoint_graph_rtl_lowering_proof(
     return proof
 
 
+def emit_full_graph_module_dpi_binding(
+    output_path: Path,
+    full_checkpoint_graph_rtl_lowering: dict[str, Any],
+    module_dpi_report: dict[str, Any],
+    full_checkpoint_module_dpi: dict[str, Any],
+) -> dict[str, Any]:
+    base_by_name = {module["name"]: module for module in module_dpi_report["modules"]}
+    generated_by_name = {module["name"]: module for module in full_checkpoint_module_dpi["modules"]}
+    required_base_modules = ["control_cpu", "ingress_sram", "systolic_array"]
+    required_generated_modules = [
+        "linear_scheduler",
+        "linear_tile_engine",
+        "control_scheduler",
+        "graph_sequencer",
+        "linear_slot_engine",
+        "control_slot_engine",
+        "full_checkpoint_top",
+    ]
+    slot_engine_modules = {
+        "e1_h1_tinyllama_linear_slot_engine": "linear_slot_engine",
+        "e1_h1_tinyllama_control_slot_engine": "control_slot_engine",
+    }
+
+    slot_engine_bindings = []
+    for rtl_engine, module_name in slot_engine_modules.items():
+        slots = [
+            binding
+            for binding in full_checkpoint_graph_rtl_lowering["slot_bindings"]
+            if binding["rtl_engine"] == rtl_engine
+        ]
+        module = generated_by_name.get(module_name)
+        slot_engine_bindings.append(
+            {
+                "rtl_engine": rtl_engine,
+                "module": module_name,
+                "slot_count": len(slots),
+                "module_dpi_probe": module["probe"] if module is not None else None,
+                "module_dpi_verilator_status": module["verilator_execution"]["status"]
+                if module is not None
+                else None,
+            }
+        )
+
+    generated_module_bindings = []
+    for module_name in required_generated_modules:
+        module = generated_by_name.get(module_name)
+        generated_module_bindings.append(
+            {
+                "name": module_name,
+                "present": module is not None,
+                "top_module": module["top_module"] if module is not None else None,
+                "rtl": module["rtl"] if module is not None else [],
+                "probe": module["probe"] if module is not None else None,
+                "flist": module["flist"] if module is not None else None,
+                "cycle_contract": module["cycle_contract"] if module is not None else None,
+                "readme_cycle_coverage": module["readme_cycle_coverage"] if module is not None else None,
+                "verilator_execution_recipe": module["verilator_execution_recipe"] if module is not None else None,
+                "verilator_execution": module["verilator_execution"] if module is not None else None,
+            }
+        )
+
+    base_module_bindings = []
+    for module_name in required_base_modules:
+        module = base_by_name.get(module_name)
+        base_module_bindings.append(
+            {
+                "name": module_name,
+                "present": module is not None,
+                "top_module": module["top_module"] if module is not None else None,
+                "probe": module["probe"] if module is not None else None,
+                "flist": module["flist"] if module is not None else None,
+                "cycle_contract": module["cycle_contract"] if module is not None else None,
+                "readme_cycle_coverage": module["readme_cycle_coverage"] if module is not None else None,
+                "verilator_execution_recipe": module["verilator_execution_recipe"] if module is not None else None,
+                "verilator_execution": module["verilator_execution"] if module is not None else None,
+            }
+        )
+
+    recipe_checks_by_report = [
+        [check for check in report["checks"] if "recipe" in check["name"]]
+        for report in [module_dpi_report, full_checkpoint_module_dpi]
+    ]
+    module_dpi_recipe_checks_pass = all(recipe_checks_by_report) and all(
+        check["status"] == "pass"
+        for recipe_checks in recipe_checks_by_report
+        for check in recipe_checks
+    )
+    checks = [
+        {
+            "name": "full_graph_rtl_lowering_proof_passed",
+            "status": full_checkpoint_graph_rtl_lowering["status"],
+        },
+        {
+            "name": "generated_full_checkpoint_module_dpi_passed",
+            "status": full_checkpoint_module_dpi["status"],
+        },
+        {
+            "name": "base_module_dpi_passed",
+            "status": module_dpi_report["status"],
+        },
+        {
+            "name": "all_required_generated_rtl_modules_have_module_dpi",
+            "status": "pass"
+            if set(required_generated_modules).issubset(generated_by_name)
+            else "fail",
+        },
+        {
+            "name": "all_required_generated_rtl_modules_ran_under_verilator",
+            "status": "pass"
+            if all(
+                generated_by_name.get(module_name, {}).get("verilator_execution", {}).get("status") == "pass"
+                for module_name in required_generated_modules
+            )
+            else "fail",
+        },
+        {
+            "name": "all_separated_base_modules_have_module_dpi",
+            "status": "pass" if set(required_base_modules).issubset(base_by_name) else "fail",
+        },
+        {
+            "name": "all_separated_base_modules_ran_under_verilator",
+            "status": "pass"
+            if all(
+                base_by_name.get(module_name, {}).get("verilator_execution", {}).get("status") == "pass"
+                for module_name in required_base_modules
+            )
+            else "fail",
+        },
+        {
+            "name": "slot_binding_engines_have_module_dpi",
+            "status": "pass"
+            if all(binding["module_dpi_verilator_status"] == "pass" for binding in slot_engine_bindings)
+            and {binding["rtl_engine"] for binding in slot_engine_bindings}
+            == {binding["rtl_engine"] for binding in full_checkpoint_graph_rtl_lowering["slot_bindings"]}
+            else "fail",
+        },
+        {
+            "name": "full_graph_top_has_module_dpi",
+            "status": "pass"
+            if generated_by_name.get("full_checkpoint_top", {})
+            .get("verilator_execution", {})
+            .get("status")
+            == "pass"
+            else "fail",
+        },
+        {
+            "name": "module_dpi_reports_use_cpp_generated_recipes",
+            "status": "pass" if module_dpi_recipe_checks_pass else "fail",
+        },
+    ]
+
+    report = {
+        "schema": "e1-full-graph-module-dpi-binding-v0",
+        "status": "pass" if all(check["status"] == "pass" for check in checks) else "fail",
+        "truth_boundary": "full_graph_rtl_artifacts_have_module_only_dpi_verilator_execution",
+        "full_checkpoint_graph_rtl_lowering_proof": "e1/generated/pipeline/25_full_checkpoint_graph_rtl_lowering_proof.json",
+        "base_module_dpi_generation": module_dpi_report["manifest"],
+        "generated_module_dpi_generation": full_checkpoint_module_dpi["manifest"],
+        "required_base_modules": required_base_modules,
+        "required_generated_modules": required_generated_modules,
+        "slot_engine_bindings": slot_engine_bindings,
+        "base_module_bindings": base_module_bindings,
+        "generated_module_bindings": generated_module_bindings,
+        "non_claims": [
+            "This binds RTL artifacts to module-only DPI/Verilator execution; it does not claim TinyLlama numeric output equivalence.",
+        ],
+        "checks": checks,
+    }
+    write_json(output_path, report)
+    return report
+
+
 def emit_tinyllama_imp2_coverage(
     output_path: Path,
     manifest: dict[str, Any],
@@ -5091,7 +5263,21 @@ def run_pipeline(
         }
     )
 
-    e2e_out = output_dir / "27_end_to_end_smoke.json"
+    full_graph_module_dpi_binding_out = output_dir / "27_full_graph_module_dpi_binding.json"
+    full_graph_module_dpi_binding = emit_full_graph_module_dpi_binding(
+        full_graph_module_dpi_binding_out,
+        full_checkpoint_graph_rtl_lowering,
+        module_dpi_report,
+        full_checkpoint_module_dpi,
+    )
+    passes.append(
+        {
+            "pass": "e1_bind_full_graph_module_dpi",
+            "artifact": repo_rel(full_graph_module_dpi_binding_out),
+        }
+    )
+
+    e2e_out = output_dir / "28_end_to_end_smoke.json"
     target_manifest_path = "e1/e1-h1/generated/targets/manifest.json"
     generated_soc_top_exists = all(
         (REPO_ROOT / path).exists()
@@ -5190,6 +5376,10 @@ def run_pipeline(
         {
             "name": "full_checkpoint_module_dpi_generation",
             "status": full_checkpoint_module_dpi["status"],
+        },
+        {
+            "name": "full_graph_module_dpi_binding",
+            "status": full_graph_module_dpi_binding["status"],
         },
         {"name": "target_package", "status": "pass" if target_package_exists else "fail"},
     ]
@@ -5297,6 +5487,14 @@ def run_pipeline(
         "full_checkpoint_module_readme_cycle_coverage": full_checkpoint_module_dpi["readme_cycle_coverage"],
         "full_checkpoint_module_dpi_status": full_checkpoint_module_dpi["status"],
         "full_checkpoint_module_dpi_count": full_checkpoint_module_dpi["module_count"],
+        "full_graph_module_dpi_binding": repo_rel(full_graph_module_dpi_binding_out),
+        "full_graph_module_dpi_binding_status": full_graph_module_dpi_binding["status"],
+        "full_graph_module_dpi_required_generated_modules": full_graph_module_dpi_binding[
+            "required_generated_modules"
+        ],
+        "full_graph_module_dpi_required_base_modules": full_graph_module_dpi_binding[
+            "required_base_modules"
+        ],
         "systemverilog_plan": repo_rel(sv_out),
         "generated_soc_top": soc_top_artifacts,
         "target_package_plan": repo_rel(target_out),
@@ -5392,6 +5590,14 @@ def run_pipeline(
         "full_checkpoint_module_readme_cycle_coverage": full_checkpoint_module_dpi["readme_cycle_coverage"],
         "full_checkpoint_module_dpi_status": full_checkpoint_module_dpi["status"],
         "full_checkpoint_module_dpi_count": full_checkpoint_module_dpi["module_count"],
+        "full_graph_module_dpi_binding": repo_rel(full_graph_module_dpi_binding_out),
+        "full_graph_module_dpi_binding_status": full_graph_module_dpi_binding["status"],
+        "full_graph_module_dpi_required_generated_modules": full_graph_module_dpi_binding[
+            "required_generated_modules"
+        ],
+        "full_graph_module_dpi_required_base_modules": full_graph_module_dpi_binding[
+            "required_base_modules"
+        ],
         "pipeline": architecture["pipeline"],
     }
     write_json(summary_out, summary)

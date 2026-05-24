@@ -1269,17 +1269,17 @@ class E1H1Tests(unittest.TestCase):
 
     def test_e1_pipeline_generates_e1_h1_artifacts(self) -> None:
         result = run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])
-        self.assertIn("PASS e1_pipeline 27 passes", result.stdout)
+        self.assertIn("PASS e1_pipeline 28 passes", result.stdout)
 
         summary = json.loads((E1_PIPELINE_OUT / "summary.json").read_text(encoding="utf-8"))
         self.assertEqual(summary["schema"], "e1-pipeline-summary-v0")
         self.assertEqual(summary["model_id"], "tinyllama-1.1b-chat-v1.0")
         self.assertEqual(summary["architecture_id"], "e1-h1")
-        self.assertEqual(summary["pass_count"], 27)
+        self.assertEqual(summary["pass_count"], 28)
         self.assertEqual(summary["operation_counts"]["dot_general"], 6)
         self.assertTrue(summary["all_current_modules_have_l1_5_harnesses"])
         self.assertEqual(summary["generated_top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
-        self.assertEqual(summary["end_to_end_smoke"], "e1/generated/pipeline/27_end_to_end_smoke.json")
+        self.assertEqual(summary["end_to_end_smoke"], "e1/generated/pipeline/28_end_to_end_smoke.json")
         self.assertEqual(summary["end_to_end_status"], "pass")
         self.assertEqual(summary["module_dpi_generation"], "e1/generated/pipeline/12_module_dpi_generation.json")
         self.assertEqual(summary["module_dpi_manifest"], "e1/e1-h1/generated/module_dpi/manifest.json")
@@ -1380,6 +1380,27 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(summary["full_checkpoint_module_dpi_status"], "pass")
         self.assertEqual(summary["full_checkpoint_module_dpi_count"], 7)
         self.assertEqual(
+            summary["full_graph_module_dpi_binding"],
+            "e1/generated/pipeline/27_full_graph_module_dpi_binding.json",
+        )
+        self.assertEqual(summary["full_graph_module_dpi_binding_status"], "pass")
+        self.assertEqual(
+            set(summary["full_graph_module_dpi_required_generated_modules"]),
+            {
+                "linear_scheduler",
+                "linear_tile_engine",
+                "control_scheduler",
+                "graph_sequencer",
+                "linear_slot_engine",
+                "control_slot_engine",
+                "full_checkpoint_top",
+            },
+        )
+        self.assertEqual(
+            set(summary["full_graph_module_dpi_required_base_modules"]),
+            {"control_cpu", "ingress_sram", "systolic_array"},
+        )
+        self.assertEqual(
             summary["full_tinyllama_checkpoint_execution"],
             "e1/generated/pipeline/17_full_tinyllama_checkpoint_execution.json",
         )
@@ -1419,6 +1440,7 @@ class E1H1Tests(unittest.TestCase):
             "e1_integrate_full_checkpoint_rtl_top",
             "e1_prove_full_checkpoint_graph_rtl_lowering",
             "e1_generate_full_checkpoint_module_dpi",
+            "e1_bind_full_graph_module_dpi",
             "e1_end_to_end_smoke",
         ]
         self.assertEqual([entry["pass"] for entry in summary["passes"]], expected_passes)
@@ -2200,7 +2222,68 @@ class E1H1Tests(unittest.TestCase):
             for path in [module["probe"], module["main"], module["flist"], *module["rtl"]]:
                 self.assertTrue((REPO_ROOT / path).exists(), path)
 
-        e2e = json.loads((E1_PIPELINE_OUT / "27_end_to_end_smoke.json").read_text(encoding="utf-8"))
+        full_graph_module_dpi = json.loads(
+            (E1_PIPELINE_OUT / "27_full_graph_module_dpi_binding.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(full_graph_module_dpi["schema"], "e1-full-graph-module-dpi-binding-v0")
+        self.assertEqual(full_graph_module_dpi["status"], "pass")
+        self.assertEqual(
+            full_graph_module_dpi["truth_boundary"],
+            "full_graph_rtl_artifacts_have_module_only_dpi_verilator_execution",
+        )
+        self.assertEqual(
+            full_graph_module_dpi["full_checkpoint_graph_rtl_lowering_proof"],
+            "e1/generated/pipeline/25_full_checkpoint_graph_rtl_lowering_proof.json",
+        )
+        self.assertEqual(full_graph_module_dpi["base_module_dpi_generation"], module_dpi_report["manifest"])
+        self.assertEqual(
+            full_graph_module_dpi["generated_module_dpi_generation"],
+            full_checkpoint_module_dpi["manifest"],
+        )
+        self.assertEqual(
+            set(full_graph_module_dpi["required_base_modules"]),
+            {"control_cpu", "ingress_sram", "systolic_array"},
+        )
+        self.assertEqual(
+            set(full_graph_module_dpi["required_generated_modules"]),
+            {
+                "linear_scheduler",
+                "linear_tile_engine",
+                "control_scheduler",
+                "graph_sequencer",
+                "linear_slot_engine",
+                "control_slot_engine",
+                "full_checkpoint_top",
+            },
+        )
+        self.assertEqual({check["status"] for check in full_graph_module_dpi["checks"]}, {"pass"})
+        self.assertEqual(
+            {binding["name"] for binding in full_graph_module_dpi["base_module_bindings"]},
+            {"control_cpu", "ingress_sram", "systolic_array"},
+        )
+        self.assertEqual(
+            {binding["name"] for binding in full_graph_module_dpi["generated_module_bindings"]},
+            set(full_graph_module_dpi["required_generated_modules"]),
+        )
+        self.assertEqual(
+            {
+                binding["module"]: binding["slot_count"]
+                for binding in full_graph_module_dpi["slot_engine_bindings"]
+            },
+            {"linear_slot_engine": 154, "control_slot_engine": 154},
+        )
+        module_dpi_bindings = [
+            *full_graph_module_dpi["base_module_bindings"],
+            *full_graph_module_dpi["generated_module_bindings"],
+        ]
+        for binding in module_dpi_bindings:
+            self.assertTrue(binding["present"], binding)
+            self.assertEqual(binding["verilator_execution"]["status"], "pass", binding)
+            self.assertTrue((REPO_ROOT / binding["probe"]).exists(), binding)
+            self.assertTrue((REPO_ROOT / binding["flist"]).exists(), binding)
+        self.assertIn("does not claim TinyLlama numeric", full_graph_module_dpi["non_claims"][0])
+
+        e2e = json.loads((E1_PIPELINE_OUT / "28_end_to_end_smoke.json").read_text(encoding="utf-8"))
         self.assertEqual(e2e["schema"], "e1-end-to-end-smoke-v0")
         self.assertEqual(e2e["status"], "pass")
         self.assertEqual(e2e["model_id"], summary["model_id"])
@@ -2318,6 +2401,19 @@ class E1H1Tests(unittest.TestCase):
         )
         self.assertEqual(e2e["full_checkpoint_module_dpi_status"], "pass")
         self.assertEqual(e2e["full_checkpoint_module_dpi_count"], 7)
+        self.assertEqual(
+            e2e["full_graph_module_dpi_binding"],
+            "e1/generated/pipeline/27_full_graph_module_dpi_binding.json",
+        )
+        self.assertEqual(e2e["full_graph_module_dpi_binding_status"], "pass")
+        self.assertEqual(
+            set(e2e["full_graph_module_dpi_required_generated_modules"]),
+            set(full_graph_module_dpi["required_generated_modules"]),
+        )
+        self.assertEqual(
+            set(e2e["full_graph_module_dpi_required_base_modules"]),
+            set(full_graph_module_dpi["required_base_modules"]),
+        )
         self.assertEqual(e2e["target_package"], "e1/e1-h1/generated/targets/manifest.json")
         self.assertIn("full_tinyllama_checkpoint", {check["name"] for check in e2e["checks"]})
         self.assertEqual({check["status"] for check in e2e["checks"]}, {"pass"})
@@ -2343,6 +2439,7 @@ class E1H1Tests(unittest.TestCase):
                 "full_checkpoint_rtl_top",
                 "full_checkpoint_graph_rtl_lowering_proof",
                 "full_checkpoint_module_dpi_generation",
+                "full_graph_module_dpi_binding",
                 "target_package",
             },
         )
@@ -2382,6 +2479,7 @@ class E1H1Tests(unittest.TestCase):
             e2e["full_checkpoint_rtl_top_full_verilator_tb"],
             e2e["full_checkpoint_graph_rtl_lowering_proof"],
             e2e["full_checkpoint_module_dpi_generation"],
+            e2e["full_graph_module_dpi_binding"],
             e2e["full_checkpoint_module_dpi_manifest"],
             e2e["full_checkpoint_module_interfaces_doc"],
             e2e["full_checkpoint_module_isolation_proof"],

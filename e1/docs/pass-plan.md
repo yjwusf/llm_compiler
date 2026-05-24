@@ -142,7 +142,14 @@ hardware and device code.
       isolation, cycle-contract, Verilator test-plan, C++-owned Verilator
       execution recipe, and Verilator execution proof for each generated
       full-checkpoint RTL module.
-27. `e1_end_to_end_smoke`
+27. `e1_bind_full_graph_module_dpi`
+    - Input: full graph RTL lowering proof, base module-DPI report, and
+      generated full-checkpoint module-DPI report.
+    - Output: a construction proof that every generated RTL module used by the
+      full graph lowering, plus the separated base CPU, latch buffer, and
+      systolic array modules, has module-only DPI/Verilator execution evidence
+      backed by C++-generated recipes.
+28. `e1_end_to_end_smoke`
     - Input: all prior pass artifacts.
     - Output: one evidence report tying StableHLO, E1-H1 binding, device code,
       C++ chip model, generated SystemVerilog top, and target packages together.
@@ -192,6 +199,8 @@ E1 is complete when TinyLlama-derived reduced workloads can run through:
   notes, plus generated isolation proof showing each DUT's allowed and
   forbidden child modules and a generated cycle contract naming every phase in
   each module template, with generated Verilator test plans for every module.
+- Full-graph module-DPI binding proof tying generated full-graph RTL artifacts
+  and separated base modules to module-only Verilator/DPI execution reports.
 - Implementation matrix showing active `imp2` candidates and `imp1` mock
   references.
 - Generated SystemVerilog mocks.

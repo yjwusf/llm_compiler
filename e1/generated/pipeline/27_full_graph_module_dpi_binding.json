@@ -1,0 +1,2088 @@
+{
+  "base_module_bindings": [
+    {
+      "cycle_contract": {
+        "checks": [
+          {
+            "name": "cycle_indices_contiguous",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_diagram_declared",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 8,
+        "cycles": [
+          {
+            "cycle": 0,
+            "dpi_check": "DPI compares imp1 and imp2 CPU outputs.",
+            "observed_signals": "cmd_valid_o, debug_halted_o",
+            "phase": "reset_release",
+            "responsibility": "Release reset and present the first command payload."
+          },
+          {
+            "cycle": 1,
+            "dpi_check": "DPI compares the held command payload.",
+            "observed_signals": "cmd_valid_o, cmd_ready_i",
+            "phase": "command_backpressure",
+            "responsibility": "Hold cmd_valid_o while command ready is asserted late."
+          },
+          {
+            "cycle": 2,
+            "dpi_check": "DPI compares command fields.",
+            "observed_signals": "cmd_valid_o, cmd_ready_i, cmd_*_o",
+            "phase": "command_handshake",
+            "responsibility": "Accept the CPU command at the array boundary."
+          },
+          {
+            "cycle": 3,
+            "dpi_check": "DPI drives array_done_i from C++/probe stimulus.",
+            "observed_signals": "array_done_i, debug_halted_o",
+            "phase": "wait_for_array",
+            "responsibility": "Wait for array completion without instantiating array RTL."
+          },
+          {
+            "cycle": 4,
+            "dpi_check": "DPI compares no-spurious-command behavior.",
+            "observed_signals": "cmd_valid_o, array_done_i",
+            "phase": "wait_for_array_stable",
+            "responsibility": "Keep waiting with no new command issue."
+          },
+          {
+            "cycle": 5,
+            "dpi_check": "DPI compares completion behavior.",
+            "observed_signals": "array_done_i, debug_halted_o",
+            "phase": "array_completion",
+            "responsibility": "Observe array_done_i and move toward halt."
+          },
+          {
+            "cycle": 6,
+            "dpi_check": "DPI compares halt transition.",
+            "observed_signals": "debug_halted_o",
+            "phase": "halt_transition",
+            "responsibility": "Enter the debug halted state."
+          },
+          {
+            "cycle": 7,
+            "dpi_check": "DPI compares final idle state.",
+            "observed_signals": "cmd_valid_o, debug_halted_o",
+            "phase": "halted_idle",
+            "responsibility": "Remain halted with no extra command."
+          }
+        ],
+        "name": "control_cpu",
+        "phase_source": "e1_h1_module_dpi_cycle",
+        "probe_module": "e1_h1_module_dpi_control_cpu",
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "template": "cpu_command_8_cycle_template",
+        "top_module": "e1_h1_control_cpu"
+      },
+      "flist": "e1/e1-h1/generated/module_dpi/flists/control_cpu.f",
+      "name": "control_cpu",
+      "present": true,
+      "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+      "readme_cycle_coverage": {
+        "checks": [
+          {
+            "name": "readme_cycle_diagram_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_contract_index_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_module_name_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_template_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_all_phase_names_present",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 8,
+        "name": "control_cpu",
+        "phase_names": [
+          "reset_release",
+          "command_backpressure",
+          "command_handshake",
+          "wait_for_array",
+          "wait_for_array_stable",
+          "array_completion",
+          "halt_transition",
+          "halted_idle"
+        ],
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+        "template": "cpu_command_8_cycle_template",
+        "top_module": "e1_h1_control_cpu"
+      },
+      "top_module": "e1_h1_control_cpu",
+      "verilator_execution": {
+        "build_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--sv",
+          "-Wall",
+          "-Wno-DECLFILENAME",
+          "-Wno-UNUSEDSIGNAL",
+          "-Wno-UNUSEDPARAM",
+          "-Wno-WIDTHEXPAND",
+          "--timing",
+          "--top-module",
+          "e1_h1_module_dpi_control_cpu",
+          "-Mdir",
+          "<build-root>/obj_module_dpi_control_cpu",
+          "-f",
+          "e1/e1-h1/generated/module_dpi/flists/control_cpu.f",
+          "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+          "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu_main.cpp"
+        ],
+        "build_returncode": 0,
+        "build_stdout_tail": [],
+        "dut_module": "e1_h1_control_cpu",
+        "expected_stdout_markers": [
+          "module=control_cpu",
+          "E1_H1_MODULE_DPI_CYCLE"
+        ],
+        "flist": "e1/e1-h1/generated/module_dpi/flists/control_cpu.f",
+        "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu_main.cpp",
+        "name": "control_cpu",
+        "observed_stdout_markers": [
+          "module=control_cpu",
+          "E1_H1_MODULE_DPI_CYCLE"
+        ],
+        "run_executable": "<build-root>/obj_module_dpi_control_cpu/Ve1_h1_module_dpi_control_cpu",
+        "run_returncode": 0,
+        "run_stdout_tail": [],
+        "scope": "module_only",
+        "scoreboard": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+        "status": "pass",
+        "top_module": "e1_h1_module_dpi_control_cpu"
+      },
+      "verilator_execution_recipe": {
+        "build_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--sv",
+          "-Wall",
+          "-Wno-DECLFILENAME",
+          "-Wno-UNUSEDSIGNAL",
+          "-Wno-UNUSEDPARAM",
+          "-Wno-WIDTHEXPAND",
+          "--timing",
+          "--top-module",
+          "e1_h1_module_dpi_control_cpu",
+          "-Mdir",
+          "<build-root>/obj_module_dpi_control_cpu",
+          "-f",
+          "e1/e1-h1/generated/module_dpi/flists/control_cpu.f",
+          "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+          "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu_main.cpp"
+        ],
+        "dut_module": "e1_h1_control_cpu",
+        "expected_stdout_markers": [
+          "module=control_cpu",
+          "E1_H1_MODULE_DPI_CYCLE"
+        ],
+        "flist": "e1/e1-h1/generated/module_dpi/flists/control_cpu.f",
+        "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu_main.cpp",
+        "name": "control_cpu",
+        "run_executable": "<build-root>/obj_module_dpi_control_cpu/Ve1_h1_module_dpi_control_cpu",
+        "scope": "module_only",
+        "scoreboard": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+        "top_module": "e1_h1_module_dpi_control_cpu"
+      }
+    },
+    {
+      "cycle_contract": {
+        "checks": [
+          {
+            "name": "cycle_indices_contiguous",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_diagram_declared",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 6,
+        "cycles": [
+          {
+            "cycle": 0,
+            "dpi_check": "DPI compares latched valid/data.",
+            "observed_signals": "stream_valid_i, array_ready_i, array_valid_o",
+            "phase": "latch_first_word",
+            "responsibility": "Latch the first stream word while the array is not ready."
+          },
+          {
+            "cycle": 1,
+            "dpi_check": "DPI compares held data.",
+            "observed_signals": "array_ready_i, array_valid_o, array_data_o",
+            "phase": "hold_latched_word",
+            "responsibility": "Hold the latched word under array backpressure."
+          },
+          {
+            "cycle": 2,
+            "dpi_check": "DPI compares release behavior.",
+            "observed_signals": "array_ready_i, array_valid_o, array_data_o",
+            "phase": "release_latched_word",
+            "responsibility": "Release the latched word when array_ready_i rises."
+          },
+          {
+            "cycle": 3,
+            "dpi_check": "DPI compares accept behavior.",
+            "observed_signals": "stream_valid_i, stream_error_i",
+            "phase": "latch_next_clean_word",
+            "responsibility": "Latch a later clean stream word."
+          },
+          {
+            "cycle": 4,
+            "dpi_check": "DPI compares error filtering.",
+            "observed_signals": "stream_error_i, stream_last_i",
+            "phase": "reject_error_word",
+            "responsibility": "Reject an error-marked stream word."
+          },
+          {
+            "cycle": 5,
+            "dpi_check": "DPI compares final latch state.",
+            "observed_signals": "stream_ready_o, array_valid_o",
+            "phase": "empty_or_ready",
+            "responsibility": "Return to empty or ready state."
+          }
+        ],
+        "name": "ingress_sram",
+        "phase_source": "e1_h1_module_dpi_cycle",
+        "probe_module": "e1_h1_module_dpi_ingress_sram",
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "template": "latch_buffer_6_cycle_template",
+        "top_module": "e1_h1_stream_sram"
+      },
+      "flist": "e1/e1-h1/generated/module_dpi/flists/ingress_sram.f",
+      "name": "ingress_sram",
+      "present": true,
+      "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram.sv",
+      "readme_cycle_coverage": {
+        "checks": [
+          {
+            "name": "readme_cycle_diagram_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_contract_index_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_module_name_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_template_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_all_phase_names_present",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 6,
+        "name": "ingress_sram",
+        "phase_names": [
+          "latch_first_word",
+          "hold_latched_word",
+          "release_latched_word",
+          "latch_next_clean_word",
+          "reject_error_word",
+          "empty_or_ready"
+        ],
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+        "template": "latch_buffer_6_cycle_template",
+        "top_module": "e1_h1_stream_sram"
+      },
+      "top_module": "e1_h1_stream_sram",
+      "verilator_execution": {
+        "build_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--sv",
+          "-Wall",
+          "-Wno-DECLFILENAME",
+          "-Wno-UNUSEDSIGNAL",
+          "-Wno-UNUSEDPARAM",
+          "-Wno-WIDTHEXPAND",
+          "--timing",
+          "--top-module",
+          "e1_h1_module_dpi_ingress_sram",
+          "-Mdir",
+          "<build-root>/obj_module_dpi_ingress_sram",
+          "-f",
+          "e1/e1-h1/generated/module_dpi/flists/ingress_sram.f",
+          "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+          "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram_main.cpp"
+        ],
+        "build_returncode": 0,
+        "build_stdout_tail": [],
+        "dut_module": "e1_h1_stream_sram",
+        "expected_stdout_markers": [
+          "module=ingress_sram",
+          "E1_H1_MODULE_DPI_CYCLE"
+        ],
+        "flist": "e1/e1-h1/generated/module_dpi/flists/ingress_sram.f",
+        "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram_main.cpp",
+        "name": "ingress_sram",
+        "observed_stdout_markers": [
+          "module=ingress_sram",
+          "E1_H1_MODULE_DPI_CYCLE"
+        ],
+        "run_executable": "<build-root>/obj_module_dpi_ingress_sram/Ve1_h1_module_dpi_ingress_sram",
+        "run_returncode": 0,
+        "run_stdout_tail": [],
+        "scope": "module_only",
+        "scoreboard": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+        "status": "pass",
+        "top_module": "e1_h1_module_dpi_ingress_sram"
+      },
+      "verilator_execution_recipe": {
+        "build_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--sv",
+          "-Wall",
+          "-Wno-DECLFILENAME",
+          "-Wno-UNUSEDSIGNAL",
+          "-Wno-UNUSEDPARAM",
+          "-Wno-WIDTHEXPAND",
+          "--timing",
+          "--top-module",
+          "e1_h1_module_dpi_ingress_sram",
+          "-Mdir",
+          "<build-root>/obj_module_dpi_ingress_sram",
+          "-f",
+          "e1/e1-h1/generated/module_dpi/flists/ingress_sram.f",
+          "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+          "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram_main.cpp"
+        ],
+        "dut_module": "e1_h1_stream_sram",
+        "expected_stdout_markers": [
+          "module=ingress_sram",
+          "E1_H1_MODULE_DPI_CYCLE"
+        ],
+        "flist": "e1/e1-h1/generated/module_dpi/flists/ingress_sram.f",
+        "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram_main.cpp",
+        "name": "ingress_sram",
+        "run_executable": "<build-root>/obj_module_dpi_ingress_sram/Ve1_h1_module_dpi_ingress_sram",
+        "scope": "module_only",
+        "scoreboard": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+        "top_module": "e1_h1_module_dpi_ingress_sram"
+      }
+    },
+    {
+      "cycle_contract": {
+        "checks": [
+          {
+            "name": "cycle_indices_contiguous",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_diagram_declared",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 8,
+        "cycles": [
+          {
+            "cycle": 0,
+            "dpi_check": "DPI compares idle readiness.",
+            "observed_signals": "cmd_ready_o, debug_busy_o",
+            "phase": "array_idle",
+            "responsibility": "Keep the array idle and command-ready after reset."
+          },
+          {
+            "cycle": 1,
+            "dpi_check": "DPI compares command acceptance.",
+            "observed_signals": "cmd_valid_i, cmd_ready_o, cmd_*_i",
+            "phase": "accept_array_command",
+            "responsibility": "Accept the command from probe/C++ stimulus."
+          },
+          {
+            "cycle": 2,
+            "dpi_check": "DPI compares busy transition.",
+            "observed_signals": "debug_busy_o, input_ready_o",
+            "phase": "enter_busy",
+            "responsibility": "Enter busy state before input beats arrive."
+          },
+          {
+            "cycle": 3,
+            "dpi_check": "DPI compares input readiness.",
+            "observed_signals": "input_valid_i, input_ready_o, input_data_i",
+            "phase": "consume_input_beat_0",
+            "responsibility": "Consume the first input beat."
+          },
+          {
+            "cycle": 4,
+            "dpi_check": "DPI compares input readiness.",
+            "observed_signals": "input_valid_i, input_ready_o, input_data_i",
+            "phase": "consume_input_beat_1",
+            "responsibility": "Consume the second input beat."
+          },
+          {
+            "cycle": 5,
+            "dpi_check": "DPI compares input readiness.",
+            "observed_signals": "input_valid_i, input_ready_o, input_data_i",
+            "phase": "consume_input_beat_2",
+            "responsibility": "Consume the third input beat."
+          },
+          {
+            "cycle": 6,
+            "dpi_check": "DPI compares completion.",
+            "observed_signals": "input_valid_i, done_o, debug_busy_o",
+            "phase": "completion_pulse",
+            "responsibility": "Consume the final beat and pulse done_o."
+          },
+          {
+            "cycle": 7,
+            "dpi_check": "DPI compares return-to-ready.",
+            "observed_signals": "cmd_ready_o, done_o, debug_busy_o",
+            "phase": "return_ready",
+            "responsibility": "Return to ready/idle state for the next command."
+          }
+        ],
+        "name": "systolic_array",
+        "phase_source": "e1_h1_module_dpi_cycle",
+        "probe_module": "e1_h1_module_dpi_systolic_array",
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "template": "systolic_array_8_cycle_template",
+        "top_module": "e1_h1_systolic_array"
+      },
+      "flist": "e1/e1-h1/generated/module_dpi/flists/systolic_array.f",
+      "name": "systolic_array",
+      "present": true,
+      "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+      "readme_cycle_coverage": {
+        "checks": [
+          {
+            "name": "readme_cycle_diagram_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_contract_index_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_module_name_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_template_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_all_phase_names_present",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 8,
+        "name": "systolic_array",
+        "phase_names": [
+          "array_idle",
+          "accept_array_command",
+          "enter_busy",
+          "consume_input_beat_0",
+          "consume_input_beat_1",
+          "consume_input_beat_2",
+          "completion_pulse",
+          "return_ready"
+        ],
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+        "template": "systolic_array_8_cycle_template",
+        "top_module": "e1_h1_systolic_array"
+      },
+      "top_module": "e1_h1_systolic_array",
+      "verilator_execution": {
+        "build_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--sv",
+          "-Wall",
+          "-Wno-DECLFILENAME",
+          "-Wno-UNUSEDSIGNAL",
+          "-Wno-UNUSEDPARAM",
+          "-Wno-WIDTHEXPAND",
+          "--timing",
+          "--top-module",
+          "e1_h1_module_dpi_systolic_array",
+          "-Mdir",
+          "<build-root>/obj_module_dpi_systolic_array",
+          "-f",
+          "e1/e1-h1/generated/module_dpi/flists/systolic_array.f",
+          "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+          "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array_main.cpp"
+        ],
+        "build_returncode": 0,
+        "build_stdout_tail": [],
+        "dut_module": "e1_h1_systolic_array",
+        "expected_stdout_markers": [
+          "module=systolic_array",
+          "E1_H1_MODULE_DPI_CYCLE"
+        ],
+        "flist": "e1/e1-h1/generated/module_dpi/flists/systolic_array.f",
+        "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array_main.cpp",
+        "name": "systolic_array",
+        "observed_stdout_markers": [
+          "module=systolic_array",
+          "E1_H1_MODULE_DPI_CYCLE"
+        ],
+        "run_executable": "<build-root>/obj_module_dpi_systolic_array/Ve1_h1_module_dpi_systolic_array",
+        "run_returncode": 0,
+        "run_stdout_tail": [],
+        "scope": "module_only",
+        "scoreboard": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+        "status": "pass",
+        "top_module": "e1_h1_module_dpi_systolic_array"
+      },
+      "verilator_execution_recipe": {
+        "build_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--sv",
+          "-Wall",
+          "-Wno-DECLFILENAME",
+          "-Wno-UNUSEDSIGNAL",
+          "-Wno-UNUSEDPARAM",
+          "-Wno-WIDTHEXPAND",
+          "--timing",
+          "--top-module",
+          "e1_h1_module_dpi_systolic_array",
+          "-Mdir",
+          "<build-root>/obj_module_dpi_systolic_array",
+          "-f",
+          "e1/e1-h1/generated/module_dpi/flists/systolic_array.f",
+          "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+          "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array_main.cpp"
+        ],
+        "dut_module": "e1_h1_systolic_array",
+        "expected_stdout_markers": [
+          "module=systolic_array",
+          "E1_H1_MODULE_DPI_CYCLE"
+        ],
+        "flist": "e1/e1-h1/generated/module_dpi/flists/systolic_array.f",
+        "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array_main.cpp",
+        "name": "systolic_array",
+        "run_executable": "<build-root>/obj_module_dpi_systolic_array/Ve1_h1_module_dpi_systolic_array",
+        "scope": "module_only",
+        "scoreboard": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+        "top_module": "e1_h1_module_dpi_systolic_array"
+      }
+    }
+  ],
+  "base_module_dpi_generation": "e1/e1-h1/generated/module_dpi/manifest.json",
+  "checks": [
+    {
+      "name": "full_graph_rtl_lowering_proof_passed",
+      "status": "pass"
+    },
+    {
+      "name": "generated_full_checkpoint_module_dpi_passed",
+      "status": "pass"
+    },
+    {
+      "name": "base_module_dpi_passed",
+      "status": "pass"
+    },
+    {
+      "name": "all_required_generated_rtl_modules_have_module_dpi",
+      "status": "pass"
+    },
+    {
+      "name": "all_required_generated_rtl_modules_ran_under_verilator",
+      "status": "pass"
+    },
+    {
+      "name": "all_separated_base_modules_have_module_dpi",
+      "status": "pass"
+    },
+    {
+      "name": "all_separated_base_modules_ran_under_verilator",
+      "status": "pass"
+    },
+    {
+      "name": "slot_binding_engines_have_module_dpi",
+      "status": "pass"
+    },
+    {
+      "name": "full_graph_top_has_module_dpi",
+      "status": "pass"
+    },
+    {
+      "name": "module_dpi_reports_use_cpp_generated_recipes",
+      "status": "pass"
+    }
+  ],
+  "full_checkpoint_graph_rtl_lowering_proof": "e1/generated/pipeline/25_full_checkpoint_graph_rtl_lowering_proof.json",
+  "generated_module_bindings": [
+    {
+      "cycle_contract": {
+        "checks": [
+          {
+            "name": "cycle_indices_contiguous",
+            "status": "pass"
+          },
+          {
+            "name": "cycle_phase_signals_documented",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_diagram_declared",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 8,
+        "cycles": [
+          {
+            "cycle": 0,
+            "dpi_check": "DPI records the phase and later checks issued_commands_o.",
+            "observed_signals": "cycle_phase_o, layer_o, op_index_o, input_tile_o, output_tile_o",
+            "phase": "setup_tile_command",
+            "responsibility": "Select the next TinyLlama linear tile command."
+          },
+          {
+            "cycle": 1,
+            "dpi_check": "DPI records the valid phase.",
+            "observed_signals": "cycle_phase_o, cmd_valid_o, cmd_*_o",
+            "phase": "assert_scheduler_valid",
+            "responsibility": "Present cmd_valid_o and hold the payload stable."
+          },
+          {
+            "cycle": 2,
+            "dpi_check": "DPI records the handshake phase.",
+            "observed_signals": "cycle_phase_o, cmd_valid_o, cmd_ready_i",
+            "phase": "accept_command_handshake",
+            "responsibility": "Accept the command when cmd_ready_i is high."
+          },
+          {
+            "cycle": 3,
+            "dpi_check": "DPI records the in-flight phase.",
+            "observed_signals": "cycle_phase_o, array_done_i",
+            "phase": "wait_for_array_progress_0",
+            "responsibility": "Wait for the first array progress beat."
+          },
+          {
+            "cycle": 4,
+            "dpi_check": "DPI records the in-flight phase.",
+            "observed_signals": "cycle_phase_o, array_done_i",
+            "phase": "wait_for_array_progress_1",
+            "responsibility": "Wait for the second array progress beat."
+          },
+          {
+            "cycle": 5,
+            "dpi_check": "DPI records the in-flight phase.",
+            "observed_signals": "cycle_phase_o, array_done_i",
+            "phase": "wait_for_array_progress_2",
+            "responsibility": "Wait for the third array progress beat."
+          },
+          {
+            "cycle": 6,
+            "dpi_check": "DPI drives array_done_i in this phase.",
+            "observed_signals": "cycle_phase_o, array_done_i, array_error_i",
+            "phase": "sample_array_done",
+            "responsibility": "Sample array_done_i or array_error_i for the command."
+          },
+          {
+            "cycle": 7,
+            "dpi_check": "DPI checks the accepted command count.",
+            "observed_signals": "cycle_phase_o, issued_commands_o",
+            "phase": "advance_tile_counters",
+            "responsibility": "Advance layer/op/tile counters for the next command."
+          }
+        ],
+        "name": "linear_scheduler",
+        "phase_signals": [
+          "cycle_phase_o"
+        ],
+        "probe_module": "e1_h1_full_checkpoint_module_dpi_linear_scheduler",
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "template": "tile_command_8_cycle_cpu_latch_array_template",
+        "top_module": "e1_h1_tinyllama_linear_scheduler"
+      },
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_scheduler.f",
+      "name": "linear_scheduler",
+      "present": true,
+      "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_scheduler.sv",
+      "readme_cycle_coverage": {
+        "checks": [
+          {
+            "name": "readme_cycle_diagram_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_contract_index_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_module_name_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_template_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_all_phase_names_present",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 8,
+        "name": "linear_scheduler",
+        "phase_names": [
+          "setup_tile_command",
+          "assert_scheduler_valid",
+          "accept_command_handshake",
+          "wait_for_array_progress_0",
+          "wait_for_array_progress_1",
+          "wait_for_array_progress_2",
+          "sample_array_done",
+          "advance_tile_counters"
+        ],
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+        "template": "tile_command_8_cycle_cpu_latch_array_template",
+        "top_module": "e1_h1_tinyllama_linear_scheduler"
+      },
+      "rtl": [
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler.sv"
+      ],
+      "top_module": "e1_h1_tinyllama_linear_scheduler",
+      "verilator_execution": {
+        "build_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--sv",
+          "-Wall",
+          "-Wno-DECLFILENAME",
+          "-Wno-UNUSEDSIGNAL",
+          "-Wno-UNUSEDPARAM",
+          "-Wno-WIDTHEXPAND",
+          "--timing",
+          "--top-module",
+          "e1_h1_full_checkpoint_module_dpi_linear_scheduler",
+          "-Mdir",
+          "<build-root>/obj_full_checkpoint_module_dpi_linear_scheduler",
+          "-f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_scheduler.f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_scheduler_main.cpp"
+        ],
+        "build_returncode": 0,
+        "build_stdout_tail": [],
+        "dut_module": "e1_h1_tinyllama_linear_scheduler",
+        "expected_stdout_markers": [
+          "module=linear_scheduler",
+          "E1_H1_FULL_MODULE_DPI_CYCLE"
+        ],
+        "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_scheduler.f",
+        "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_scheduler_main.cpp",
+        "name": "linear_scheduler",
+        "observed_stdout_markers": [
+          "module=linear_scheduler",
+          "E1_H1_FULL_MODULE_DPI_CYCLE"
+        ],
+        "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_linear_scheduler/Ve1_h1_full_checkpoint_module_dpi_linear_scheduler",
+        "run_returncode": 0,
+        "run_stdout_tail": [],
+        "scope": "generated_full_checkpoint_module_only",
+        "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        "status": "pass",
+        "top_module": "e1_h1_full_checkpoint_module_dpi_linear_scheduler"
+      },
+      "verilator_execution_recipe": {
+        "build_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--sv",
+          "-Wall",
+          "-Wno-DECLFILENAME",
+          "-Wno-UNUSEDSIGNAL",
+          "-Wno-UNUSEDPARAM",
+          "-Wno-WIDTHEXPAND",
+          "--timing",
+          "--top-module",
+          "e1_h1_full_checkpoint_module_dpi_linear_scheduler",
+          "-Mdir",
+          "<build-root>/obj_full_checkpoint_module_dpi_linear_scheduler",
+          "-f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_scheduler.f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_scheduler_main.cpp"
+        ],
+        "dut_module": "e1_h1_tinyllama_linear_scheduler",
+        "expected_stdout_markers": [
+          "module=linear_scheduler",
+          "E1_H1_FULL_MODULE_DPI_CYCLE"
+        ],
+        "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_scheduler.f",
+        "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_scheduler_main.cpp",
+        "name": "linear_scheduler",
+        "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_linear_scheduler/Ve1_h1_full_checkpoint_module_dpi_linear_scheduler",
+        "scope": "generated_full_checkpoint_module_only",
+        "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        "top_module": "e1_h1_full_checkpoint_module_dpi_linear_scheduler"
+      }
+    },
+    {
+      "cycle_contract": {
+        "checks": [
+          {
+            "name": "cycle_indices_contiguous",
+            "status": "pass"
+          },
+          {
+            "name": "cycle_phase_signals_documented",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_diagram_declared",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 8,
+        "cycles": [
+          {
+            "cycle": 0,
+            "dpi_check": "DPI records the composed engine phase.",
+            "observed_signals": "cycle_phase_o, scheduler_cmd_valid_o",
+            "phase": "setup_tile_engine",
+            "responsibility": "Start the scheduler/latch/array composition."
+          },
+          {
+            "cycle": 1,
+            "dpi_check": "DPI records valid before array valid.",
+            "observed_signals": "cycle_phase_o, scheduler_cmd_valid_o",
+            "phase": "scheduler_valid_visible",
+            "responsibility": "Expose the ungated scheduler command-valid."
+          },
+          {
+            "cycle": 2,
+            "dpi_check": "DPI observes the array handshake.",
+            "observed_signals": "cycle_phase_o, array_cmd_valid_o, array_cmd_ready_o",
+            "phase": "array_command_handshake",
+            "responsibility": "Gate the command into the systolic array."
+          },
+          {
+            "cycle": 3,
+            "dpi_check": "DPI records latch output.",
+            "observed_signals": "cycle_phase_o, buffer_array_valid_o, buffer_array_data_o",
+            "phase": "latch_to_array_beat_0",
+            "responsibility": "Present the first latched stream beat to the array."
+          },
+          {
+            "cycle": 4,
+            "dpi_check": "DPI records latch readiness.",
+            "observed_signals": "cycle_phase_o, buffer_array_valid_o, buffer_array_ready_o",
+            "phase": "latch_to_array_beat_1",
+            "responsibility": "Stage or forward the next stream beat."
+          },
+          {
+            "cycle": 5,
+            "dpi_check": "DPI records latch transfer.",
+            "observed_signals": "cycle_phase_o, buffer_array_valid_o, buffer_array_ready_o",
+            "phase": "latch_to_array_beat_2",
+            "responsibility": "Continue array input transfer."
+          },
+          {
+            "cycle": 6,
+            "dpi_check": "DPI checks completion progress.",
+            "observed_signals": "cycle_phase_o, array_done_o, array_debug_busy_o",
+            "phase": "array_done_pulse",
+            "responsibility": "Observe the systolic-array completion pulse."
+          },
+          {
+            "cycle": 7,
+            "dpi_check": "DPI checks issued command progress.",
+            "observed_signals": "cycle_phase_o, issued_commands_o",
+            "phase": "return_ready",
+            "responsibility": "Return the composition to ready for the next tile."
+          }
+        ],
+        "name": "linear_tile_engine",
+        "phase_signals": [
+          "cycle_phase_o"
+        ],
+        "probe_module": "e1_h1_full_checkpoint_module_dpi_linear_tile_engine",
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "template": "tile_command_8_cycle_cpu_latch_array_template",
+        "top_module": "e1_h1_tinyllama_linear_tile_engine"
+      },
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_tile_engine.f",
+      "name": "linear_tile_engine",
+      "present": true,
+      "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine.sv",
+      "readme_cycle_coverage": {
+        "checks": [
+          {
+            "name": "readme_cycle_diagram_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_contract_index_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_module_name_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_template_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_all_phase_names_present",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 8,
+        "name": "linear_tile_engine",
+        "phase_names": [
+          "setup_tile_engine",
+          "scheduler_valid_visible",
+          "array_command_handshake",
+          "latch_to_array_beat_0",
+          "latch_to_array_beat_1",
+          "latch_to_array_beat_2",
+          "array_done_pulse",
+          "return_ready"
+        ],
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+        "template": "tile_command_8_cycle_cpu_latch_array_template",
+        "top_module": "e1_h1_tinyllama_linear_tile_engine"
+      },
+      "rtl": [
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler.sv",
+        "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv",
+        "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_tile_engine.sv"
+      ],
+      "top_module": "e1_h1_tinyllama_linear_tile_engine",
+      "verilator_execution": {
+        "build_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--sv",
+          "-Wall",
+          "-Wno-DECLFILENAME",
+          "-Wno-UNUSEDSIGNAL",
+          "-Wno-UNUSEDPARAM",
+          "-Wno-WIDTHEXPAND",
+          "--timing",
+          "--top-module",
+          "e1_h1_full_checkpoint_module_dpi_linear_tile_engine",
+          "-Mdir",
+          "<build-root>/obj_full_checkpoint_module_dpi_linear_tile_engine",
+          "-f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_tile_engine.f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine_main.cpp"
+        ],
+        "build_returncode": 0,
+        "build_stdout_tail": [],
+        "dut_module": "e1_h1_tinyllama_linear_tile_engine",
+        "expected_stdout_markers": [
+          "module=linear_tile_engine",
+          "E1_H1_FULL_MODULE_DPI_CYCLE"
+        ],
+        "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_tile_engine.f",
+        "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine_main.cpp",
+        "name": "linear_tile_engine",
+        "observed_stdout_markers": [
+          "module=linear_tile_engine",
+          "E1_H1_FULL_MODULE_DPI_CYCLE"
+        ],
+        "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_linear_tile_engine/Ve1_h1_full_checkpoint_module_dpi_linear_tile_engine",
+        "run_returncode": 0,
+        "run_stdout_tail": [],
+        "scope": "generated_full_checkpoint_module_only",
+        "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        "status": "pass",
+        "top_module": "e1_h1_full_checkpoint_module_dpi_linear_tile_engine"
+      },
+      "verilator_execution_recipe": {
+        "build_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--sv",
+          "-Wall",
+          "-Wno-DECLFILENAME",
+          "-Wno-UNUSEDSIGNAL",
+          "-Wno-UNUSEDPARAM",
+          "-Wno-WIDTHEXPAND",
+          "--timing",
+          "--top-module",
+          "e1_h1_full_checkpoint_module_dpi_linear_tile_engine",
+          "-Mdir",
+          "<build-root>/obj_full_checkpoint_module_dpi_linear_tile_engine",
+          "-f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_tile_engine.f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine_main.cpp"
+        ],
+        "dut_module": "e1_h1_tinyllama_linear_tile_engine",
+        "expected_stdout_markers": [
+          "module=linear_tile_engine",
+          "E1_H1_FULL_MODULE_DPI_CYCLE"
+        ],
+        "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_tile_engine.f",
+        "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine_main.cpp",
+        "name": "linear_tile_engine",
+        "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_linear_tile_engine/Ve1_h1_full_checkpoint_module_dpi_linear_tile_engine",
+        "scope": "generated_full_checkpoint_module_only",
+        "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        "top_module": "e1_h1_full_checkpoint_module_dpi_linear_tile_engine"
+      }
+    },
+    {
+      "cycle_contract": {
+        "checks": [
+          {
+            "name": "cycle_indices_contiguous",
+            "status": "pass"
+          },
+          {
+            "name": "cycle_phase_signals_documented",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_diagram_declared",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 4,
+        "cycles": [
+          {
+            "cycle": 0,
+            "dpi_check": "DPI records issue.",
+            "observed_signals": "cycle_phase_o, control_valid_o, layer_o, layer_op_slot_o",
+            "phase": "issue_control_op",
+            "responsibility": "Present the current non-linear control op."
+          },
+          {
+            "cycle": 1,
+            "dpi_check": "DPI records metadata phase.",
+            "observed_signals": "cycle_phase_o, control_kind_o",
+            "phase": "read_control_metadata",
+            "responsibility": "Read source/control metadata for the op."
+          },
+          {
+            "cycle": 2,
+            "dpi_check": "DPI records execute phase.",
+            "observed_signals": "cycle_phase_o, control_ready_i",
+            "phase": "execute_control_op",
+            "responsibility": "Execute the CPU/control operation."
+          },
+          {
+            "cycle": 3,
+            "dpi_check": "DPI checks committed count.",
+            "observed_signals": "cycle_phase_o, control_commit_o, issued_control_ops_o",
+            "phase": "commit_control_op",
+            "responsibility": "Commit the op and advance counters."
+          }
+        ],
+        "name": "control_scheduler",
+        "phase_signals": [
+          "cycle_phase_o"
+        ],
+        "probe_module": "e1_h1_full_checkpoint_module_dpi_control_scheduler",
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "template": "control_op_4_cycle_cpu_template",
+        "top_module": "e1_h1_tinyllama_control_scheduler"
+      },
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_scheduler.f",
+      "name": "control_scheduler",
+      "present": true,
+      "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_scheduler.sv",
+      "readme_cycle_coverage": {
+        "checks": [
+          {
+            "name": "readme_cycle_diagram_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_contract_index_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_module_name_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_template_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_all_phase_names_present",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 4,
+        "name": "control_scheduler",
+        "phase_names": [
+          "issue_control_op",
+          "read_control_metadata",
+          "execute_control_op",
+          "commit_control_op"
+        ],
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+        "template": "control_op_4_cycle_cpu_template",
+        "top_module": "e1_h1_tinyllama_control_scheduler"
+      },
+      "rtl": [
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_scheduler.sv"
+      ],
+      "top_module": "e1_h1_tinyllama_control_scheduler",
+      "verilator_execution": {
+        "build_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--sv",
+          "-Wall",
+          "-Wno-DECLFILENAME",
+          "-Wno-UNUSEDSIGNAL",
+          "-Wno-UNUSEDPARAM",
+          "-Wno-WIDTHEXPAND",
+          "--timing",
+          "--top-module",
+          "e1_h1_full_checkpoint_module_dpi_control_scheduler",
+          "-Mdir",
+          "<build-root>/obj_full_checkpoint_module_dpi_control_scheduler",
+          "-f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_scheduler.f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_scheduler_main.cpp"
+        ],
+        "build_returncode": 0,
+        "build_stdout_tail": [],
+        "dut_module": "e1_h1_tinyllama_control_scheduler",
+        "expected_stdout_markers": [
+          "module=control_scheduler",
+          "E1_H1_FULL_MODULE_DPI_CYCLE"
+        ],
+        "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_scheduler.f",
+        "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_scheduler_main.cpp",
+        "name": "control_scheduler",
+        "observed_stdout_markers": [
+          "module=control_scheduler",
+          "E1_H1_FULL_MODULE_DPI_CYCLE"
+        ],
+        "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_control_scheduler/Ve1_h1_full_checkpoint_module_dpi_control_scheduler",
+        "run_returncode": 0,
+        "run_stdout_tail": [],
+        "scope": "generated_full_checkpoint_module_only",
+        "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        "status": "pass",
+        "top_module": "e1_h1_full_checkpoint_module_dpi_control_scheduler"
+      },
+      "verilator_execution_recipe": {
+        "build_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--sv",
+          "-Wall",
+          "-Wno-DECLFILENAME",
+          "-Wno-UNUSEDSIGNAL",
+          "-Wno-UNUSEDPARAM",
+          "-Wno-WIDTHEXPAND",
+          "--timing",
+          "--top-module",
+          "e1_h1_full_checkpoint_module_dpi_control_scheduler",
+          "-Mdir",
+          "<build-root>/obj_full_checkpoint_module_dpi_control_scheduler",
+          "-f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_scheduler.f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_scheduler_main.cpp"
+        ],
+        "dut_module": "e1_h1_tinyllama_control_scheduler",
+        "expected_stdout_markers": [
+          "module=control_scheduler",
+          "E1_H1_FULL_MODULE_DPI_CYCLE"
+        ],
+        "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_scheduler.f",
+        "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_scheduler_main.cpp",
+        "name": "control_scheduler",
+        "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_control_scheduler/Ve1_h1_full_checkpoint_module_dpi_control_scheduler",
+        "scope": "generated_full_checkpoint_module_only",
+        "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        "top_module": "e1_h1_full_checkpoint_module_dpi_control_scheduler"
+      }
+    },
+    {
+      "cycle_contract": {
+        "checks": [
+          {
+            "name": "cycle_indices_contiguous",
+            "status": "pass"
+          },
+          {
+            "name": "cycle_phase_signals_documented",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_diagram_declared",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 4,
+        "cycles": [
+          {
+            "cycle": 0,
+            "dpi_check": "DPI records slot issue.",
+            "observed_signals": "cycle_phase_o, slot_valid_o, layer_o, layer_slot_o",
+            "phase": "present_graph_slot",
+            "responsibility": "Present the ordered TinyLlama layer graph slot."
+          },
+          {
+            "cycle": 1,
+            "dpi_check": "DPI counts launch pulses.",
+            "observed_signals": "cycle_phase_o, launch_control_o, launch_linear_o",
+            "phase": "launch_selected_engine",
+            "responsibility": "Launch either the control or linear slot engine."
+          },
+          {
+            "cycle": 2,
+            "dpi_check": "DPI drives op_done_i in this phase.",
+            "observed_signals": "cycle_phase_o, op_done_i",
+            "phase": "wait_for_slot_done",
+            "responsibility": "Wait for the selected slot engine to complete."
+          },
+          {
+            "cycle": 3,
+            "dpi_check": "DPI checks committed slot count.",
+            "observed_signals": "cycle_phase_o, issued_graph_slots_o",
+            "phase": "commit_graph_slot",
+            "responsibility": "Commit the graph slot and advance layer/slot counters."
+          }
+        ],
+        "name": "graph_sequencer",
+        "phase_signals": [
+          "cycle_phase_o"
+        ],
+        "probe_module": "e1_h1_full_checkpoint_module_dpi_graph_sequencer",
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "template": "graph_slot_4_cycle_launch_template",
+        "top_module": "e1_h1_tinyllama_graph_sequencer"
+      },
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/graph_sequencer.f",
+      "name": "graph_sequencer",
+      "present": true,
+      "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_graph_sequencer.sv",
+      "readme_cycle_coverage": {
+        "checks": [
+          {
+            "name": "readme_cycle_diagram_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_contract_index_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_module_name_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_template_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_all_phase_names_present",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 4,
+        "name": "graph_sequencer",
+        "phase_names": [
+          "present_graph_slot",
+          "launch_selected_engine",
+          "wait_for_slot_done",
+          "commit_graph_slot"
+        ],
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+        "template": "graph_slot_4_cycle_launch_template",
+        "top_module": "e1_h1_tinyllama_graph_sequencer"
+      },
+      "rtl": [
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.sv"
+      ],
+      "top_module": "e1_h1_tinyllama_graph_sequencer",
+      "verilator_execution": {
+        "build_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--sv",
+          "-Wall",
+          "-Wno-DECLFILENAME",
+          "-Wno-UNUSEDSIGNAL",
+          "-Wno-UNUSEDPARAM",
+          "-Wno-WIDTHEXPAND",
+          "--timing",
+          "--top-module",
+          "e1_h1_full_checkpoint_module_dpi_graph_sequencer",
+          "-Mdir",
+          "<build-root>/obj_full_checkpoint_module_dpi_graph_sequencer",
+          "-f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/flists/graph_sequencer.f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_graph_sequencer_main.cpp"
+        ],
+        "build_returncode": 0,
+        "build_stdout_tail": [],
+        "dut_module": "e1_h1_tinyllama_graph_sequencer",
+        "expected_stdout_markers": [
+          "module=graph_sequencer",
+          "E1_H1_FULL_MODULE_DPI_CYCLE"
+        ],
+        "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/graph_sequencer.f",
+        "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_graph_sequencer_main.cpp",
+        "name": "graph_sequencer",
+        "observed_stdout_markers": [
+          "module=graph_sequencer",
+          "E1_H1_FULL_MODULE_DPI_CYCLE"
+        ],
+        "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_graph_sequencer/Ve1_h1_full_checkpoint_module_dpi_graph_sequencer",
+        "run_returncode": 0,
+        "run_stdout_tail": [],
+        "scope": "generated_full_checkpoint_module_only",
+        "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        "status": "pass",
+        "top_module": "e1_h1_full_checkpoint_module_dpi_graph_sequencer"
+      },
+      "verilator_execution_recipe": {
+        "build_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--sv",
+          "-Wall",
+          "-Wno-DECLFILENAME",
+          "-Wno-UNUSEDSIGNAL",
+          "-Wno-UNUSEDPARAM",
+          "-Wno-WIDTHEXPAND",
+          "--timing",
+          "--top-module",
+          "e1_h1_full_checkpoint_module_dpi_graph_sequencer",
+          "-Mdir",
+          "<build-root>/obj_full_checkpoint_module_dpi_graph_sequencer",
+          "-f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/flists/graph_sequencer.f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_graph_sequencer_main.cpp"
+        ],
+        "dut_module": "e1_h1_tinyllama_graph_sequencer",
+        "expected_stdout_markers": [
+          "module=graph_sequencer",
+          "E1_H1_FULL_MODULE_DPI_CYCLE"
+        ],
+        "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/graph_sequencer.f",
+        "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_graph_sequencer_main.cpp",
+        "name": "graph_sequencer",
+        "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_graph_sequencer/Ve1_h1_full_checkpoint_module_dpi_graph_sequencer",
+        "scope": "generated_full_checkpoint_module_only",
+        "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        "top_module": "e1_h1_full_checkpoint_module_dpi_graph_sequencer"
+      }
+    },
+    {
+      "cycle_contract": {
+        "checks": [
+          {
+            "name": "cycle_indices_contiguous",
+            "status": "pass"
+          },
+          {
+            "name": "cycle_phase_signals_documented",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_diagram_declared",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 8,
+        "cycles": [
+          {
+            "cycle": 0,
+            "dpi_check": "DPI records selected slot.",
+            "observed_signals": "cycle_phase_o, layer_o, op_index_o",
+            "phase": "latch_selected_linear_slot",
+            "responsibility": "Latch graph-selected layer and linear op."
+          },
+          {
+            "cycle": 1,
+            "dpi_check": "DPI records scheduler valid.",
+            "observed_signals": "cycle_phase_o, scheduler_cmd_valid_o",
+            "phase": "slot_command_valid",
+            "responsibility": "Expose the slot-local scheduler command-valid."
+          },
+          {
+            "cycle": 2,
+            "dpi_check": "DPI observes the array handshake.",
+            "observed_signals": "cycle_phase_o, array_cmd_valid_o, array_cmd_ready_o",
+            "phase": "array_command_handshake",
+            "responsibility": "Gate the slot command into the systolic array."
+          },
+          {
+            "cycle": 3,
+            "dpi_check": "DPI records latch output.",
+            "observed_signals": "cycle_phase_o, buffer_array_valid_o, buffer_array_data_o",
+            "phase": "latch_to_array_beat_0",
+            "responsibility": "Present the first latched stream beat to the array."
+          },
+          {
+            "cycle": 4,
+            "dpi_check": "DPI records latch readiness.",
+            "observed_signals": "cycle_phase_o, buffer_array_valid_o, buffer_array_ready_o",
+            "phase": "latch_to_array_beat_1",
+            "responsibility": "Stage or forward the next stream beat."
+          },
+          {
+            "cycle": 5,
+            "dpi_check": "DPI records latch transfer.",
+            "observed_signals": "cycle_phase_o, buffer_array_valid_o, buffer_array_ready_o",
+            "phase": "latch_to_array_beat_2",
+            "responsibility": "Continue array input transfer."
+          },
+          {
+            "cycle": 6,
+            "dpi_check": "DPI checks completion progress.",
+            "observed_signals": "cycle_phase_o, array_done_o, array_debug_busy_o",
+            "phase": "array_done_pulse",
+            "responsibility": "Observe the systolic-array completion pulse."
+          },
+          {
+            "cycle": 7,
+            "dpi_check": "DPI checks bounded command count.",
+            "observed_signals": "cycle_phase_o, issued_commands_o, expected_commands_o",
+            "phase": "slot_done_or_next_tile",
+            "responsibility": "Finish the slot or advance to its next tile."
+          }
+        ],
+        "name": "linear_slot_engine",
+        "phase_signals": [
+          "cycle_phase_o"
+        ],
+        "probe_module": "e1_h1_full_checkpoint_module_dpi_linear_slot_engine",
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "template": "tile_command_8_cycle_cpu_latch_array_template",
+        "top_module": "e1_h1_tinyllama_linear_slot_engine"
+      },
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_slot_engine.f",
+      "name": "linear_slot_engine",
+      "present": true,
+      "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine.sv",
+      "readme_cycle_coverage": {
+        "checks": [
+          {
+            "name": "readme_cycle_diagram_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_contract_index_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_module_name_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_template_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_all_phase_names_present",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 8,
+        "name": "linear_slot_engine",
+        "phase_names": [
+          "latch_selected_linear_slot",
+          "slot_command_valid",
+          "array_command_handshake",
+          "latch_to_array_beat_0",
+          "latch_to_array_beat_1",
+          "latch_to_array_beat_2",
+          "array_done_pulse",
+          "slot_done_or_next_tile"
+        ],
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+        "template": "tile_command_8_cycle_cpu_latch_array_template",
+        "top_module": "e1_h1_tinyllama_linear_slot_engine"
+      },
+      "rtl": [
+        "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv",
+        "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv"
+      ],
+      "top_module": "e1_h1_tinyllama_linear_slot_engine",
+      "verilator_execution": {
+        "build_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--sv",
+          "-Wall",
+          "-Wno-DECLFILENAME",
+          "-Wno-UNUSEDSIGNAL",
+          "-Wno-UNUSEDPARAM",
+          "-Wno-WIDTHEXPAND",
+          "--timing",
+          "--top-module",
+          "e1_h1_full_checkpoint_module_dpi_linear_slot_engine",
+          "-Mdir",
+          "<build-root>/obj_full_checkpoint_module_dpi_linear_slot_engine",
+          "-f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_slot_engine.f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine_main.cpp"
+        ],
+        "build_returncode": 0,
+        "build_stdout_tail": [],
+        "dut_module": "e1_h1_tinyllama_linear_slot_engine",
+        "expected_stdout_markers": [
+          "module=linear_slot_engine",
+          "E1_H1_FULL_MODULE_DPI_CYCLE"
+        ],
+        "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_slot_engine.f",
+        "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine_main.cpp",
+        "name": "linear_slot_engine",
+        "observed_stdout_markers": [
+          "module=linear_slot_engine",
+          "E1_H1_FULL_MODULE_DPI_CYCLE"
+        ],
+        "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_linear_slot_engine/Ve1_h1_full_checkpoint_module_dpi_linear_slot_engine",
+        "run_returncode": 0,
+        "run_stdout_tail": [],
+        "scope": "generated_full_checkpoint_module_only",
+        "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        "status": "pass",
+        "top_module": "e1_h1_full_checkpoint_module_dpi_linear_slot_engine"
+      },
+      "verilator_execution_recipe": {
+        "build_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--sv",
+          "-Wall",
+          "-Wno-DECLFILENAME",
+          "-Wno-UNUSEDSIGNAL",
+          "-Wno-UNUSEDPARAM",
+          "-Wno-WIDTHEXPAND",
+          "--timing",
+          "--top-module",
+          "e1_h1_full_checkpoint_module_dpi_linear_slot_engine",
+          "-Mdir",
+          "<build-root>/obj_full_checkpoint_module_dpi_linear_slot_engine",
+          "-f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_slot_engine.f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine_main.cpp"
+        ],
+        "dut_module": "e1_h1_tinyllama_linear_slot_engine",
+        "expected_stdout_markers": [
+          "module=linear_slot_engine",
+          "E1_H1_FULL_MODULE_DPI_CYCLE"
+        ],
+        "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_slot_engine.f",
+        "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine_main.cpp",
+        "name": "linear_slot_engine",
+        "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_linear_slot_engine/Ve1_h1_full_checkpoint_module_dpi_linear_slot_engine",
+        "scope": "generated_full_checkpoint_module_only",
+        "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        "top_module": "e1_h1_full_checkpoint_module_dpi_linear_slot_engine"
+      }
+    },
+    {
+      "cycle_contract": {
+        "checks": [
+          {
+            "name": "cycle_indices_contiguous",
+            "status": "pass"
+          },
+          {
+            "name": "cycle_phase_signals_documented",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_diagram_declared",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 4,
+        "cycles": [
+          {
+            "cycle": 0,
+            "dpi_check": "DPI records issue.",
+            "observed_signals": "cycle_phase_o, control_valid_o, layer_o",
+            "phase": "issue_selected_control_slot",
+            "responsibility": "Present the selected control graph slot."
+          },
+          {
+            "cycle": 1,
+            "dpi_check": "DPI records metadata phase.",
+            "observed_signals": "cycle_phase_o, control_kind_o",
+            "phase": "read_selected_control_metadata",
+            "responsibility": "Read selected control-kind metadata."
+          },
+          {
+            "cycle": 2,
+            "dpi_check": "DPI records execute phase.",
+            "observed_signals": "cycle_phase_o, control_ready_i",
+            "phase": "execute_selected_control_slot",
+            "responsibility": "Execute the selected CPU/control operation."
+          },
+          {
+            "cycle": 3,
+            "dpi_check": "DPI checks committed count.",
+            "observed_signals": "cycle_phase_o, control_commit_o, issued_control_ops_o",
+            "phase": "commit_selected_control_slot",
+            "responsibility": "Commit the selected control slot."
+          }
+        ],
+        "name": "control_slot_engine",
+        "phase_signals": [
+          "cycle_phase_o"
+        ],
+        "probe_module": "e1_h1_full_checkpoint_module_dpi_control_slot_engine",
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "template": "control_op_4_cycle_cpu_template",
+        "top_module": "e1_h1_tinyllama_control_slot_engine"
+      },
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_slot_engine.f",
+      "name": "control_slot_engine",
+      "present": true,
+      "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine.sv",
+      "readme_cycle_coverage": {
+        "checks": [
+          {
+            "name": "readme_cycle_diagram_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_contract_index_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_module_name_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_template_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_all_phase_names_present",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 4,
+        "name": "control_slot_engine",
+        "phase_names": [
+          "issue_selected_control_slot",
+          "read_selected_control_metadata",
+          "execute_selected_control_slot",
+          "commit_selected_control_slot"
+        ],
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+        "template": "control_op_4_cycle_cpu_template",
+        "top_module": "e1_h1_tinyllama_control_slot_engine"
+      },
+      "rtl": [
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv"
+      ],
+      "top_module": "e1_h1_tinyllama_control_slot_engine",
+      "verilator_execution": {
+        "build_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--sv",
+          "-Wall",
+          "-Wno-DECLFILENAME",
+          "-Wno-UNUSEDSIGNAL",
+          "-Wno-UNUSEDPARAM",
+          "-Wno-WIDTHEXPAND",
+          "--timing",
+          "--top-module",
+          "e1_h1_full_checkpoint_module_dpi_control_slot_engine",
+          "-Mdir",
+          "<build-root>/obj_full_checkpoint_module_dpi_control_slot_engine",
+          "-f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_slot_engine.f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine_main.cpp"
+        ],
+        "build_returncode": 0,
+        "build_stdout_tail": [],
+        "dut_module": "e1_h1_tinyllama_control_slot_engine",
+        "expected_stdout_markers": [
+          "module=control_slot_engine",
+          "E1_H1_FULL_MODULE_DPI_CYCLE"
+        ],
+        "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_slot_engine.f",
+        "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine_main.cpp",
+        "name": "control_slot_engine",
+        "observed_stdout_markers": [
+          "module=control_slot_engine",
+          "E1_H1_FULL_MODULE_DPI_CYCLE"
+        ],
+        "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_control_slot_engine/Ve1_h1_full_checkpoint_module_dpi_control_slot_engine",
+        "run_returncode": 0,
+        "run_stdout_tail": [],
+        "scope": "generated_full_checkpoint_module_only",
+        "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        "status": "pass",
+        "top_module": "e1_h1_full_checkpoint_module_dpi_control_slot_engine"
+      },
+      "verilator_execution_recipe": {
+        "build_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--sv",
+          "-Wall",
+          "-Wno-DECLFILENAME",
+          "-Wno-UNUSEDSIGNAL",
+          "-Wno-UNUSEDPARAM",
+          "-Wno-WIDTHEXPAND",
+          "--timing",
+          "--top-module",
+          "e1_h1_full_checkpoint_module_dpi_control_slot_engine",
+          "-Mdir",
+          "<build-root>/obj_full_checkpoint_module_dpi_control_slot_engine",
+          "-f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_slot_engine.f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine_main.cpp"
+        ],
+        "dut_module": "e1_h1_tinyllama_control_slot_engine",
+        "expected_stdout_markers": [
+          "module=control_slot_engine",
+          "E1_H1_FULL_MODULE_DPI_CYCLE"
+        ],
+        "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_slot_engine.f",
+        "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine_main.cpp",
+        "name": "control_slot_engine",
+        "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_control_slot_engine/Ve1_h1_full_checkpoint_module_dpi_control_slot_engine",
+        "scope": "generated_full_checkpoint_module_only",
+        "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        "top_module": "e1_h1_full_checkpoint_module_dpi_control_slot_engine"
+      }
+    },
+    {
+      "cycle_contract": {
+        "checks": [
+          {
+            "name": "cycle_indices_contiguous",
+            "status": "pass"
+          },
+          {
+            "name": "cycle_phase_signals_documented",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_diagram_declared",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 4,
+        "cycles": [
+          {
+            "cycle": 0,
+            "dpi_check": "DPI records top slot issue.",
+            "observed_signals": "graph_cycle_phase_o, active_layer_o, active_slot_o",
+            "phase": "present_top_graph_slot",
+            "responsibility": "Present the next graph slot at the top boundary."
+          },
+          {
+            "cycle": 1,
+            "dpi_check": "DPI counts launch pulses.",
+            "observed_signals": "graph_cycle_phase_o, launch_linear_o, launch_control_o",
+            "phase": "start_selected_slot_engine",
+            "responsibility": "Pulse exactly one selected slot engine."
+          },
+          {
+            "cycle": 2,
+            "dpi_check": "DPI records selected engine progress.",
+            "observed_signals": "graph_cycle_phase_o, linear_cycle_phase_o, control_cycle_phase_o",
+            "phase": "run_selected_slot_engine",
+            "responsibility": "Run either the control slot or linear slot engine."
+          },
+          {
+            "cycle": 3,
+            "dpi_check": "DPI checks top committed slots.",
+            "observed_signals": "graph_cycle_phase_o, issued_graph_slots_o",
+            "phase": "commit_top_graph_slot",
+            "responsibility": "Return slot done to the graph sequencer."
+          }
+        ],
+        "name": "full_checkpoint_top",
+        "phase_signals": [
+          "graph_cycle_phase_o",
+          "linear_cycle_phase_o",
+          "control_cycle_phase_o"
+        ],
+        "probe_module": "e1_h1_full_checkpoint_module_dpi_full_checkpoint_top",
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "template": "top_dispatch_4_cycle_slot_engine_template",
+        "top_module": "e1_h1_tinyllama_full_checkpoint_top"
+      },
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/full_checkpoint_top.f",
+      "name": "full_checkpoint_top",
+      "present": true,
+      "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_full_checkpoint_top.sv",
+      "readme_cycle_coverage": {
+        "checks": [
+          {
+            "name": "readme_cycle_diagram_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_contract_index_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_module_name_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_template_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_all_phase_names_present",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 4,
+        "name": "full_checkpoint_top",
+        "phase_names": [
+          "present_top_graph_slot",
+          "start_selected_slot_engine",
+          "run_selected_slot_engine",
+          "commit_top_graph_slot"
+        ],
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+        "template": "top_dispatch_4_cycle_slot_engine_template",
+        "top_module": "e1_h1_tinyllama_full_checkpoint_top"
+      },
+      "rtl": [
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.sv",
+        "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv",
+        "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv",
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv",
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.sv"
+      ],
+      "top_module": "e1_h1_tinyllama_full_checkpoint_top",
+      "verilator_execution": {
+        "build_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--sv",
+          "-Wall",
+          "-Wno-DECLFILENAME",
+          "-Wno-UNUSEDSIGNAL",
+          "-Wno-UNUSEDPARAM",
+          "-Wno-WIDTHEXPAND",
+          "--timing",
+          "--top-module",
+          "e1_h1_full_checkpoint_module_dpi_full_checkpoint_top",
+          "-Mdir",
+          "<build-root>/obj_full_checkpoint_module_dpi_full_checkpoint_top",
+          "-f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/flists/full_checkpoint_top.f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_full_checkpoint_top_main.cpp"
+        ],
+        "build_returncode": 0,
+        "build_stdout_tail": [],
+        "dut_module": "e1_h1_tinyllama_full_checkpoint_top",
+        "expected_stdout_markers": [
+          "module=full_checkpoint_top",
+          "E1_H1_FULL_MODULE_DPI_CYCLE"
+        ],
+        "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/full_checkpoint_top.f",
+        "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_full_checkpoint_top_main.cpp",
+        "name": "full_checkpoint_top",
+        "observed_stdout_markers": [
+          "module=full_checkpoint_top",
+          "E1_H1_FULL_MODULE_DPI_CYCLE"
+        ],
+        "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_full_checkpoint_top/Ve1_h1_full_checkpoint_module_dpi_full_checkpoint_top",
+        "run_returncode": 0,
+        "run_stdout_tail": [],
+        "scope": "generated_full_checkpoint_module_only",
+        "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        "status": "pass",
+        "top_module": "e1_h1_full_checkpoint_module_dpi_full_checkpoint_top"
+      },
+      "verilator_execution_recipe": {
+        "build_command": [
+          "verilator",
+          "--cc",
+          "--exe",
+          "--build",
+          "--sv",
+          "-Wall",
+          "-Wno-DECLFILENAME",
+          "-Wno-UNUSEDSIGNAL",
+          "-Wno-UNUSEDPARAM",
+          "-Wno-WIDTHEXPAND",
+          "--timing",
+          "--top-module",
+          "e1_h1_full_checkpoint_module_dpi_full_checkpoint_top",
+          "-Mdir",
+          "<build-root>/obj_full_checkpoint_module_dpi_full_checkpoint_top",
+          "-f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/flists/full_checkpoint_top.f",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+          "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_full_checkpoint_top_main.cpp"
+        ],
+        "dut_module": "e1_h1_tinyllama_full_checkpoint_top",
+        "expected_stdout_markers": [
+          "module=full_checkpoint_top",
+          "E1_H1_FULL_MODULE_DPI_CYCLE"
+        ],
+        "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/full_checkpoint_top.f",
+        "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_full_checkpoint_top_main.cpp",
+        "name": "full_checkpoint_top",
+        "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_full_checkpoint_top/Ve1_h1_full_checkpoint_module_dpi_full_checkpoint_top",
+        "scope": "generated_full_checkpoint_module_only",
+        "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        "top_module": "e1_h1_full_checkpoint_module_dpi_full_checkpoint_top"
+      }
+    }
+  ],
+  "generated_module_dpi_generation": "e1/e1-h1/generated/full_checkpoint_dpi/manifest.json",
+  "non_claims": [
+    "This binds RTL artifacts to module-only DPI/Verilator execution; it does not claim TinyLlama numeric output equivalence."
+  ],
+  "required_base_modules": [
+    "control_cpu",
+    "ingress_sram",
+    "systolic_array"
+  ],
+  "required_generated_modules": [
+    "linear_scheduler",
+    "linear_tile_engine",
+    "control_scheduler",
+    "graph_sequencer",
+    "linear_slot_engine",
+    "control_slot_engine",
+    "full_checkpoint_top"
+  ],
+  "schema": "e1-full-graph-module-dpi-binding-v0",
+  "slot_engine_bindings": [
+    {
+      "module": "linear_slot_engine",
+      "module_dpi_probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine.sv",
+      "module_dpi_verilator_status": "pass",
+      "rtl_engine": "e1_h1_tinyllama_linear_slot_engine",
+      "slot_count": 154
+    },
+    {
+      "module": "control_slot_engine",
+      "module_dpi_probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine.sv",
+      "module_dpi_verilator_status": "pass",
+      "rtl_engine": "e1_h1_tinyllama_control_slot_engine",
+      "slot_count": 154
+    }
+  ],
+  "status": "pass",
+  "truth_boundary": "full_graph_rtl_artifacts_have_module_only_dpi_verilator_execution"
+}

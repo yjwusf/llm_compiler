@@ -87,7 +87,8 @@ StableHLO fixture, not the full TinyLlama checkpoint. The pipeline emits:
 - `e1/generated/pipeline/24_full_checkpoint_rtl_top.json`
 - `e1/generated/pipeline/25_full_checkpoint_graph_rtl_lowering_proof.json`
 - `e1/generated/pipeline/26_full_checkpoint_module_dpi_generation.json`
-- `e1/generated/pipeline/27_end_to_end_smoke.json`
+- `e1/generated/pipeline/27_full_graph_module_dpi_binding.json`
+- `e1/generated/pipeline/28_end_to_end_smoke.json`
 
 The coverage artifact requires every StableHLO operation in
 `tinyllama_block.mlir` to bind to an accepted active `imp2` implementation and
@@ -226,6 +227,13 @@ runner. The execution report
 records the actual Verilator build/run result for each generated module-only
 probe. This extends the module-only construction rule from the base E1-H1 IPs
 to the generated TinyLlama RTL modules.
+
+`e1/generated/pipeline/27_full_graph_module_dpi_binding.json` then binds the
+full graph RTL proof to module-only verification. It requires the generated
+linear scheduler, tile engine, control scheduler, graph sequencer, slot
+engines, and full-checkpoint top to have passing module-DPI Verilator reports,
+and also requires the separated base `control_cpu`, `ingress_sram` latch
+buffer, and `systolic_array` modules to have passing module-only DPI reports.
 
 ## Full Checkpoint Execution
 

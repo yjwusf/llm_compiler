@@ -79,6 +79,10 @@
       "status": "pass"
     },
     {
+      "name": "full_graph_module_dpi_binding",
+      "status": "pass"
+    },
+    {
       "name": "target_package",
       "status": "pass"
     }
@@ -135,6 +139,22 @@
   "full_checkpoint_total_graph_slots": 308,
   "full_checkpoint_total_rtl_cycles": 30277632,
   "full_checkpoint_total_tile_commands": 3784704,
+  "full_graph_module_dpi_binding": "e1/generated/pipeline/27_full_graph_module_dpi_binding.json",
+  "full_graph_module_dpi_binding_status": "pass",
+  "full_graph_module_dpi_required_base_modules": [
+    "control_cpu",
+    "ingress_sram",
+    "systolic_array"
+  ],
+  "full_graph_module_dpi_required_generated_modules": [
+    "linear_scheduler",
+    "linear_tile_engine",
+    "control_scheduler",
+    "graph_sequencer",
+    "linear_slot_engine",
+    "control_slot_engine",
+    "full_checkpoint_top"
+  ],
   "full_tinyllama_checkpoint_execution": "e1/generated/pipeline/17_full_tinyllama_checkpoint_execution.json",
   "full_tinyllama_checkpoint_execution_status": "missing_python_dependencies",
   "full_tinyllama_checkpoint_implemented": false,
