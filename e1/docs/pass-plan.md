@@ -132,8 +132,9 @@ hardware and device code.
       stream runs through the integrated RTL top, and that command payloads and
       documented phases are checked. The proof materializes all 308 layer/slot
       bindings, not just the repeated 14-slot template. This proves graph-slot
-      RTL lowering and still does not claim TinyLlama numeric output
-      equivalence.
+      RTL lowering only when the slot bindings reference cycle templates whose
+      phase names are present in the module README diagrams, and still does not
+      claim TinyLlama numeric output equivalence.
 26. `e1_generate_full_checkpoint_module_dpi`
     - Input: generated full-checkpoint RTL modules.
     - Output: C++-generated module-DPI probes, flists, C++ mains, scoreboard,

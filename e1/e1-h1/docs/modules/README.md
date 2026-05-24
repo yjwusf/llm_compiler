@@ -186,6 +186,18 @@ Top cycle  graph_sequencer responsibility       selected slot engine
 3          commits graph slot                    returns done to sequencer
 ```
 
+## Full Graph Slot Cycle Coverage
+
+The generated full-graph proof checks the exact phase names below against this
+README before it records graph-slot RTL lowering as passing.
+
+| Template | Applies To Slots | Cycle Phases |
+| --- | ---: | --- |
+| `tile_command_8_cycle_cpu_latch_array_template` | 154 | 0 `reset_release_or_next_command_setup`; 1 `cmd_valid_o asserted under allowed backpressure`; 2 `command handshake accepted`; 3 `latched input beat 0 visible to array`; 4 `input beat 1 consumed`; 5 `input beat 2 consumed`; 6 `input beat 3 consumed and done observed`; 7 `advance to next tile command` |
+| `control_op_4_cycle_cpu_template` | 154 | 0 `issue control op and allow backpressure`; 1 `read source/control metadata`; 2 `execute scalar or vector-control operation`; 3 `commit control op and advance graph slot` |
+| `graph_slot_4_cycle_launch_template` | 308 | 0 `present ordered graph slot and allow backpressure`; 1 `launch CPU/control or linear tile engine`; 2 `wait for launched engine completion`; 3 `commit graph slot and advance layer/slot counters` |
+| `top_dispatch_4_cycle_slot_engine_template` | 308 | 0 `present next graph slot`; 1 `pulse one slot engine start`; 2 `hold graph slot until selected engine done`; 3 `commit slot and advance` |
+
 ### Generated Cycle Contract Index
 
 The tables below are the machine-checked index for the generated
@@ -233,7 +245,9 @@ ties the layer plan, generated graph sequencer, slot engines, latch buffer,
 systolic array, and full-command harness into one construction proof that the
 ordered TinyLlama graph slots are lowered to RTL slot-engine dispatch. Its
 `slot_bindings` table enumerates all 308 layer/slot instances with the selected
-slot engine, cycle template, separated modules, and module-DPI probe.
+slot engine, cycle template, separated modules, and module-DPI probe. Its
+`readme_cycle_coverage` block proves the full-graph slot templates and exact
+phase names are listed in this README's cycle tables.
 
 The generated full-checkpoint module-DPI collateral applies the same
 module-only rule to generated RTL modules. The C++ generator emits one probe

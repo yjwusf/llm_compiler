@@ -199,9 +199,12 @@ an RTL slot-engine binding, the full top integrates the graph dispatcher, and
 the full linear command stream is checked through the RTL top. The proof emits
 one binding for each of the 308 ordered layer slots, with layer, slot-in-layer,
 global-slot index, selected RTL engine, cycle template, and module-DPI probe
-metadata. It still records `full_checkpoint_numeric_output_equivalence: false`;
-arithmetic kernel equivalence against a live TinyLlama checkpoint remains
-future work.
+metadata. It also records README cycle coverage for the tile-command,
+control-op, graph-launch, and top-dispatch templates, so the proof fails if a
+used full-graph cycle phase is no longer listed in the module README diagrams.
+It still records `full_checkpoint_numeric_output_equivalence: false`;
+arithmetic kernel equivalence against a live TinyLlama checkpoint remains future
+work.
 
 The full-checkpoint module-DPI generation artifact is produced by
 `e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp`. It emits

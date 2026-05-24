@@ -4401,6 +4401,63 @@ def emit_full_checkpoint_graph_rtl_lowering_proof(
                 }
             )
 
+    cycle_templates = {
+        "tile_command_8_cycle_cpu_latch_array_template": {
+            "source": "e1/generated/pipeline/20_full_checkpoint_rtl_cycle_lowering.json",
+            "applies_to_slots": sum(1 for binding in slot_bindings if binding["kind"] == "linear"),
+            "cycles": rtl_cycle["phase_template"],
+        },
+        "control_op_4_cycle_cpu_template": {
+            "source": "e1/generated/pipeline/22_full_checkpoint_control_scheduler.json",
+            "applies_to_slots": sum(1 for binding in slot_bindings if binding["kind"] != "linear"),
+            "cycles": control_scheduler["phase_template"],
+        },
+        "graph_slot_4_cycle_launch_template": {
+            "source": "e1/generated/pipeline/23_full_checkpoint_graph_sequencer.json",
+            "applies_to_slots": int(graph_sequencer["total_graph_slots"]),
+            "cycles": graph_sequencer["phase_template"],
+        },
+        "top_dispatch_4_cycle_slot_engine_template": {
+            "source": "e1/generated/pipeline/24_full_checkpoint_rtl_top.json",
+            "applies_to_slots": int(rtl_top["total_graph_slots"]),
+            "cycles": rtl_top["phase_template"],
+        },
+    }
+    readme_path = "e1/e1-h1/docs/modules/README.md"
+    readme_text = (REPO_ROOT / readme_path).read_text(encoding="utf-8")
+    readme_cycle_coverage = {
+        "readme": readme_path,
+        "section": "Full Graph Slot Cycle Coverage",
+        "templates": [
+            {
+                "template": template,
+                "source": data["source"],
+                "applies_to_slots": data["applies_to_slots"],
+                "cycle_count": len(data["cycles"]),
+                "phase_names": [entry["phase"] for entry in data["cycles"]],
+                "checks": [
+                    {
+                        "name": "readme_lists_template",
+                        "status": "pass" if template in readme_text else "fail",
+                    },
+                    {
+                        "name": "readme_lists_all_phase_names",
+                        "status": "pass"
+                        if all(entry["phase"] in readme_text for entry in data["cycles"])
+                        else "fail",
+                    },
+                    {
+                        "name": "cycles_are_contiguous_from_zero",
+                        "status": "pass"
+                        if [entry["cycle"] for entry in data["cycles"]] == list(range(len(data["cycles"])))
+                        else "fail",
+                    },
+                ],
+            }
+            for template, data in cycle_templates.items()
+        ],
+    }
+
     artifact_paths = [
         rtl_top["top_rtl"],
         rtl_top["linear_slot_engine_rtl"],
@@ -4454,6 +4511,21 @@ def emit_full_checkpoint_graph_rtl_lowering_proof(
             and all(
                 binding["global_slot"] == binding["layer"] * total_layer_slots + binding["slot_in_layer"]
                 for binding in slot_bindings
+            )
+            else "fail",
+        },
+        {
+            "name": "every_slot_binding_references_documented_cycle_template",
+            "status": "pass"
+            if all(binding["cycle_template"] in cycle_templates for binding in slot_bindings)
+            else "fail",
+        },
+        {
+            "name": "full_graph_cycle_templates_documented_in_readme",
+            "status": "pass"
+            if all(
+                all(check["status"] == "pass" for check in template["checks"])
+                for template in readme_cycle_coverage["templates"]
             )
             else "fail",
         },
@@ -4517,6 +4589,7 @@ def emit_full_checkpoint_graph_rtl_lowering_proof(
             "systolic_array": rtl_top["systolic_array_rtl"],
             "flist": rtl_top["flist"],
         },
+        "readme_cycle_coverage": readme_cycle_coverage,
         "slot_bindings": slot_bindings,
         "construction_inputs": {
             "layer_plan": "e1/generated/pipeline/18_full_checkpoint_rtl_lowering_plan.json",

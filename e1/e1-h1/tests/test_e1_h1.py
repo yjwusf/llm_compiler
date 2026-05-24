@@ -2010,6 +2010,49 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(graph_rtl_proof["rtl_artifacts"]["latch_buffer"], rtl_top["latch_buffer_rtl"])
         self.assertEqual(graph_rtl_proof["rtl_artifacts"]["systolic_array"], rtl_top["systolic_array_rtl"])
         self.assertEqual({check["status"] for check in graph_rtl_proof["checks"]}, {"pass"})
+        self.assertEqual(
+            graph_rtl_proof["readme_cycle_coverage"]["readme"],
+            "e1/e1-h1/docs/modules/README.md",
+        )
+        self.assertEqual(
+            graph_rtl_proof["readme_cycle_coverage"]["section"],
+            "Full Graph Slot Cycle Coverage",
+        )
+        coverage_by_template = {
+            template["template"]: template
+            for template in graph_rtl_proof["readme_cycle_coverage"]["templates"]
+        }
+        self.assertEqual(
+            set(coverage_by_template),
+            {
+                "tile_command_8_cycle_cpu_latch_array_template",
+                "control_op_4_cycle_cpu_template",
+                "graph_slot_4_cycle_launch_template",
+                "top_dispatch_4_cycle_slot_engine_template",
+            },
+        )
+        self.assertEqual(
+            coverage_by_template["tile_command_8_cycle_cpu_latch_array_template"]["applies_to_slots"],
+            154,
+        )
+        self.assertEqual(
+            coverage_by_template["control_op_4_cycle_cpu_template"]["applies_to_slots"],
+            154,
+        )
+        self.assertEqual(
+            coverage_by_template["graph_slot_4_cycle_launch_template"]["applies_to_slots"],
+            308,
+        )
+        self.assertEqual(
+            coverage_by_template["top_dispatch_4_cycle_slot_engine_template"]["applies_to_slots"],
+            308,
+        )
+        self.assertTrue(
+            all(
+                {check["status"] for check in template["checks"]} == {"pass"}
+                for template in coverage_by_template.values()
+            )
+        )
         self.assertEqual(len(graph_rtl_proof["slot_bindings"]), 308)
         self.assertEqual(
             [binding["global_slot"] for binding in graph_rtl_proof["slot_bindings"]],

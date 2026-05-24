@@ -45,6 +45,14 @@
       "status": "pass"
     },
     {
+      "name": "every_slot_binding_references_documented_cycle_template",
+      "status": "pass"
+    },
+    {
+      "name": "full_graph_cycle_templates_documented_in_readme",
+      "status": "pass"
+    },
+    {
       "name": "all_referenced_rtl_artifacts_exist",
       "status": "pass"
     },
@@ -101,6 +109,120 @@
     "No full StableHLO live checkpoint export is required by this deterministic preflight proof.",
     "Control/elementwise arithmetic kernels remain represented as CPU/control RTL scheduling boundaries."
   ],
+  "readme_cycle_coverage": {
+    "readme": "e1/e1-h1/docs/modules/README.md",
+    "section": "Full Graph Slot Cycle Coverage",
+    "templates": [
+      {
+        "applies_to_slots": 154,
+        "checks": [
+          {
+            "name": "readme_lists_template",
+            "status": "pass"
+          },
+          {
+            "name": "readme_lists_all_phase_names",
+            "status": "pass"
+          },
+          {
+            "name": "cycles_are_contiguous_from_zero",
+            "status": "pass"
+          }
+        ],
+        "cycle_count": 8,
+        "phase_names": [
+          "reset_release_or_next_command_setup",
+          "cmd_valid_o asserted under allowed backpressure",
+          "command handshake accepted",
+          "latched input beat 0 visible to array",
+          "input beat 1 consumed",
+          "input beat 2 consumed",
+          "input beat 3 consumed and done observed",
+          "advance to next tile command"
+        ],
+        "source": "e1/generated/pipeline/20_full_checkpoint_rtl_cycle_lowering.json",
+        "template": "tile_command_8_cycle_cpu_latch_array_template"
+      },
+      {
+        "applies_to_slots": 154,
+        "checks": [
+          {
+            "name": "readme_lists_template",
+            "status": "pass"
+          },
+          {
+            "name": "readme_lists_all_phase_names",
+            "status": "pass"
+          },
+          {
+            "name": "cycles_are_contiguous_from_zero",
+            "status": "pass"
+          }
+        ],
+        "cycle_count": 4,
+        "phase_names": [
+          "issue control op and allow backpressure",
+          "read source/control metadata",
+          "execute scalar or vector-control operation",
+          "commit control op and advance graph slot"
+        ],
+        "source": "e1/generated/pipeline/22_full_checkpoint_control_scheduler.json",
+        "template": "control_op_4_cycle_cpu_template"
+      },
+      {
+        "applies_to_slots": 308,
+        "checks": [
+          {
+            "name": "readme_lists_template",
+            "status": "pass"
+          },
+          {
+            "name": "readme_lists_all_phase_names",
+            "status": "pass"
+          },
+          {
+            "name": "cycles_are_contiguous_from_zero",
+            "status": "pass"
+          }
+        ],
+        "cycle_count": 4,
+        "phase_names": [
+          "present ordered graph slot and allow backpressure",
+          "launch CPU/control or linear tile engine",
+          "wait for launched engine completion",
+          "commit graph slot and advance layer/slot counters"
+        ],
+        "source": "e1/generated/pipeline/23_full_checkpoint_graph_sequencer.json",
+        "template": "graph_slot_4_cycle_launch_template"
+      },
+      {
+        "applies_to_slots": 308,
+        "checks": [
+          {
+            "name": "readme_lists_template",
+            "status": "pass"
+          },
+          {
+            "name": "readme_lists_all_phase_names",
+            "status": "pass"
+          },
+          {
+            "name": "cycles_are_contiguous_from_zero",
+            "status": "pass"
+          }
+        ],
+        "cycle_count": 4,
+        "phase_names": [
+          "present next graph slot",
+          "pulse one slot engine start",
+          "hold graph slot until selected engine done",
+          "commit slot and advance"
+        ],
+        "source": "e1/generated/pipeline/24_full_checkpoint_rtl_top.json",
+        "template": "top_dispatch_4_cycle_slot_engine_template"
+      }
+    ]
+  },
   "rtl_artifacts": {
     "control_slot_engine": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv",
     "flist": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.f",
