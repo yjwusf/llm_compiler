@@ -171,8 +171,10 @@ checkpoint RTL execution or numeric output comparison.
 The full-checkpoint module-DPI generation artifact is produced by
 `e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp`. It emits
 `e1/e1-h1/generated/full_checkpoint_dpi/manifest.json`, one SystemVerilog DPI
-probe per generated full-checkpoint RTL module, matching flists, C++ mains, and
-a shared C++ scoreboard. This extends the module-only construction rule from
+probe per generated full-checkpoint RTL module, matching flists, C++ mains, a
+shared C++ scoreboard, and
+`e1/e1-h1/generated/full_checkpoint_dpi/module_interfaces.md` with generated
+input/output signal tables. This extends the module-only construction rule from
 the base E1-H1 IPs to the generated TinyLlama RTL modules.
 
 ## Full Checkpoint Execution

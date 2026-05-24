@@ -663,6 +663,7 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
 
     manifest_path = module_dpi_dir / "manifest.json"
     manifest = load_json(manifest_path)
+    module_interfaces_doc = module_dpi_dir / "module_interfaces.md"
     module_names = {module["name"] for module in manifest["modules"]}
     expected_modules = {
         "linear_scheduler",
@@ -695,6 +696,16 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
             else "fail",
         },
         {
+            "name": "generated_full_checkpoint_interfaces_doc_exists",
+            "status": "pass" if module_interfaces_doc.exists() else "fail",
+        },
+        {
+            "name": "all_generated_full_checkpoint_modules_have_signal_docs",
+            "status": "pass"
+            if all(module.get("input_signals") and module.get("output_signals") for module in manifest["modules"])
+            else "fail",
+        },
+        {
             "name": "full_checkpoint_top_dpi_covers_slot_engines",
             "status": "pass"
             if any(
@@ -712,6 +723,7 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
         "generator": repo_rel(generator),
         "manifest": repo_rel(manifest_path),
         "scoreboard": manifest["scoreboard"],
+        "module_interfaces_doc": manifest["module_interfaces_doc"],
         "module_count": len(manifest["modules"]),
         "modules": [
             {
@@ -723,6 +735,8 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
                 "flist": module["flist"],
                 "rtl": module["rtl"],
                 "cycle_notes": module["cycle_notes"],
+                "input_signals": module["input_signals"],
+                "output_signals": module["output_signals"],
             }
             for module in manifest["modules"]
         ],
@@ -4358,6 +4372,7 @@ def run_pipeline(
         ],
         "full_checkpoint_module_dpi_generation": repo_rel(full_checkpoint_module_dpi_out),
         "full_checkpoint_module_dpi_manifest": full_checkpoint_module_dpi["manifest"],
+        "full_checkpoint_module_interfaces_doc": full_checkpoint_module_dpi["module_interfaces_doc"],
         "full_checkpoint_module_dpi_status": full_checkpoint_module_dpi["status"],
         "full_checkpoint_module_dpi_count": full_checkpoint_module_dpi["module_count"],
         "systemverilog_plan": repo_rel(sv_out),
@@ -4412,6 +4427,7 @@ def run_pipeline(
         ],
         "full_checkpoint_module_dpi_generation": repo_rel(full_checkpoint_module_dpi_out),
         "full_checkpoint_module_dpi_manifest": full_checkpoint_module_dpi["manifest"],
+        "full_checkpoint_module_interfaces_doc": full_checkpoint_module_dpi["module_interfaces_doc"],
         "full_checkpoint_module_dpi_status": full_checkpoint_module_dpi["status"],
         "full_checkpoint_module_dpi_count": full_checkpoint_module_dpi["module_count"],
         "pipeline": architecture["pipeline"],

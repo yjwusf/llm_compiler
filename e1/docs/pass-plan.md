@@ -119,7 +119,8 @@ hardware and device code.
 25. `e1_generate_full_checkpoint_module_dpi`
     - Input: generated full-checkpoint RTL modules.
     - Output: C++-generated module-DPI probes, flists, C++ mains, scoreboard,
-      and manifest for each generated full-checkpoint RTL module.
+      manifest, and generated input/output signal documentation for each
+      generated full-checkpoint RTL module.
 26. `e1_end_to_end_smoke`
     - Input: all prior pass artifacts.
     - Output: one evidence report tying StableHLO, E1-H1 binding, device code,

@@ -17,6 +17,14 @@
       "status": "pass"
     },
     {
+      "name": "generated_full_checkpoint_interfaces_doc_exists",
+      "status": "pass"
+    },
+    {
+      "name": "all_generated_full_checkpoint_modules_have_signal_docs",
+      "status": "pass"
+    },
+    {
       "name": "full_checkpoint_top_dpi_covers_slot_engines",
       "status": "pass"
     }
@@ -25,6 +33,7 @@
   "generator": "e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp",
   "manifest": "e1/e1-h1/generated/full_checkpoint_dpi/manifest.json",
   "module_count": 7,
+  "module_interfaces_doc": "e1/e1-h1/generated/full_checkpoint_dpi/module_interfaces.md",
   "modules": [
     {
       "cycle_notes": [
@@ -33,8 +42,122 @@
         "cycle 6 array done"
       ],
       "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_scheduler.f",
+      "input_signals": [
+        {
+          "description": "Scheduler clock.",
+          "name": "clk_i",
+          "width": "1"
+        },
+        {
+          "description": "Active-low reset.",
+          "name": "rst_ni",
+          "width": "1"
+        },
+        {
+          "description": "Starts full linear tile-command enumeration.",
+          "name": "start_i",
+          "width": "1"
+        },
+        {
+          "description": "Array-side command ready handshake.",
+          "name": "cmd_ready_i",
+          "width": "1"
+        },
+        {
+          "description": "Array completion for the issued tile command.",
+          "name": "array_done_i",
+          "width": "1"
+        },
+        {
+          "description": "Array error for the issued tile command.",
+          "name": "array_error_i",
+          "width": "1"
+        }
+      ],
       "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_scheduler_main.cpp",
       "name": "linear_scheduler",
+      "output_signals": [
+        {
+          "description": "Scheduler is running.",
+          "name": "busy_o",
+          "width": "1"
+        },
+        {
+          "description": "All full-checkpoint tile commands have been issued.",
+          "name": "done_o",
+          "width": "1"
+        },
+        {
+          "description": "Scheduler observed array error.",
+          "name": "error_o",
+          "width": "1"
+        },
+        {
+          "description": "Tile command is valid.",
+          "name": "cmd_valid_o",
+          "width": "1"
+        },
+        {
+          "description": "Input tile base address.",
+          "name": "cmd_input_addr_o",
+          "width": "32"
+        },
+        {
+          "description": "Weight tile base address.",
+          "name": "cmd_weight_addr_o",
+          "width": "32"
+        },
+        {
+          "description": "Output tile base address.",
+          "name": "cmd_output_addr_o",
+          "width": "32"
+        },
+        {
+          "description": "Tile row count.",
+          "name": "cmd_rows_o",
+          "width": "16"
+        },
+        {
+          "description": "Tile column count.",
+          "name": "cmd_cols_o",
+          "width": "16"
+        },
+        {
+          "description": "Tile reduction depth.",
+          "name": "cmd_depth_o",
+          "width": "16"
+        },
+        {
+          "description": "Current TinyLlama layer.",
+          "name": "layer_o",
+          "width": "32"
+        },
+        {
+          "description": "Current linear op index within the layer.",
+          "name": "op_index_o",
+          "width": "3"
+        },
+        {
+          "description": "Current input tile index.",
+          "name": "input_tile_o",
+          "width": "9"
+        },
+        {
+          "description": "Current output tile index.",
+          "name": "output_tile_o",
+          "width": "9"
+        },
+        {
+          "description": "Number of accepted tile commands.",
+          "name": "issued_commands_o",
+          "width": "32"
+        },
+        {
+          "description": "Current 8-cycle tile-template phase.",
+          "name": "cycle_phase_o",
+          "width": "3"
+        }
+      ],
       "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_scheduler.sv",
       "probe_module": "e1_h1_full_checkpoint_module_dpi_linear_scheduler",
       "rtl": [
@@ -49,8 +172,167 @@
         "cycles 3-6 latch/array transfer"
       ],
       "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_tile_engine.f",
+      "input_signals": [
+        {
+          "description": "Tile engine clock.",
+          "name": "clk_i",
+          "width": "1"
+        },
+        {
+          "description": "Active-low reset.",
+          "name": "rst_ni",
+          "width": "1"
+        },
+        {
+          "description": "Starts the linear tile engine.",
+          "name": "start_i",
+          "width": "1"
+        },
+        {
+          "description": "External input stream valid into the latch buffer.",
+          "name": "stream_valid_i",
+          "width": "1"
+        },
+        {
+          "description": "External input stream data into the latch buffer.",
+          "name": "stream_data_i",
+          "width": "64"
+        },
+        {
+          "description": "External input stream packet-last marker.",
+          "name": "stream_last_i",
+          "width": "1"
+        },
+        {
+          "description": "External input stream error marker.",
+          "name": "stream_error_i",
+          "width": "1"
+        }
+      ],
       "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine_main.cpp",
       "name": "linear_tile_engine",
+      "output_signals": [
+        {
+          "description": "Latch buffer can accept stream data.",
+          "name": "stream_ready_o",
+          "width": "1"
+        },
+        {
+          "description": "Scheduler is running.",
+          "name": "busy_o",
+          "width": "1"
+        },
+        {
+          "description": "Scheduler completed all tile commands.",
+          "name": "done_o",
+          "width": "1"
+        },
+        {
+          "description": "Scheduler or array reported error.",
+          "name": "error_o",
+          "width": "1"
+        },
+        {
+          "description": "Number of accepted tile commands.",
+          "name": "issued_commands_o",
+          "width": "32"
+        },
+        {
+          "description": "Current 8-cycle tile-template phase.",
+          "name": "cycle_phase_o",
+          "width": "3"
+        },
+        {
+          "description": "Current TinyLlama layer.",
+          "name": "layer_o",
+          "width": "32"
+        },
+        {
+          "description": "Current linear op index.",
+          "name": "op_index_o",
+          "width": "3"
+        },
+        {
+          "description": "Current input tile index.",
+          "name": "input_tile_o",
+          "width": "9"
+        },
+        {
+          "description": "Current output tile index.",
+          "name": "output_tile_o",
+          "width": "9"
+        },
+        {
+          "description": "Ungated scheduler command-valid signal.",
+          "name": "scheduler_cmd_valid_o",
+          "width": "1"
+        },
+        {
+          "description": "Gated command-valid signal sent to the array.",
+          "name": "array_cmd_valid_o",
+          "width": "1"
+        },
+        {
+          "description": "Array command-ready signal.",
+          "name": "array_cmd_ready_o",
+          "width": "1"
+        },
+        {
+          "description": "Input tile base address.",
+          "name": "cmd_input_addr_o",
+          "width": "32"
+        },
+        {
+          "description": "Weight tile base address.",
+          "name": "cmd_weight_addr_o",
+          "width": "32"
+        },
+        {
+          "description": "Output tile base address.",
+          "name": "cmd_output_addr_o",
+          "width": "32"
+        },
+        {
+          "description": "Tile row count.",
+          "name": "cmd_rows_o",
+          "width": "16"
+        },
+        {
+          "description": "Tile column count.",
+          "name": "cmd_cols_o",
+          "width": "16"
+        },
+        {
+          "description": "Tile reduction depth.",
+          "name": "cmd_depth_o",
+          "width": "16"
+        },
+        {
+          "description": "Latch-buffer output valid toward the array.",
+          "name": "buffer_array_valid_o",
+          "width": "1"
+        },
+        {
+          "description": "Array input-ready signal toward the latch buffer.",
+          "name": "buffer_array_ready_o",
+          "width": "1"
+        },
+        {
+          "description": "Latched stream data toward the array.",
+          "name": "buffer_array_data_o",
+          "width": "64"
+        },
+        {
+          "description": "Array completion pulse.",
+          "name": "array_done_o",
+          "width": "1"
+        },
+        {
+          "description": "Array debug busy signal.",
+          "name": "array_debug_busy_o",
+          "width": "1"
+        }
+      ],
       "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine.sv",
       "probe_module": "e1_h1_full_checkpoint_module_dpi_linear_tile_engine",
       "rtl": [
@@ -68,8 +350,82 @@
         "cycle 3 commit"
       ],
       "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_scheduler.f",
+      "input_signals": [
+        {
+          "description": "Control scheduler clock.",
+          "name": "clk_i",
+          "width": "1"
+        },
+        {
+          "description": "Active-low reset.",
+          "name": "rst_ni",
+          "width": "1"
+        },
+        {
+          "description": "Starts all-layer control-op scheduling.",
+          "name": "start_i",
+          "width": "1"
+        },
+        {
+          "description": "CPU/control side accepts the current control op.",
+          "name": "control_ready_i",
+          "width": "1"
+        }
+      ],
       "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_scheduler_main.cpp",
       "name": "control_scheduler",
+      "output_signals": [
+        {
+          "description": "Control scheduler is running.",
+          "name": "busy_o",
+          "width": "1"
+        },
+        {
+          "description": "All control ops have been issued.",
+          "name": "done_o",
+          "width": "1"
+        },
+        {
+          "description": "Current control op is valid.",
+          "name": "control_valid_o",
+          "width": "1"
+        },
+        {
+          "description": "Current control op commits this cycle.",
+          "name": "control_commit_o",
+          "width": "1"
+        },
+        {
+          "description": "Current TinyLlama layer.",
+          "name": "layer_o",
+          "width": "32"
+        },
+        {
+          "description": "Control op index within the layer.",
+          "name": "control_op_index_o",
+          "width": "3"
+        },
+        {
+          "description": "Original ordered graph slot for the control op.",
+          "name": "layer_op_slot_o",
+          "width": "4"
+        },
+        {
+          "description": "Encoded control operation kind.",
+          "name": "control_kind_o",
+          "width": "4"
+        },
+        {
+          "description": "Number of committed control ops.",
+          "name": "issued_control_ops_o",
+          "width": "32"
+        },
+        {
+          "description": "Current 4-cycle control template phase.",
+          "name": "cycle_phase_o",
+          "width": "2"
+        }
+      ],
       "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_scheduler.sv",
       "probe_module": "e1_h1_full_checkpoint_module_dpi_control_scheduler",
       "rtl": [
@@ -85,8 +441,102 @@
         "cycle 3 commit"
       ],
       "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/graph_sequencer.f",
+      "input_signals": [
+        {
+          "description": "Graph sequencer clock.",
+          "name": "clk_i",
+          "width": "1"
+        },
+        {
+          "description": "Active-low reset.",
+          "name": "rst_ni",
+          "width": "1"
+        },
+        {
+          "description": "Starts ordered TinyLlama graph-slot sequencing.",
+          "name": "start_i",
+          "width": "1"
+        },
+        {
+          "description": "Downstream accepts the presented graph slot.",
+          "name": "slot_ready_i",
+          "width": "1"
+        },
+        {
+          "description": "Selected slot engine has completed.",
+          "name": "op_done_i",
+          "width": "1"
+        }
+      ],
       "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_graph_sequencer_main.cpp",
       "name": "graph_sequencer",
+      "output_signals": [
+        {
+          "description": "Graph sequencer is running.",
+          "name": "busy_o",
+          "width": "1"
+        },
+        {
+          "description": "All graph slots have been issued.",
+          "name": "done_o",
+          "width": "1"
+        },
+        {
+          "description": "Current ordered graph slot is valid.",
+          "name": "slot_valid_o",
+          "width": "1"
+        },
+        {
+          "description": "Launch pulse for the control slot engine.",
+          "name": "launch_control_o",
+          "width": "1"
+        },
+        {
+          "description": "Launch pulse for the linear slot engine.",
+          "name": "launch_linear_o",
+          "width": "1"
+        },
+        {
+          "description": "Current TinyLlama layer.",
+          "name": "layer_o",
+          "width": "32"
+        },
+        {
+          "description": "Ordered graph slot within the current layer.",
+          "name": "layer_slot_o",
+          "width": "4"
+        },
+        {
+          "description": "Linear op index for linear slots.",
+          "name": "linear_op_index_o",
+          "width": "3"
+        },
+        {
+          "description": "Control op index for control slots.",
+          "name": "control_op_index_o",
+          "width": "3"
+        },
+        {
+          "description": "Encoded control operation kind.",
+          "name": "control_kind_o",
+          "width": "4"
+        },
+        {
+          "description": "Planned tile count for linear slots.",
+          "name": "linear_tile_count_o",
+          "width": "32"
+        },
+        {
+          "description": "Number of committed graph slots.",
+          "name": "issued_graph_slots_o",
+          "width": "32"
+        },
+        {
+          "description": "Current 4-cycle graph template phase.",
+          "name": "cycle_phase_o",
+          "width": "2"
+        }
+      ],
       "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_graph_sequencer.sv",
       "probe_module": "e1_h1_full_checkpoint_module_dpi_graph_sequencer",
       "rtl": [
@@ -101,8 +551,182 @@
         "cycles 3-6 separated latch/array"
       ],
       "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_slot_engine.f",
+      "input_signals": [
+        {
+          "description": "Linear slot engine clock.",
+          "name": "clk_i",
+          "width": "1"
+        },
+        {
+          "description": "Active-low reset.",
+          "name": "rst_ni",
+          "width": "1"
+        },
+        {
+          "description": "Starts one selected linear graph slot.",
+          "name": "start_i",
+          "width": "1"
+        },
+        {
+          "description": "Layer selected by the graph sequencer.",
+          "name": "layer_i",
+          "width": "32"
+        },
+        {
+          "description": "Linear op index selected by the graph sequencer.",
+          "name": "op_index_i",
+          "width": "3"
+        },
+        {
+          "description": "External input stream valid into the latch buffer.",
+          "name": "stream_valid_i",
+          "width": "1"
+        },
+        {
+          "description": "External input stream data into the latch buffer.",
+          "name": "stream_data_i",
+          "width": "64"
+        },
+        {
+          "description": "External input stream packet-last marker.",
+          "name": "stream_last_i",
+          "width": "1"
+        },
+        {
+          "description": "External input stream error marker.",
+          "name": "stream_error_i",
+          "width": "1"
+        }
+      ],
       "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine_main.cpp",
       "name": "linear_slot_engine",
+      "output_signals": [
+        {
+          "description": "Latch buffer can accept stream data.",
+          "name": "stream_ready_o",
+          "width": "1"
+        },
+        {
+          "description": "Linear slot engine is running.",
+          "name": "busy_o",
+          "width": "1"
+        },
+        {
+          "description": "Selected linear slot is complete.",
+          "name": "done_o",
+          "width": "1"
+        },
+        {
+          "description": "Array reported error for the selected slot.",
+          "name": "error_o",
+          "width": "1"
+        },
+        {
+          "description": "Number of accepted tile commands for this slot.",
+          "name": "issued_commands_o",
+          "width": "32"
+        },
+        {
+          "description": "Bounded or natural tile count for this slot.",
+          "name": "expected_commands_o",
+          "width": "32"
+        },
+        {
+          "description": "Current 8-cycle tile-template phase.",
+          "name": "cycle_phase_o",
+          "width": "3"
+        },
+        {
+          "description": "Latched layer for this slot.",
+          "name": "layer_o",
+          "width": "32"
+        },
+        {
+          "description": "Latched linear op index for this slot.",
+          "name": "op_index_o",
+          "width": "3"
+        },
+        {
+          "description": "Current input tile index.",
+          "name": "input_tile_o",
+          "width": "9"
+        },
+        {
+          "description": "Current output tile index.",
+          "name": "output_tile_o",
+          "width": "9"
+        },
+        {
+          "description": "Ungated slot command-valid signal.",
+          "name": "scheduler_cmd_valid_o",
+          "width": "1"
+        },
+        {
+          "description": "Gated command-valid signal sent to the array.",
+          "name": "array_cmd_valid_o",
+          "width": "1"
+        },
+        {
+          "description": "Array command-ready signal.",
+          "name": "array_cmd_ready_o",
+          "width": "1"
+        },
+        {
+          "description": "Input tile base address.",
+          "name": "cmd_input_addr_o",
+          "width": "32"
+        },
+        {
+          "description": "Weight tile base address.",
+          "name": "cmd_weight_addr_o",
+          "width": "32"
+        },
+        {
+          "description": "Output tile base address.",
+          "name": "cmd_output_addr_o",
+          "width": "32"
+        },
+        {
+          "description": "Tile row count.",
+          "name": "cmd_rows_o",
+          "width": "16"
+        },
+        {
+          "description": "Tile column count.",
+          "name": "cmd_cols_o",
+          "width": "16"
+        },
+        {
+          "description": "Tile reduction depth.",
+          "name": "cmd_depth_o",
+          "width": "16"
+        },
+        {
+          "description": "Latch-buffer output valid toward the array.",
+          "name": "buffer_array_valid_o",
+          "width": "1"
+        },
+        {
+          "description": "Array input-ready signal toward the latch buffer.",
+          "name": "buffer_array_ready_o",
+          "width": "1"
+        },
+        {
+          "description": "Latched stream data toward the array.",
+          "name": "buffer_array_data_o",
+          "width": "64"
+        },
+        {
+          "description": "Array completion pulse.",
+          "name": "array_done_o",
+          "width": "1"
+        },
+        {
+          "description": "Array debug busy signal.",
+          "name": "array_debug_busy_o",
+          "width": "1"
+        }
+      ],
       "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine.sv",
       "probe_module": "e1_h1_full_checkpoint_module_dpi_linear_slot_engine",
       "rtl": [
@@ -119,8 +743,92 @@
         "cycle 3 commit"
       ],
       "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_slot_engine.f",
+      "input_signals": [
+        {
+          "description": "Control slot engine clock.",
+          "name": "clk_i",
+          "width": "1"
+        },
+        {
+          "description": "Active-low reset.",
+          "name": "rst_ni",
+          "width": "1"
+        },
+        {
+          "description": "Starts one selected control graph slot.",
+          "name": "start_i",
+          "width": "1"
+        },
+        {
+          "description": "Layer selected by the graph sequencer.",
+          "name": "layer_i",
+          "width": "32"
+        },
+        {
+          "description": "Control op index selected by the graph sequencer.",
+          "name": "control_op_index_i",
+          "width": "3"
+        },
+        {
+          "description": "Encoded control operation kind.",
+          "name": "control_kind_i",
+          "width": "4"
+        },
+        {
+          "description": "CPU/control side accepts the selected control slot.",
+          "name": "control_ready_i",
+          "width": "1"
+        }
+      ],
       "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine_main.cpp",
       "name": "control_slot_engine",
+      "output_signals": [
+        {
+          "description": "Control slot engine is running.",
+          "name": "busy_o",
+          "width": "1"
+        },
+        {
+          "description": "Selected control slot is complete.",
+          "name": "done_o",
+          "width": "1"
+        },
+        {
+          "description": "Selected control slot is valid.",
+          "name": "control_valid_o",
+          "width": "1"
+        },
+        {
+          "description": "Selected control slot commits this cycle.",
+          "name": "control_commit_o",
+          "width": "1"
+        },
+        {
+          "description": "Latched layer for this slot.",
+          "name": "layer_o",
+          "width": "32"
+        },
+        {
+          "description": "Latched control op index for this slot.",
+          "name": "control_op_index_o",
+          "width": "3"
+        },
+        {
+          "description": "Latched control operation kind.",
+          "name": "control_kind_o",
+          "width": "4"
+        },
+        {
+          "description": "Number of committed control ops for this slot.",
+          "name": "issued_control_ops_o",
+          "width": "32"
+        },
+        {
+          "description": "Current 4-cycle control template phase.",
+          "name": "cycle_phase_o",
+          "width": "2"
+        }
+      ],
       "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine.sv",
       "probe_module": "e1_h1_full_checkpoint_module_dpi_control_slot_engine",
       "rtl": [
@@ -136,8 +844,147 @@
         "cycle 3 graph commit"
       ],
       "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/full_checkpoint_top.f",
+      "input_signals": [
+        {
+          "description": "Full-checkpoint top clock.",
+          "name": "clk_i",
+          "width": "1"
+        },
+        {
+          "description": "Active-low reset.",
+          "name": "rst_ni",
+          "width": "1"
+        },
+        {
+          "description": "Starts ordered full-checkpoint graph-slot execution.",
+          "name": "start_i",
+          "width": "1"
+        },
+        {
+          "description": "External input stream valid into linear slots.",
+          "name": "stream_valid_i",
+          "width": "1"
+        },
+        {
+          "description": "External input stream data into linear slots.",
+          "name": "stream_data_i",
+          "width": "64"
+        },
+        {
+          "description": "External input stream packet-last marker.",
+          "name": "stream_last_i",
+          "width": "1"
+        },
+        {
+          "description": "External input stream error marker.",
+          "name": "stream_error_i",
+          "width": "1"
+        }
+      ],
       "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_full_checkpoint_top_main.cpp",
       "name": "full_checkpoint_top",
+      "output_signals": [
+        {
+          "description": "Selected linear slot can accept stream data.",
+          "name": "stream_ready_o",
+          "width": "1"
+        },
+        {
+          "description": "Full-checkpoint top is running.",
+          "name": "busy_o",
+          "width": "1"
+        },
+        {
+          "description": "All graph slots have completed.",
+          "name": "done_o",
+          "width": "1"
+        },
+        {
+          "description": "Selected linear slot reported error.",
+          "name": "error_o",
+          "width": "1"
+        },
+        {
+          "description": "Number of committed graph slots.",
+          "name": "issued_graph_slots_o",
+          "width": "32"
+        },
+        {
+          "description": "Number of accepted bounded linear tile commands.",
+          "name": "issued_linear_commands_o",
+          "width": "32"
+        },
+        {
+          "description": "Number of committed control slots.",
+          "name": "issued_control_ops_o",
+          "width": "32"
+        },
+        {
+          "description": "Current TinyLlama layer.",
+          "name": "active_layer_o",
+          "width": "32"
+        },
+        {
+          "description": "Current ordered graph slot within the layer.",
+          "name": "active_slot_o",
+          "width": "4"
+        },
+        {
+          "description": "Current 4-cycle graph template phase.",
+          "name": "graph_cycle_phase_o",
+          "width": "2"
+        },
+        {
+          "description": "Current linear slot tile-template phase.",
+          "name": "linear_cycle_phase_o",
+          "width": "3"
+        },
+        {
+          "description": "Current control slot template phase.",
+          "name": "control_cycle_phase_o",
+          "width": "2"
+        },
+        {
+          "description": "Launch pulse for the linear slot engine.",
+          "name": "launch_linear_o",
+          "width": "1"
+        },
+        {
+          "description": "Launch pulse for the control slot engine.",
+          "name": "launch_control_o",
+          "width": "1"
+        },
+        {
+          "description": "Linear slot engine is running.",
+          "name": "linear_busy_o",
+          "width": "1"
+        },
+        {
+          "description": "Control slot engine is running.",
+          "name": "control_busy_o",
+          "width": "1"
+        },
+        {
+          "description": "Latch-buffer output valid toward the array.",
+          "name": "buffer_array_valid_o",
+          "width": "1"
+        },
+        {
+          "description": "Array input-ready signal toward the latch buffer.",
+          "name": "buffer_array_ready_o",
+          "width": "1"
+        },
+        {
+          "description": "Array completion pulse.",
+          "name": "array_done_o",
+          "width": "1"
+        },
+        {
+          "description": "Array debug busy signal.",
+          "name": "array_debug_busy_o",
+          "width": "1"
+        }
+      ],
       "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_full_checkpoint_top.sv",
       "probe_module": "e1_h1_full_checkpoint_module_dpi_full_checkpoint_top",
       "rtl": [

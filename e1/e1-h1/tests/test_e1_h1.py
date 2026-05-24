@@ -45,6 +45,7 @@ FULL_CHECKPOINT_GENERATED = E1_H1 / "generated" / "full_checkpoint"
 FULL_CHECKPOINT_MODULE_DPI_GENERATOR = E1_H1 / "tools" / "generate_full_checkpoint_module_dpi.cpp"
 FULL_CHECKPOINT_MODULE_DPI_DIR = E1_H1 / "generated" / "full_checkpoint_dpi"
 FULL_CHECKPOINT_MODULE_DPI_MANIFEST = FULL_CHECKPOINT_MODULE_DPI_DIR / "manifest.json"
+FULL_CHECKPOINT_MODULE_INTERFACES = FULL_CHECKPOINT_MODULE_DPI_DIR / "module_interfaces.md"
 
 
 def load_generator():
@@ -505,6 +506,13 @@ class E1H1Tests(unittest.TestCase):
             manifest["scoreboard"],
             "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
         )
+        self.assertEqual(
+            manifest["module_interfaces_doc"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/module_interfaces.md",
+        )
+        self.assertTrue(FULL_CHECKPOINT_MODULE_INTERFACES.exists())
+        interface_doc = FULL_CHECKPOINT_MODULE_INTERFACES.read_text(encoding="utf-8")
+        self.assertIn("# Generated Full-Checkpoint RTL Module Interfaces", interface_doc)
         self.assertIn("one_generated_probe_per_full_checkpoint_rtl_module", manifest["construction_rule"])
         modules = {module["name"]: module for module in manifest["modules"]}
         self.assertEqual(
@@ -523,6 +531,11 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual(module["scope"], "generated_full_checkpoint_module_only")
             self.assertIn("cpp_dpi", module["neighbors"])
             self.assertGreater(len(module["cycle_notes"]), 0, module)
+            self.assertGreater(len(module["input_signals"]), 0, module)
+            self.assertGreater(len(module["output_signals"]), 0, module)
+            self.assertIn(f"## {module['name']}", interface_doc)
+            self.assertIn(f"- Top module: `{module['top_module']}`", interface_doc)
+            self.assertIn(f"- DPI probe: `{module['probe_module']}`", interface_doc)
             self.assertTrue((REPO_ROOT / module["probe"]).exists(), module)
             self.assertTrue((REPO_ROOT / module["main"]).exists(), module)
             self.assertTrue((REPO_ROOT / module["flist"]).exists(), module)
@@ -532,6 +545,15 @@ class E1H1Tests(unittest.TestCase):
             self.assertIn(f"module {module['probe_module']};", probe_text)
             self.assertIn("e1_h1_full_dpi_begin", probe_text)
             self.assertIn("e1_h1_full_dpi_cycle", probe_text)
+            for signal in [*module["input_signals"], *module["output_signals"]]:
+                self.assertEqual(set(signal), {"name", "width", "description"})
+                self.assertTrue(signal["name"], signal)
+                self.assertTrue(signal["width"], signal)
+                self.assertTrue(signal["description"], signal)
+                self.assertIn(
+                    f"| `{signal['name']}` | {signal['width']} | {signal['description']} |",
+                    interface_doc,
+                )
 
         full_top = modules["full_checkpoint_top"]
         self.assertIn(
@@ -1016,6 +1038,10 @@ class E1H1Tests(unittest.TestCase):
             "e1/generated/pipeline/25_full_checkpoint_module_dpi_generation.json",
         )
         self.assertEqual(summary["full_checkpoint_module_dpi_manifest"], "e1/e1-h1/generated/full_checkpoint_dpi/manifest.json")
+        self.assertEqual(
+            summary["full_checkpoint_module_interfaces_doc"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/module_interfaces.md",
+        )
         self.assertEqual(summary["full_checkpoint_module_dpi_status"], "pass")
         self.assertEqual(summary["full_checkpoint_module_dpi_count"], 7)
         self.assertEqual(
@@ -1569,6 +1595,10 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(full_checkpoint_module_dpi["generator"], "e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp")
         self.assertEqual(full_checkpoint_module_dpi["manifest"], "e1/e1-h1/generated/full_checkpoint_dpi/manifest.json")
         self.assertEqual(
+            full_checkpoint_module_dpi["module_interfaces_doc"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/module_interfaces.md",
+        )
+        self.assertEqual(
             full_checkpoint_module_dpi["scoreboard"],
             "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
         )
@@ -1587,6 +1617,10 @@ class E1H1Tests(unittest.TestCase):
             },
         )
         for module in full_checkpoint_module_dpi["modules"]:
+            self.assertGreater(len(module["input_signals"]), 0, module)
+            self.assertGreater(len(module["output_signals"]), 0, module)
+            for signal in [*module["input_signals"], *module["output_signals"]]:
+                self.assertEqual(set(signal), {"name", "width", "description"})
             for path in [module["probe"], module["main"], module["flist"], *module["rtl"]]:
                 self.assertTrue((REPO_ROOT / path).exists(), path)
 
@@ -1648,6 +1682,10 @@ class E1H1Tests(unittest.TestCase):
             "e1/generated/pipeline/25_full_checkpoint_module_dpi_generation.json",
         )
         self.assertEqual(e2e["full_checkpoint_module_dpi_manifest"], "e1/e1-h1/generated/full_checkpoint_dpi/manifest.json")
+        self.assertEqual(
+            e2e["full_checkpoint_module_interfaces_doc"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/module_interfaces.md",
+        )
         self.assertEqual(e2e["full_checkpoint_module_dpi_status"], "pass")
         self.assertEqual(e2e["full_checkpoint_module_dpi_count"], 7)
         self.assertEqual(e2e["target_package"], "e1/e1-h1/generated/targets/manifest.json")
@@ -1706,6 +1744,7 @@ class E1H1Tests(unittest.TestCase):
             e2e["full_checkpoint_rtl_top"],
             e2e["full_checkpoint_module_dpi_generation"],
             e2e["full_checkpoint_module_dpi_manifest"],
+            e2e["full_checkpoint_module_interfaces_doc"],
             e2e["systemverilog_plan"],
             e2e["target_package_plan"],
             e2e["target_package"],
