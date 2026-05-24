@@ -42,6 +42,9 @@ MODULE_DPI_GENERATOR = E1_H1 / "tools" / "generate_module_dpi.cpp"
 MODULE_DPI_DIR = E1_H1 / "generated" / "module_dpi"
 MODULE_DPI_MANIFEST = MODULE_DPI_DIR / "manifest.json"
 FULL_CHECKPOINT_GENERATED = E1_H1 / "generated" / "full_checkpoint"
+FULL_CHECKPOINT_MODULE_DPI_GENERATOR = E1_H1 / "tools" / "generate_full_checkpoint_module_dpi.cpp"
+FULL_CHECKPOINT_MODULE_DPI_DIR = E1_H1 / "generated" / "full_checkpoint_dpi"
+FULL_CHECKPOINT_MODULE_DPI_MANIFEST = FULL_CHECKPOINT_MODULE_DPI_DIR / "manifest.json"
 
 
 def load_generator():
@@ -85,6 +88,24 @@ def regenerate_module_dpi(tmp_path: Path) -> subprocess.CompletedProcess[str]:
         str(REPO_ROOT),
         "--output-dir",
         str(MODULE_DPI_DIR),
+    ])
+
+
+def regenerate_full_checkpoint_module_dpi(tmp_path: Path) -> subprocess.CompletedProcess[str]:
+    exe = tmp_path / "e1_h1_generate_full_checkpoint_module_dpi"
+    run([
+        "c++",
+        "-std=c++17",
+        str(FULL_CHECKPOINT_MODULE_DPI_GENERATOR.relative_to(REPO_ROOT)),
+        "-o",
+        str(exe),
+    ])
+    return run([
+        str(exe),
+        "--repo-root",
+        str(REPO_ROOT),
+        "--output-dir",
+        str(FULL_CHECKPOINT_MODULE_DPI_DIR),
     ])
 
 
@@ -472,6 +493,95 @@ class E1H1Tests(unittest.TestCase):
                     self.assertIn(f"module={module['name']}", result.stdout)
                     self.assertIn("E1_H1_MODULE_DPI_CYCLE", result.stdout)
 
+    def test_full_checkpoint_module_dpi_generator_outputs_generated_probes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            result = regenerate_full_checkpoint_module_dpi(Path(tmp))
+        self.assertIn("PASS e1_h1_generate_full_checkpoint_module_dpi 7 modules", result.stdout)
+
+        manifest = json.loads(FULL_CHECKPOINT_MODULE_DPI_MANIFEST.read_text(encoding="utf-8"))
+        self.assertEqual(manifest["schema"], "e1-h1-full-checkpoint-generated-module-dpi-v0")
+        self.assertEqual(manifest["generator"], "e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp")
+        self.assertEqual(
+            manifest["scoreboard"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        )
+        self.assertIn("one_generated_probe_per_full_checkpoint_rtl_module", manifest["construction_rule"])
+        modules = {module["name"]: module for module in manifest["modules"]}
+        self.assertEqual(
+            set(modules),
+            {
+                "linear_scheduler",
+                "linear_tile_engine",
+                "control_scheduler",
+                "graph_sequencer",
+                "linear_slot_engine",
+                "control_slot_engine",
+                "full_checkpoint_top",
+            },
+        )
+        for module in modules.values():
+            self.assertEqual(module["scope"], "generated_full_checkpoint_module_only")
+            self.assertIn("cpp_dpi", module["neighbors"])
+            self.assertGreater(len(module["cycle_notes"]), 0, module)
+            self.assertTrue((REPO_ROOT / module["probe"]).exists(), module)
+            self.assertTrue((REPO_ROOT / module["main"]).exists(), module)
+            self.assertTrue((REPO_ROOT / module["flist"]).exists(), module)
+            flist = (REPO_ROOT / module["flist"]).read_text(encoding="utf-8").splitlines()
+            self.assertEqual(flist, [*module["rtl"], module["probe"]], module)
+            probe_text = (REPO_ROOT / module["probe"]).read_text(encoding="utf-8")
+            self.assertIn(f"module {module['probe_module']};", probe_text)
+            self.assertIn("e1_h1_full_dpi_begin", probe_text)
+            self.assertIn("e1_h1_full_dpi_cycle", probe_text)
+
+        full_top = modules["full_checkpoint_top"]
+        self.assertIn(
+            "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv",
+            full_top["rtl"],
+        )
+        self.assertIn(
+            "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv",
+            full_top["rtl"],
+        )
+        control_slot_probe = (REPO_ROOT / modules["control_slot_engine"]["probe"]).read_text(encoding="utf-8")
+        self.assertNotIn("e1_h1_systolic_array", control_slot_probe)
+        linear_slot_probe = (REPO_ROOT / modules["linear_slot_engine"]["probe"]).read_text(encoding="utf-8")
+        self.assertIn("SmokeMaxTilesPerLinearSlot(2)", linear_slot_probe)
+
+    def test_full_checkpoint_module_dpi_probes_run_under_verilator(self) -> None:
+        verilator = shutil.which("verilator")
+        self.assertIsNotNone(verilator, "verilator is required for full checkpoint module DPI probes")
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            regenerate_full_checkpoint_module_dpi(tmp_path)
+            manifest = json.loads(FULL_CHECKPOINT_MODULE_DPI_MANIFEST.read_text(encoding="utf-8"))
+            for module in manifest["modules"]:
+                with self.subTest(module=module["name"]):
+                    obj_dir = tmp_path / f"obj_full_{module['name']}"
+                    run([
+                        verilator,
+                        "--cc",
+                        "--exe",
+                        "--build",
+                        "--sv",
+                        "-Wall",
+                        "-Wno-DECLFILENAME",
+                        "-Wno-UNUSEDSIGNAL",
+                        "-Wno-UNUSEDPARAM",
+                        "-Wno-WIDTHEXPAND",
+                        "--timing",
+                        "--top-module",
+                        module["probe_module"],
+                        "-Mdir",
+                        str(obj_dir),
+                        "-f",
+                        module["flist"],
+                        manifest["scoreboard"],
+                        module["main"],
+                    ])
+                    result = run([str(obj_dir / f"V{module['probe_module']}")])
+                    self.assertIn(f"module={module['name']}", result.stdout)
+                    self.assertIn("E1_H1_FULL_MODULE_DPI_CYCLE", result.stdout)
+
     def test_implementation_matrix_and_flists_define_imp1_imp2(self) -> None:
         run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])
         matrix = json.loads(IMPLEMENTATION_MATRIX.read_text(encoding="utf-8"))
@@ -857,17 +967,17 @@ class E1H1Tests(unittest.TestCase):
 
     def test_e1_pipeline_generates_e1_h1_artifacts(self) -> None:
         result = run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])
-        self.assertIn("PASS e1_pipeline 25 passes", result.stdout)
+        self.assertIn("PASS e1_pipeline 26 passes", result.stdout)
 
         summary = json.loads((E1_PIPELINE_OUT / "summary.json").read_text(encoding="utf-8"))
         self.assertEqual(summary["schema"], "e1-pipeline-summary-v0")
         self.assertEqual(summary["model_id"], "tinyllama-1.1b-chat-v1.0")
         self.assertEqual(summary["architecture_id"], "e1-h1")
-        self.assertEqual(summary["pass_count"], 25)
+        self.assertEqual(summary["pass_count"], 26)
         self.assertEqual(summary["operation_counts"]["dot_general"], 6)
         self.assertTrue(summary["all_current_modules_have_l1_5_harnesses"])
         self.assertEqual(summary["generated_top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
-        self.assertEqual(summary["end_to_end_smoke"], "e1/generated/pipeline/25_end_to_end_smoke.json")
+        self.assertEqual(summary["end_to_end_smoke"], "e1/generated/pipeline/26_end_to_end_smoke.json")
         self.assertEqual(summary["end_to_end_status"], "pass")
         self.assertEqual(summary["module_dpi_generation"], "e1/generated/pipeline/12_module_dpi_generation.json")
         self.assertEqual(summary["rtl_lowering"], "e1/generated/pipeline/15_rtl_lowering.json")
@@ -901,6 +1011,13 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(summary["full_checkpoint_rtl_top"], "e1/generated/pipeline/24_full_checkpoint_rtl_top.json")
         self.assertEqual(summary["full_checkpoint_rtl_top_status"], "pass")
         self.assertEqual(summary["full_checkpoint_rtl_top_smoke_max_tiles_per_linear_slot"], 2)
+        self.assertEqual(
+            summary["full_checkpoint_module_dpi_generation"],
+            "e1/generated/pipeline/25_full_checkpoint_module_dpi_generation.json",
+        )
+        self.assertEqual(summary["full_checkpoint_module_dpi_manifest"], "e1/e1-h1/generated/full_checkpoint_dpi/manifest.json")
+        self.assertEqual(summary["full_checkpoint_module_dpi_status"], "pass")
+        self.assertEqual(summary["full_checkpoint_module_dpi_count"], 7)
         self.assertEqual(
             summary["full_tinyllama_checkpoint_execution"],
             "e1/generated/pipeline/17_full_tinyllama_checkpoint_execution.json",
@@ -939,6 +1056,7 @@ class E1H1Tests(unittest.TestCase):
             "e1_lower_full_checkpoint_control_ops_to_rtl",
             "e1_sequence_full_checkpoint_graph_slots",
             "e1_integrate_full_checkpoint_rtl_top",
+            "e1_generate_full_checkpoint_module_dpi",
             "e1_end_to_end_smoke",
         ]
         self.assertEqual([entry["pass"] for entry in summary["passes"]], expected_passes)
@@ -1443,7 +1561,36 @@ class E1H1Tests(unittest.TestCase):
         ]:
             self.assertTrue((REPO_ROOT / path).exists(), path)
 
-        e2e = json.loads((E1_PIPELINE_OUT / "25_end_to_end_smoke.json").read_text(encoding="utf-8"))
+        full_checkpoint_module_dpi = json.loads(
+            (E1_PIPELINE_OUT / "25_full_checkpoint_module_dpi_generation.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(full_checkpoint_module_dpi["schema"], "e1-full-checkpoint-module-dpi-generation-report-v0")
+        self.assertEqual(full_checkpoint_module_dpi["status"], "pass")
+        self.assertEqual(full_checkpoint_module_dpi["generator"], "e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp")
+        self.assertEqual(full_checkpoint_module_dpi["manifest"], "e1/e1-h1/generated/full_checkpoint_dpi/manifest.json")
+        self.assertEqual(
+            full_checkpoint_module_dpi["scoreboard"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        )
+        self.assertEqual(full_checkpoint_module_dpi["module_count"], 7)
+        self.assertEqual({check["status"] for check in full_checkpoint_module_dpi["checks"]}, {"pass"})
+        self.assertEqual(
+            {module["name"] for module in full_checkpoint_module_dpi["modules"]},
+            {
+                "linear_scheduler",
+                "linear_tile_engine",
+                "control_scheduler",
+                "graph_sequencer",
+                "linear_slot_engine",
+                "control_slot_engine",
+                "full_checkpoint_top",
+            },
+        )
+        for module in full_checkpoint_module_dpi["modules"]:
+            for path in [module["probe"], module["main"], module["flist"], *module["rtl"]]:
+                self.assertTrue((REPO_ROOT / path).exists(), path)
+
+        e2e = json.loads((E1_PIPELINE_OUT / "26_end_to_end_smoke.json").read_text(encoding="utf-8"))
         self.assertEqual(e2e["schema"], "e1-end-to-end-smoke-v0")
         self.assertEqual(e2e["status"], "pass")
         self.assertEqual(e2e["model_id"], summary["model_id"])
@@ -1496,6 +1643,13 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(e2e["full_checkpoint_rtl_top"], "e1/generated/pipeline/24_full_checkpoint_rtl_top.json")
         self.assertEqual(e2e["full_checkpoint_rtl_top_status"], "pass")
         self.assertEqual(e2e["full_checkpoint_rtl_top_smoke_max_tiles_per_linear_slot"], 2)
+        self.assertEqual(
+            e2e["full_checkpoint_module_dpi_generation"],
+            "e1/generated/pipeline/25_full_checkpoint_module_dpi_generation.json",
+        )
+        self.assertEqual(e2e["full_checkpoint_module_dpi_manifest"], "e1/e1-h1/generated/full_checkpoint_dpi/manifest.json")
+        self.assertEqual(e2e["full_checkpoint_module_dpi_status"], "pass")
+        self.assertEqual(e2e["full_checkpoint_module_dpi_count"], 7)
         self.assertEqual(e2e["target_package"], "e1/e1-h1/generated/targets/manifest.json")
         self.assertIn("full_tinyllama_checkpoint", {check["name"] for check in e2e["checks"]})
         self.assertEqual({check["status"] for check in e2e["checks"]}, {"pass"})
@@ -1519,6 +1673,7 @@ class E1H1Tests(unittest.TestCase):
                 "full_checkpoint_control_scheduler",
                 "full_checkpoint_graph_sequencer",
                 "full_checkpoint_rtl_top",
+                "full_checkpoint_module_dpi_generation",
                 "target_package",
             },
         )
@@ -1549,6 +1704,8 @@ class E1H1Tests(unittest.TestCase):
             e2e["full_checkpoint_control_scheduler"],
             e2e["full_checkpoint_graph_sequencer"],
             e2e["full_checkpoint_rtl_top"],
+            e2e["full_checkpoint_module_dpi_generation"],
+            e2e["full_checkpoint_module_dpi_manifest"],
             e2e["systemverilog_plan"],
             e2e["target_package_plan"],
             e2e["target_package"],

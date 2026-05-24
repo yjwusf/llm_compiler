@@ -1,0 +1,157 @@
+{
+  "checks": [
+    {
+      "name": "full_checkpoint_module_dpi_manifest_exists",
+      "status": "pass"
+    },
+    {
+      "name": "one_probe_per_generated_full_checkpoint_module",
+      "status": "pass"
+    },
+    {
+      "name": "all_generated_full_checkpoint_probes_have_flists",
+      "status": "pass"
+    },
+    {
+      "name": "all_generated_full_checkpoint_probes_have_mains",
+      "status": "pass"
+    },
+    {
+      "name": "full_checkpoint_top_dpi_covers_slot_engines",
+      "status": "pass"
+    }
+  ],
+  "construction_rule": "one_generated_probe_per_full_checkpoint_rtl_module_with_cpp_dpi_driven_neighbors",
+  "generator": "e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp",
+  "manifest": "e1/e1-h1/generated/full_checkpoint_dpi/manifest.json",
+  "module_count": 7,
+  "modules": [
+    {
+      "cycle_notes": [
+        "cycle 0 setup",
+        "cycle 2 command handshake",
+        "cycle 6 array done"
+      ],
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_scheduler.f",
+      "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_scheduler_main.cpp",
+      "name": "linear_scheduler",
+      "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_scheduler.sv",
+      "probe_module": "e1_h1_full_checkpoint_module_dpi_linear_scheduler",
+      "rtl": [
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler.sv"
+      ],
+      "top_module": "e1_h1_tinyllama_linear_scheduler"
+    },
+    {
+      "cycle_notes": [
+        "cycle 1 scheduler valid",
+        "cycle 2 gated array command",
+        "cycles 3-6 latch/array transfer"
+      ],
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_tile_engine.f",
+      "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine_main.cpp",
+      "name": "linear_tile_engine",
+      "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine.sv",
+      "probe_module": "e1_h1_full_checkpoint_module_dpi_linear_tile_engine",
+      "rtl": [
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler.sv",
+        "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv",
+        "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_tile_engine.sv"
+      ],
+      "top_module": "e1_h1_tinyllama_linear_tile_engine"
+    },
+    {
+      "cycle_notes": [
+        "cycle 0 control issue",
+        "cycle 2 execute",
+        "cycle 3 commit"
+      ],
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_scheduler.f",
+      "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_scheduler_main.cpp",
+      "name": "control_scheduler",
+      "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_scheduler.sv",
+      "probe_module": "e1_h1_full_checkpoint_module_dpi_control_scheduler",
+      "rtl": [
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_scheduler.sv"
+      ],
+      "top_module": "e1_h1_tinyllama_control_scheduler"
+    },
+    {
+      "cycle_notes": [
+        "cycle 0 present graph slot",
+        "cycle 1 launch selected engine",
+        "cycle 2 wait done",
+        "cycle 3 commit"
+      ],
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/graph_sequencer.f",
+      "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_graph_sequencer_main.cpp",
+      "name": "graph_sequencer",
+      "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_graph_sequencer.sv",
+      "probe_module": "e1_h1_full_checkpoint_module_dpi_graph_sequencer",
+      "rtl": [
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.sv"
+      ],
+      "top_module": "e1_h1_tinyllama_graph_sequencer"
+    },
+    {
+      "cycle_notes": [
+        "cycle 1 slot command valid",
+        "cycle 2 array command",
+        "cycles 3-6 separated latch/array"
+      ],
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_slot_engine.f",
+      "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine_main.cpp",
+      "name": "linear_slot_engine",
+      "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine.sv",
+      "probe_module": "e1_h1_full_checkpoint_module_dpi_linear_slot_engine",
+      "rtl": [
+        "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv",
+        "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv"
+      ],
+      "top_module": "e1_h1_tinyllama_linear_slot_engine"
+    },
+    {
+      "cycle_notes": [
+        "cycle 0 control valid",
+        "cycle 2 execute",
+        "cycle 3 commit"
+      ],
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_slot_engine.f",
+      "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine_main.cpp",
+      "name": "control_slot_engine",
+      "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine.sv",
+      "probe_module": "e1_h1_full_checkpoint_module_dpi_control_slot_engine",
+      "rtl": [
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv"
+      ],
+      "top_module": "e1_h1_tinyllama_control_slot_engine"
+    },
+    {
+      "cycle_notes": [
+        "cycle 0 graph slot",
+        "cycle 1 slot start",
+        "cycle 2 selected engine runs",
+        "cycle 3 graph commit"
+      ],
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/full_checkpoint_top.f",
+      "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_full_checkpoint_top_main.cpp",
+      "name": "full_checkpoint_top",
+      "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_full_checkpoint_top.sv",
+      "probe_module": "e1_h1_full_checkpoint_module_dpi_full_checkpoint_top",
+      "rtl": [
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.sv",
+        "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv",
+        "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv",
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv",
+        "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.sv"
+      ],
+      "top_module": "e1_h1_tinyllama_full_checkpoint_top"
+    }
+  ],
+  "schema": "e1-full-checkpoint-module-dpi-generation-report-v0",
+  "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+  "status": "pass"
+}

@@ -109,6 +109,9 @@ The generated artifacts are:
 - `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.sv`
 - `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.f`
 - `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top_tb.cpp`
+- `e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp`
+- `e1/e1-h1/generated/full_checkpoint_dpi/manifest.json`
+- `e1/e1-h1/generated/full_checkpoint_dpi/flists/*.f`
 
 The Verilator harness checks sampled RTL command payloads against
 `e1/code/program/e1_tinyllama_full_schedule.hpp`; the pipeline report records
@@ -172,3 +175,10 @@ and `systolic_array` modules. The control slot engine does not instantiate
 array RTL. The generated top-level Verilator harness runs all 308 graph slots
 and bounds each linear slot to a two-tile smoke so the full graph order is
 covered without claiming full checkpoint arithmetic execution.
+
+The generated full-checkpoint module-DPI collateral applies the same
+module-only rule to generated RTL modules. The C++ generator emits one probe
+per generated module: linear scheduler, linear tile engine, control scheduler,
+graph sequencer, linear slot engine, control slot engine, and full-checkpoint
+top. Each probe records cycle notes through DPI and has its own flist and C++
+main, so review can build and run the modules individually.

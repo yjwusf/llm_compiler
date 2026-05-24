@@ -85,7 +85,8 @@ StableHLO fixture, not the full TinyLlama checkpoint. The pipeline emits:
 - `e1/generated/pipeline/22_full_checkpoint_control_scheduler.json`
 - `e1/generated/pipeline/23_full_checkpoint_graph_sequencer.json`
 - `e1/generated/pipeline/24_full_checkpoint_rtl_top.json`
-- `e1/generated/pipeline/25_end_to_end_smoke.json`
+- `e1/generated/pipeline/25_full_checkpoint_module_dpi_generation.json`
+- `e1/generated/pipeline/26_end_to_end_smoke.json`
 
 The coverage artifact requires every StableHLO operation in
 `tinyllama_block.mlir` to bind to an accepted active `imp2` implementation and
@@ -166,6 +167,13 @@ separate CPU/control slot engine without instantiating array RTL. The harness
 runs all 308 graph slots with a bounded two-tile smoke per linear slot, so it is
 integration RTL for the whole graph order, not yet the full 3,784,704-command
 checkpoint RTL execution or numeric output comparison.
+
+The full-checkpoint module-DPI generation artifact is produced by
+`e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp`. It emits
+`e1/e1-h1/generated/full_checkpoint_dpi/manifest.json`, one SystemVerilog DPI
+probe per generated full-checkpoint RTL module, matching flists, C++ mains, and
+a shared C++ scoreboard. This extends the module-only construction rule from
+the base E1-H1 IPs to the generated TinyLlama RTL modules.
 
 ## Full Checkpoint Execution
 

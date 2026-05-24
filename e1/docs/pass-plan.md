@@ -116,7 +116,11 @@ hardware and device code.
     - Output: generated full-checkpoint RTL top, slot-scoped linear/control
       engines, flist, and Verilator C++ harness. The bounded harness runs all
       308 graph slots while limiting each linear slot to a short tile smoke.
-25. `e1_end_to_end_smoke`
+25. `e1_generate_full_checkpoint_module_dpi`
+    - Input: generated full-checkpoint RTL modules.
+    - Output: C++-generated module-DPI probes, flists, C++ mains, scoreboard,
+      and manifest for each generated full-checkpoint RTL module.
+26. `e1_end_to_end_smoke`
     - Input: all prior pass artifacts.
     - Output: one evidence report tying StableHLO, E1-H1 binding, device code,
       C++ chip model, generated SystemVerilog top, and target packages together.
@@ -158,6 +162,9 @@ E1 is complete when TinyLlama-derived reduced workloads can run through:
   slot-scoped CPU/control and linear engines, keeping the latch buffer and
   systolic array as separated modules and passing a bounded full-graph
   Verilator smoke.
+- C++-generated module-DPI probes for the generated full-checkpoint RTL
+  modules, including their flists, C++ mains, scoreboard, and per-module cycle
+  notes.
 - Implementation matrix showing active `imp2` candidates and `imp1` mock
   references.
 - Generated SystemVerilog mocks.

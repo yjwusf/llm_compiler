@@ -627,6 +627,112 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
     return report
 
 
+def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, Any]:
+    generator = e1_h1_dir / "tools" / "generate_full_checkpoint_module_dpi.cpp"
+    module_dpi_dir = e1_h1_dir / "generated" / "full_checkpoint_dpi"
+    with tempfile.TemporaryDirectory() as tmp:
+        exe = Path(tmp) / "e1_h1_generate_full_checkpoint_module_dpi"
+        subprocess.run(
+            [
+                "c++",
+                "-std=c++17",
+                repo_rel(generator),
+                "-o",
+                str(exe),
+            ],
+            cwd=REPO_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=True,
+        )
+        subprocess.run(
+            [
+                str(exe),
+                "--repo-root",
+                str(REPO_ROOT),
+                "--output-dir",
+                str(module_dpi_dir),
+            ],
+            cwd=REPO_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=True,
+        )
+
+    manifest_path = module_dpi_dir / "manifest.json"
+    manifest = load_json(manifest_path)
+    module_names = {module["name"] for module in manifest["modules"]}
+    expected_modules = {
+        "linear_scheduler",
+        "linear_tile_engine",
+        "control_scheduler",
+        "graph_sequencer",
+        "linear_slot_engine",
+        "control_slot_engine",
+        "full_checkpoint_top",
+    }
+    checks = [
+        {
+            "name": "full_checkpoint_module_dpi_manifest_exists",
+            "status": "pass" if manifest_path.exists() else "fail",
+        },
+        {
+            "name": "one_probe_per_generated_full_checkpoint_module",
+            "status": "pass" if module_names == expected_modules else "fail",
+        },
+        {
+            "name": "all_generated_full_checkpoint_probes_have_flists",
+            "status": "pass"
+            if all((REPO_ROOT / module["flist"]).exists() for module in manifest["modules"])
+            else "fail",
+        },
+        {
+            "name": "all_generated_full_checkpoint_probes_have_mains",
+            "status": "pass"
+            if all((REPO_ROOT / module["main"]).exists() for module in manifest["modules"])
+            else "fail",
+        },
+        {
+            "name": "full_checkpoint_top_dpi_covers_slot_engines",
+            "status": "pass"
+            if any(
+                module["name"] == "full_checkpoint_top"
+                and "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv" in module["rtl"]
+                and "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv" in module["rtl"]
+                for module in manifest["modules"]
+            )
+            else "fail",
+        },
+    ]
+    report = {
+        "schema": "e1-full-checkpoint-module-dpi-generation-report-v0",
+        "status": "pass" if all(check["status"] == "pass" for check in checks) else "fail",
+        "generator": repo_rel(generator),
+        "manifest": repo_rel(manifest_path),
+        "scoreboard": manifest["scoreboard"],
+        "module_count": len(manifest["modules"]),
+        "modules": [
+            {
+                "name": module["name"],
+                "top_module": module["top_module"],
+                "probe_module": module["probe_module"],
+                "probe": module["probe"],
+                "main": module["main"],
+                "flist": module["flist"],
+                "rtl": module["rtl"],
+                "cycle_notes": module["cycle_notes"],
+            }
+            for module in manifest["modules"]
+        ],
+        "construction_rule": manifest["construction_rule"],
+        "checks": checks,
+    }
+    write_json(output_path, report)
+    return report
+
+
 def emit_rtl_lowering(
     output_path: Path,
     manifest: dict[str, Any],
@@ -4089,7 +4195,16 @@ def run_pipeline(
         }
     )
 
-    e2e_out = output_dir / "25_end_to_end_smoke.json"
+    full_checkpoint_module_dpi_out = output_dir / "25_full_checkpoint_module_dpi_generation.json"
+    full_checkpoint_module_dpi = run_full_checkpoint_module_dpi_generator(e1_h1_dir, full_checkpoint_module_dpi_out)
+    passes.append(
+        {
+            "pass": "e1_generate_full_checkpoint_module_dpi",
+            "artifact": repo_rel(full_checkpoint_module_dpi_out),
+        }
+    )
+
+    e2e_out = output_dir / "26_end_to_end_smoke.json"
     target_manifest_path = "e1/e1-h1/generated/targets/manifest.json"
     generated_soc_top_exists = all(
         (REPO_ROOT / path).exists()
@@ -4175,6 +4290,10 @@ def run_pipeline(
             "name": "full_checkpoint_rtl_top",
             "status": full_checkpoint_rtl_top["status"],
         },
+        {
+            "name": "full_checkpoint_module_dpi_generation",
+            "status": full_checkpoint_module_dpi["status"],
+        },
         {"name": "target_package", "status": "pass" if target_package_exists else "fail"},
     ]
     e2e = {
@@ -4237,6 +4356,10 @@ def run_pipeline(
         "full_checkpoint_rtl_top_smoke_max_tiles_per_linear_slot": full_checkpoint_rtl_top[
             "smoke_max_tiles_per_linear_slot"
         ],
+        "full_checkpoint_module_dpi_generation": repo_rel(full_checkpoint_module_dpi_out),
+        "full_checkpoint_module_dpi_manifest": full_checkpoint_module_dpi["manifest"],
+        "full_checkpoint_module_dpi_status": full_checkpoint_module_dpi["status"],
+        "full_checkpoint_module_dpi_count": full_checkpoint_module_dpi["module_count"],
         "systemverilog_plan": repo_rel(sv_out),
         "generated_soc_top": soc_top_artifacts,
         "target_package_plan": repo_rel(target_out),
@@ -4287,6 +4410,10 @@ def run_pipeline(
         "full_checkpoint_rtl_top_smoke_max_tiles_per_linear_slot": full_checkpoint_rtl_top[
             "smoke_max_tiles_per_linear_slot"
         ],
+        "full_checkpoint_module_dpi_generation": repo_rel(full_checkpoint_module_dpi_out),
+        "full_checkpoint_module_dpi_manifest": full_checkpoint_module_dpi["manifest"],
+        "full_checkpoint_module_dpi_status": full_checkpoint_module_dpi["status"],
+        "full_checkpoint_module_dpi_count": full_checkpoint_module_dpi["module_count"],
         "pipeline": architecture["pipeline"],
     }
     write_json(summary_out, summary)
