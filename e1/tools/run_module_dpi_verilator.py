@@ -65,16 +65,110 @@ def command_for_report(module: dict[str, Any], obj_dir_name: str) -> list[str]:
     ]
 
 
+def run_executable_for_report(module: dict[str, Any], obj_dir_name: str) -> str:
+    return f"<build-root>/{obj_dir_name}/{module['verilator']['run_executable']}"
+
+
+def validate_recipe(
+    test_plan: dict[str, Any],
+    test_plan_path: Path,
+    report_path: Path,
+    suite: str,
+    recipe_path: Path | None,
+) -> tuple[dict[str, Any] | None, list[dict[str, str]], bool]:
+    if recipe_path is None:
+        return None, [], True
+
+    recipe = load_json(recipe_path)
+    checks: list[dict[str, str]] = [{"name": "cpp_execution_recipe_loaded", "status": "pass"}]
+    recipe_modules = {
+        module.get("name"): module for module in recipe.get("modules", []) if module.get("name")
+    }
+    plan_modules = {module["name"]: module for module in test_plan.get("modules", [])}
+    metadata_matches = (
+        recipe.get("runner") == "e1/tools/run_module_dpi_verilator.py"
+        and recipe.get("suite") == suite
+        and recipe.get("test_plan") == repo_rel(test_plan_path)
+        and recipe.get("report") == repo_rel(report_path)
+    )
+    module_set_matches = set(recipe_modules) == set(plan_modules)
+    fields_match = True
+    commands_match = True
+    for name, module in plan_modules.items():
+        recipe_module = recipe_modules.get(name, {})
+        plan = module["verilator"]
+        obj_dir_name = f"obj_{suite}_{name}"
+        fields_match = fields_match and (
+            recipe_module.get("scope") == module["scope"]
+            and recipe_module.get("top_module") == plan["top_module"]
+            and recipe_module.get("dut_module") == plan["dut_module"]
+            and recipe_module.get("flist") == plan["flist"]
+            and recipe_module.get("scoreboard") == plan["scoreboard"]
+            and recipe_module.get("main") == plan["main"]
+            and recipe_module.get("expected_stdout_markers")
+            == plan["expected_stdout_markers"]
+        )
+        commands_match = commands_match and (
+            recipe_module.get("build_command") == command_for_report(module, obj_dir_name)
+            and recipe_module.get("run_executable")
+            == run_executable_for_report(module, obj_dir_name)
+        )
+
+    checks.extend(
+        [
+            {
+                "name": "cpp_execution_recipe_metadata_matches_runner",
+                "status": "pass" if metadata_matches else "fail",
+            },
+            {
+                "name": "cpp_execution_recipe_modules_match_test_plan",
+                "status": "pass" if module_set_matches and fields_match else "fail",
+            },
+            {
+                "name": "cpp_execution_recipe_commands_match_runner",
+                "status": "pass" if module_set_matches and commands_match else "fail",
+            },
+        ]
+    )
+    return recipe, checks, all(check["status"] == "pass" for check in checks)
+
+
 def tail_lines(text: str, limit: int = 20) -> list[str]:
     lines = text.splitlines()
     return lines[-limit:]
 
 
-def run_plan(test_plan_path: Path, report_path: Path, suite: str, build_root: Path | None) -> int:
+def run_plan(
+    test_plan_path: Path,
+    report_path: Path,
+    suite: str,
+    build_root: Path | None,
+    recipe_path: Path | None,
+) -> int:
     test_plan = load_json(test_plan_path)
+    recipe, recipe_checks, recipe_ok = validate_recipe(
+        test_plan, test_plan_path, report_path, suite, recipe_path
+    )
+    if not recipe_ok:
+        report = {
+            "schema": "e1-module-dpi-verilator-execution-report-v0",
+            "suite": suite,
+            "status": "recipe_mismatch",
+            "runner": "e1/tools/run_module_dpi_verilator.py",
+            "runner_kind": "actual_verilator_build_and_run",
+            "test_plan": repo_rel(test_plan_path),
+            "execution_recipe": repo_rel(recipe_path) if recipe_path is not None else None,
+            "recipe_schema": recipe.get("schema") if recipe is not None else None,
+            "module_count": len(test_plan.get("modules", [])),
+            "modules": [],
+            "checks": recipe_checks,
+        }
+        write_json(report_path, report)
+        return 1
+
     verilator = shutil.which("verilator")
     modules: list[dict[str, Any]] = []
-    checks: list[dict[str, str]] = []
+    checks: list[dict[str, str]] = list(recipe_checks)
 
     if verilator is None:
         report = {
@@ -83,9 +177,11 @@ def run_plan(test_plan_path: Path, report_path: Path, suite: str, build_root: Pa
             "status": "missing_verilator",
             "runner": "e1/tools/run_module_dpi_verilator.py",
             "test_plan": repo_rel(test_plan_path),
+            "execution_recipe": repo_rel(recipe_path) if recipe_path is not None else None,
+            "recipe_schema": recipe.get("schema") if recipe is not None else None,
             "module_count": len(test_plan.get("modules", [])),
             "modules": [],
-            "checks": [{"name": "verilator_available", "status": "fail"}],
+            "checks": [*recipe_checks, {"name": "verilator_available", "status": "fail"}],
         }
         write_json(report_path, report)
         return 1
@@ -141,7 +237,7 @@ def run_plan(test_plan_path: Path, report_path: Path, suite: str, build_root: Pa
                     "scoreboard": module["verilator"]["scoreboard"],
                     "main": module["verilator"]["main"],
                     "build_command": command_for_report(module, obj_dir_name),
-                    "run_executable": f"<build-root>/{obj_dir_name}/{module['verilator']['run_executable']}",
+                    "run_executable": run_executable_for_report(module, obj_dir_name),
                     "build_returncode": build.returncode,
                     "run_returncode": run_result.returncode if run_result is not None else None,
                     "expected_stdout_markers": module["verilator"]["expected_stdout_markers"],
@@ -186,6 +282,8 @@ def run_plan(test_plan_path: Path, report_path: Path, suite: str, build_root: Pa
         "runner": "e1/tools/run_module_dpi_verilator.py",
         "runner_kind": "actual_verilator_build_and_run",
         "test_plan": repo_rel(test_plan_path),
+        "execution_recipe": repo_rel(recipe_path) if recipe_path is not None else None,
+        "recipe_schema": recipe.get("schema") if recipe is not None else None,
         "module_count": len(modules),
         "build_root": "<build-root>",
         "modules": modules,
@@ -201,6 +299,7 @@ def main() -> int:
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--suite", required=True)
     parser.add_argument("--build-root", type=Path)
+    parser.add_argument("--recipe", type=Path)
     args = parser.parse_args()
 
     test_plan = args.test_plan if args.test_plan.is_absolute() else REPO_ROOT / args.test_plan
@@ -208,8 +307,11 @@ def main() -> int:
     build_root = None
     if args.build_root is not None:
         build_root = args.build_root if args.build_root.is_absolute() else REPO_ROOT / args.build_root
+    recipe = None
+    if args.recipe is not None:
+        recipe = args.recipe if args.recipe.is_absolute() else REPO_ROOT / args.recipe
 
-    return run_plan(test_plan, report, args.suite, build_root)
+    return run_plan(test_plan, report, args.suite, build_root, recipe)
 
 
 if __name__ == "__main__":

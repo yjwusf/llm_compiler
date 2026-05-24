@@ -102,8 +102,11 @@ manifest and `e1/e1-h1/generated/module_dpi/module_test_plan.json`. These
 artifacts prove each replaceable IP probe contains only one active `imp2` DUT
 plus its `imp1` oracle, that every probe-reported cycle is named against the
 README cycle diagrams, and that each module has a generated Verilator
-invocation. `e1/tools/run_module_dpi_verilator.py` consumes that generated
-test plan and emits
+invocation. The C++ generator also emits
+`e1/e1-h1/generated/module_dpi/verilator_execution_recipe.json`, which owns the
+exact build command, obj-dir convention, run executable, and expected DPI
+markers for every module-only run. `e1/tools/run_module_dpi_verilator.py`
+consumes that generated recipe with the test plan and emits
 `e1/e1-h1/generated/module_dpi/verilator_execution_report.json`, which records
 the actual module-only Verilator build/run result and observed DPI stdout
 markers for every base IP.
@@ -210,6 +213,9 @@ the allowed and forbidden RTL child modules for each generated DUT, and
 cycle phase and phase signal for each generated module. The companion
 `e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json` records the
 module-only Verilator build/run inputs for every generated module. The paired
+`e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_recipe.json`
+records the C++-generated commands and expected DPI markers consumed by the
+runner. The execution report
 `e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_report.json`
 records the actual Verilator build/run result for each generated module-only
 probe. This extends the module-only construction rule from the base E1-H1 IPs

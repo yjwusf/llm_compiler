@@ -585,17 +585,20 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
     module_isolation_path = module_dpi_dir / "module_isolation.json"
     cycle_contract_path = module_dpi_dir / "cycle_contract.json"
     module_test_plan_path = module_dpi_dir / "module_test_plan.json"
+    verilator_execution_recipe_path = module_dpi_dir / "verilator_execution_recipe.json"
     verilator_execution_path = module_dpi_dir / "verilator_execution_report.json"
     readme_cycle_coverage_path = module_dpi_dir / "readme_cycle_coverage.json"
     module_isolation = load_json(module_isolation_path)
     cycle_contract = load_json(cycle_contract_path)
     module_test_plan = load_json(module_test_plan_path)
+    verilator_execution_recipe = load_json(verilator_execution_recipe_path)
     verilator_execution = load_optional_json(verilator_execution_path)
     readme_cycle_coverage = load_json(readme_cycle_coverage_path)
     module_names = {module["name"] for module in module_dpi_manifest["modules"]}
     isolation_by_name = {module["name"]: module for module in module_isolation["modules"]}
     cycle_contract_by_name = {module["name"]: module for module in cycle_contract["modules"]}
     test_plan_by_name = {module["name"]: module for module in module_test_plan["modules"]}
+    recipe_by_name = {module["name"]: module for module in verilator_execution_recipe["modules"]}
     verilator_execution_by_name = {module["name"]: module for module in verilator_execution["modules"]}
     readme_cycle_coverage_by_name = {module["name"]: module for module in readme_cycle_coverage["modules"]}
     checks = [
@@ -626,6 +629,10 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
         {
             "name": "module_dpi_test_plan_exists",
             "status": "pass" if module_test_plan_path.exists() else "fail",
+        },
+        {
+            "name": "module_dpi_verilator_execution_recipe_exists",
+            "status": "pass" if verilator_execution_recipe_path.exists() else "fail",
         },
         {
             "name": "module_dpi_verilator_execution_report_exists",
@@ -671,6 +678,29 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
             else "fail",
         },
         {
+            "name": "all_module_dpi_modules_have_cpp_generated_verilator_execution_recipes",
+            "status": "pass"
+            if module_names == set(recipe_by_name)
+            and verilator_execution_recipe.get("runner") == "e1/tools/run_module_dpi_verilator.py"
+            and verilator_execution_recipe.get("suite") == "module_dpi"
+            and verilator_execution_recipe.get("test_plan") == module_dpi_manifest["module_test_plan"]
+            and verilator_execution_recipe.get("report") == module_dpi_manifest["verilator_execution_report"]
+            and all(
+                recipe_by_name[module["name"]]["scope"] == "module_only"
+                and recipe_by_name[module["name"]]["top_module"]
+                == test_plan_by_name[module["name"]]["verilator"]["top_module"]
+                and recipe_by_name[module["name"]]["dut_module"]
+                == test_plan_by_name[module["name"]]["verilator"]["dut_module"]
+                and recipe_by_name[module["name"]]["flist"] == module["flist"]
+                and recipe_by_name[module["name"]]["scoreboard"] == module_dpi_manifest["scoreboard"]
+                and recipe_by_name[module["name"]]["main"] == module["main"]
+                and recipe_by_name[module["name"]]["expected_stdout_markers"]
+                == test_plan_by_name[module["name"]]["verilator"]["expected_stdout_markers"]
+                for module in module_dpi_manifest["modules"]
+            )
+            else "fail",
+        },
+        {
             "name": "all_module_dpi_modules_ran_under_verilator",
             "status": "pass"
             if module_names == set(verilator_execution_by_name)
@@ -683,6 +713,24 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
                 == test_plan_by_name[module["name"]]["verilator"]["flist"]
                 and verilator_execution_by_name[module["name"]]["observed_stdout_markers"]
                 == test_plan_by_name[module["name"]]["verilator"]["expected_stdout_markers"]
+                for module in module_dpi_manifest["modules"]
+            )
+            else "fail",
+        },
+        {
+            "name": "module_dpi_verilator_execution_report_matches_cpp_recipe",
+            "status": "pass"
+            if module_names == set(verilator_execution_by_name)
+            and module_names == set(recipe_by_name)
+            and verilator_execution.get("execution_recipe")
+            == module_dpi_manifest["verilator_execution_recipe"]
+            and all(
+                verilator_execution_by_name[module["name"]]["build_command"]
+                == recipe_by_name[module["name"]]["build_command"]
+                and verilator_execution_by_name[module["name"]]["run_executable"]
+                == recipe_by_name[module["name"]]["run_executable"]
+                and verilator_execution_by_name[module["name"]]["expected_stdout_markers"]
+                == recipe_by_name[module["name"]]["expected_stdout_markers"]
                 for module in module_dpi_manifest["modules"]
             )
             else "fail",
@@ -717,6 +765,7 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
         "module_isolation_proof": module_dpi_manifest["module_isolation_proof"],
         "cycle_contract": module_dpi_manifest["cycle_contract"],
         "module_test_plan": module_dpi_manifest["module_test_plan"],
+        "verilator_execution_recipe": module_dpi_manifest["verilator_execution_recipe"],
         "verilator_execution_report": module_dpi_manifest["verilator_execution_report"],
         "readme_cycle_coverage": module_dpi_manifest["readme_cycle_coverage"],
         "module_count": len(module_dpi_manifest["modules"]),
@@ -733,6 +782,7 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
                 "isolation": isolation_by_name[module["name"]],
                 "cycle_contract": cycle_contract_by_name[module["name"]],
                 "test_plan": test_plan_by_name[module["name"]],
+                "verilator_execution_recipe": recipe_by_name[module["name"]],
                 "verilator_execution": verilator_execution_by_name.get(module["name"]),
                 "readme_cycle_coverage": readme_cycle_coverage_by_name[module["name"]],
             }
@@ -786,17 +836,20 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
     module_isolation_path = module_dpi_dir / "module_isolation.json"
     cycle_contract_path = module_dpi_dir / "cycle_contract.json"
     module_test_plan_path = module_dpi_dir / "module_test_plan.json"
+    verilator_execution_recipe_path = module_dpi_dir / "verilator_execution_recipe.json"
     verilator_execution_path = module_dpi_dir / "verilator_execution_report.json"
     readme_cycle_coverage_path = module_dpi_dir / "readme_cycle_coverage.json"
     module_isolation = load_json(module_isolation_path)
     cycle_contract = load_json(cycle_contract_path)
     module_test_plan = load_json(module_test_plan_path)
+    verilator_execution_recipe = load_json(verilator_execution_recipe_path)
     verilator_execution = load_optional_json(verilator_execution_path)
     readme_cycle_coverage = load_json(readme_cycle_coverage_path)
     module_names = {module["name"] for module in manifest["modules"]}
     isolation_by_name = {module["name"]: module for module in module_isolation["modules"]}
     cycle_contract_by_name = {module["name"]: module for module in cycle_contract["modules"]}
     test_plan_by_name = {module["name"]: module for module in module_test_plan["modules"]}
+    recipe_by_name = {module["name"]: module for module in verilator_execution_recipe["modules"]}
     verilator_execution_by_name = {module["name"]: module for module in verilator_execution["modules"]}
     readme_cycle_coverage_by_name = {module["name"]: module for module in readme_cycle_coverage["modules"]}
     expected_modules = {
@@ -844,6 +897,10 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
         {
             "name": "generated_full_checkpoint_module_test_plan_exists",
             "status": "pass" if module_test_plan_path.exists() else "fail",
+        },
+        {
+            "name": "generated_full_checkpoint_verilator_execution_recipe_exists",
+            "status": "pass" if verilator_execution_recipe_path.exists() else "fail",
         },
         {
             "name": "generated_full_checkpoint_verilator_execution_report_exists",
@@ -895,6 +952,29 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
             else "fail",
         },
         {
+            "name": "all_generated_full_checkpoint_modules_have_cpp_generated_verilator_execution_recipes",
+            "status": "pass"
+            if module_names == set(recipe_by_name)
+            and verilator_execution_recipe.get("runner") == "e1/tools/run_module_dpi_verilator.py"
+            and verilator_execution_recipe.get("suite") == "full_checkpoint_module_dpi"
+            and verilator_execution_recipe.get("test_plan") == manifest["module_test_plan"]
+            and verilator_execution_recipe.get("report") == manifest["verilator_execution_report"]
+            and all(
+                recipe_by_name[module["name"]]["scope"] == "generated_full_checkpoint_module_only"
+                and recipe_by_name[module["name"]]["top_module"]
+                == test_plan_by_name[module["name"]]["verilator"]["top_module"]
+                and recipe_by_name[module["name"]]["dut_module"]
+                == test_plan_by_name[module["name"]]["verilator"]["dut_module"]
+                and recipe_by_name[module["name"]]["flist"] == module["flist"]
+                and recipe_by_name[module["name"]]["scoreboard"] == manifest["scoreboard"]
+                and recipe_by_name[module["name"]]["main"] == module["main"]
+                and recipe_by_name[module["name"]]["expected_stdout_markers"]
+                == test_plan_by_name[module["name"]]["verilator"]["expected_stdout_markers"]
+                for module in manifest["modules"]
+            )
+            else "fail",
+        },
+        {
             "name": "all_generated_full_checkpoint_modules_ran_under_verilator",
             "status": "pass"
             if module_names == set(verilator_execution_by_name)
@@ -907,6 +987,23 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
                 == test_plan_by_name[module["name"]]["verilator"]["flist"]
                 and verilator_execution_by_name[module["name"]]["observed_stdout_markers"]
                 == test_plan_by_name[module["name"]]["verilator"]["expected_stdout_markers"]
+                for module in manifest["modules"]
+            )
+            else "fail",
+        },
+        {
+            "name": "generated_full_checkpoint_verilator_execution_report_matches_cpp_recipe",
+            "status": "pass"
+            if module_names == set(verilator_execution_by_name)
+            and module_names == set(recipe_by_name)
+            and verilator_execution.get("execution_recipe") == manifest["verilator_execution_recipe"]
+            and all(
+                verilator_execution_by_name[module["name"]]["build_command"]
+                == recipe_by_name[module["name"]]["build_command"]
+                and verilator_execution_by_name[module["name"]]["run_executable"]
+                == recipe_by_name[module["name"]]["run_executable"]
+                and verilator_execution_by_name[module["name"]]["expected_stdout_markers"]
+                == recipe_by_name[module["name"]]["expected_stdout_markers"]
                 for module in manifest["modules"]
             )
             else "fail",
@@ -947,6 +1044,7 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
         "module_isolation_proof": manifest["module_isolation_proof"],
         "cycle_contract": manifest["cycle_contract"],
         "module_test_plan": manifest["module_test_plan"],
+        "verilator_execution_recipe": manifest["verilator_execution_recipe"],
         "verilator_execution_report": manifest["verilator_execution_report"],
         "readme_cycle_coverage": manifest["readme_cycle_coverage"],
         "module_count": len(manifest["modules"]),
@@ -965,6 +1063,7 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
                 "isolation": isolation_by_name[module["name"]],
                 "cycle_contract": cycle_contract_by_name[module["name"]],
                 "test_plan": test_plan_by_name[module["name"]],
+                "verilator_execution_recipe": recipe_by_name[module["name"]],
                 "verilator_execution": verilator_execution_by_name.get(module["name"]),
                 "readme_cycle_coverage": readme_cycle_coverage_by_name[module["name"]],
             }
@@ -4921,6 +5020,7 @@ def run_pipeline(
             module_dpi_report["module_isolation_proof"],
             module_dpi_report["cycle_contract"],
             module_dpi_report["module_test_plan"],
+            module_dpi_report["verilator_execution_recipe"],
             module_dpi_report["verilator_execution_report"],
             module_dpi_report["readme_cycle_coverage"],
             *[module["probe"] for module in module_dpi_report["modules"]],
@@ -5039,6 +5139,7 @@ def run_pipeline(
         "module_dpi_isolation_proof": module_dpi_report["module_isolation_proof"],
         "module_dpi_cycle_contract": module_dpi_report["cycle_contract"],
         "module_dpi_test_plan": module_dpi_report["module_test_plan"],
+        "module_dpi_verilator_execution_recipe": module_dpi_report["verilator_execution_recipe"],
         "module_dpi_verilator_execution_report": module_dpi_report["verilator_execution_report"],
         "module_dpi_readme_cycle_coverage": module_dpi_report["readme_cycle_coverage"],
         "rtl_lowering": repo_rel(rtl_lowering_out),
@@ -5098,6 +5199,9 @@ def run_pipeline(
         "full_checkpoint_module_isolation_proof": full_checkpoint_module_dpi["module_isolation_proof"],
         "full_checkpoint_module_cycle_contract": full_checkpoint_module_dpi["cycle_contract"],
         "full_checkpoint_module_test_plan": full_checkpoint_module_dpi["module_test_plan"],
+        "full_checkpoint_module_verilator_execution_recipe": full_checkpoint_module_dpi[
+            "verilator_execution_recipe"
+        ],
         "full_checkpoint_module_verilator_execution_report": full_checkpoint_module_dpi[
             "verilator_execution_report"
         ],
@@ -5131,6 +5235,7 @@ def run_pipeline(
         "module_dpi_isolation_proof": module_dpi_report["module_isolation_proof"],
         "module_dpi_cycle_contract": module_dpi_report["cycle_contract"],
         "module_dpi_test_plan": module_dpi_report["module_test_plan"],
+        "module_dpi_verilator_execution_recipe": module_dpi_report["verilator_execution_recipe"],
         "module_dpi_verilator_execution_report": module_dpi_report["verilator_execution_report"],
         "module_dpi_readme_cycle_coverage": module_dpi_report["readme_cycle_coverage"],
         "rtl_lowering": repo_rel(rtl_lowering_out),
@@ -5189,6 +5294,9 @@ def run_pipeline(
         "full_checkpoint_module_isolation_proof": full_checkpoint_module_dpi["module_isolation_proof"],
         "full_checkpoint_module_cycle_contract": full_checkpoint_module_dpi["cycle_contract"],
         "full_checkpoint_module_test_plan": full_checkpoint_module_dpi["module_test_plan"],
+        "full_checkpoint_module_verilator_execution_recipe": full_checkpoint_module_dpi[
+            "verilator_execution_recipe"
+        ],
         "full_checkpoint_module_verilator_execution_report": full_checkpoint_module_dpi[
             "verilator_execution_report"
         ],

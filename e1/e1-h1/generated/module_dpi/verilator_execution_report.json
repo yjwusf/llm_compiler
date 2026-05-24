@@ -2,6 +2,22 @@
   "build_root": "<build-root>",
   "checks": [
     {
+      "name": "cpp_execution_recipe_loaded",
+      "status": "pass"
+    },
+    {
+      "name": "cpp_execution_recipe_metadata_matches_runner",
+      "status": "pass"
+    },
+    {
+      "name": "cpp_execution_recipe_modules_match_test_plan",
+      "status": "pass"
+    },
+    {
+      "name": "cpp_execution_recipe_commands_match_runner",
+      "status": "pass"
+    },
+    {
       "name": "verilator_available",
       "status": "pass"
     },
@@ -18,6 +34,7 @@
       "status": "pass"
     }
   ],
+  "execution_recipe": "e1/e1-h1/generated/module_dpi/verilator_execution_recipe.json",
   "module_count": 6,
   "modules": [
     {
@@ -285,6 +302,7 @@
       "top_module": "e1_h1_module_dpi_systolic_array"
     }
   ],
+  "recipe_schema": "e1-h1-module-dpi-verilator-execution-recipe-v0",
   "runner": "e1/tools/run_module_dpi_verilator.py",
   "runner_kind": "actual_verilator_build_and_run",
   "schema": "e1-module-dpi-verilator-execution-report-v0",

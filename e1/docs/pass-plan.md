@@ -48,7 +48,8 @@ hardware and device code.
     - Output: C++-generated module-DPI probes, per-module flists, and a
       construction report proving one generated probe per replaceable module,
       plus generated base-IP isolation, cycle-contract, and Verilator
-      test-plan artifacts.
+      test-plan artifacts. The C++ generator also emits the Verilator execution
+      recipe that the runner must match before building any module.
 13. `e1_emit_systemverilog`
     - Input: hardware graph.
     - Output: mocked or real SystemVerilog modules and generated top-level
@@ -135,8 +136,9 @@ hardware and device code.
     - Input: generated full-checkpoint RTL modules.
     - Output: C++-generated module-DPI probes, flists, C++ mains, scoreboard,
       manifest, generated input/output signal documentation, and generated
-      isolation, cycle-contract, Verilator test-plan, and Verilator execution
-      proof for each generated full-checkpoint RTL module.
+      isolation, cycle-contract, Verilator test-plan, C++-owned Verilator
+      execution recipe, and Verilator execution proof for each generated
+      full-checkpoint RTL module.
 27. `e1_end_to_end_smoke`
     - Input: all prior pass artifacts.
     - Output: one evidence report tying StableHLO, E1-H1 binding, device code,

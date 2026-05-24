@@ -498,6 +498,7 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
   out << "  \"module_isolation_proof\": \"e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json\",\n";
   out << "  \"cycle_contract\": \"e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json\",\n";
   out << "  \"module_test_plan\": \"e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json\",\n";
+  out << "  \"verilator_execution_recipe\": \"e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_recipe.json\",\n";
   out << "  \"verilator_execution_report\": \"e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_report.json\",\n";
   out << "  \"readme_cycle_coverage\": \"e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json\",\n";
   out << "  \"construction_rule\": \"one_generated_probe_per_full_checkpoint_rtl_module_with_cpp_dpi_driven_neighbors\",\n";
@@ -514,6 +515,7 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
     out << "      \"main\": \"e1/e1-h1/generated/full_checkpoint_dpi/" << spec.probe_module << "_main.cpp\",\n";
     out << "      \"flist\": \"e1/e1-h1/generated/full_checkpoint_dpi/flists/" << spec.name << ".f\",\n";
     out << "      \"module_test_plan\": \"e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json\",\n";
+    out << "      \"verilator_execution_recipe\": \"e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_recipe.json\",\n";
     out << "      \"verilator_execution_report\": \"e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_report.json\",\n";
     out << "      \"readme_cycle_coverage\": \"e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json\",\n";
     out << "      \"rtl\": [";
@@ -687,25 +689,90 @@ std::vector<std::string> expected_stdout_markers(const ModuleSpec& spec) {
   };
 }
 
+std::string flist_path(const ModuleSpec& spec) {
+  return "e1/e1-h1/generated/full_checkpoint_dpi/flists/" + spec.name + ".f";
+}
+
+std::string main_path(const ModuleSpec& spec) {
+  return "e1/e1-h1/generated/full_checkpoint_dpi/" + spec.probe_module + "_main.cpp";
+}
+
+std::string scoreboard_path() {
+  return "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp";
+}
+
+std::string obj_dir_name(const std::string& suite, const ModuleSpec& spec) {
+  return "obj_" + suite + "_" + spec.name;
+}
+
+std::string recipe_run_executable(const std::string& suite, const ModuleSpec& spec) {
+  return "<build-root>/" + obj_dir_name(suite, spec) + "/V" + spec.probe_module;
+}
+
+std::vector<std::string> recipe_build_command(const ModuleSpec& spec, const std::string& suite) {
+  std::vector<std::string> command = {"verilator"};
+  const std::vector<std::string> fixed_args = verilator_fixed_args();
+  command.insert(command.end(), fixed_args.begin(), fixed_args.end());
+  command.push_back("--top-module");
+  command.push_back(spec.probe_module);
+  command.push_back("-Mdir");
+  command.push_back("<build-root>/" + obj_dir_name(suite, spec));
+  command.push_back("-f");
+  command.push_back(flist_path(spec));
+  command.push_back(scoreboard_path());
+  command.push_back(main_path(spec));
+  return command;
+}
+
 void write_verilator_object_json(std::ostringstream& out,
                                  const ModuleSpec& spec,
                                  const std::string& indent) {
-  const std::string flist = "e1/e1-h1/generated/full_checkpoint_dpi/flists/" + spec.name + ".f";
-  const std::string main = "e1/e1-h1/generated/full_checkpoint_dpi/" + spec.probe_module + "_main.cpp";
-  const std::string scoreboard =
-      "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp";
   out << indent << "\"verilator\": {\n";
   out << indent << "  \"top_module\": \"" << spec.probe_module << "\",\n";
   out << indent << "  \"dut_module\": \"" << spec.top_module << "\",\n";
-  out << indent << "  \"flist\": \"" << flist << "\",\n";
-  out << indent << "  \"scoreboard\": \"" << scoreboard << "\",\n";
-  out << indent << "  \"main\": \"" << main << "\",\n";
+  out << indent << "  \"flist\": \"" << flist_path(spec) << "\",\n";
+  out << indent << "  \"scoreboard\": \"" << scoreboard_path() << "\",\n";
+  out << indent << "  \"main\": \"" << main_path(spec) << "\",\n";
   out << indent << "  \"obj_dir_placeholder\": \"<obj_dir>\",\n";
   out << indent << "  \"run_executable\": \"V" << spec.probe_module << "\",\n";
   write_string_array_json(out, "fixed_args", verilator_fixed_args(), indent + "  ");
   out << ",\n";
   write_string_array_json(out, "expected_stdout_markers", expected_stdout_markers(spec), indent + "  ");
   out << "\n" << indent << "}";
+}
+
+std::string verilator_execution_recipe_json(const std::vector<ModuleSpec>& specs) {
+  const std::string suite = "full_checkpoint_module_dpi";
+  std::ostringstream out;
+  out << "{\n";
+  out << "  \"schema\": \"e1-h1-full-checkpoint-module-dpi-verilator-execution-recipe-v0\",\n";
+  out << "  \"generator\": \"e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp\",\n";
+  out << "  \"runner\": \"e1/tools/run_module_dpi_verilator.py\",\n";
+  out << "  \"suite\": \"" << suite << "\",\n";
+  out << "  \"test_plan\": \"e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json\",\n";
+  out << "  \"report\": \"e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_report.json\",\n";
+  out << "  \"construction_rule\": \"cpp_generator_owns_exact_generated_module_only_verilator_build_and_run_recipe\",\n";
+  out << "  \"modules\": [\n";
+  for (std::size_t i = 0; i < specs.size(); ++i) {
+    const ModuleSpec& spec = specs[i];
+    out << "    {\n";
+    out << "      \"name\": \"" << spec.name << "\",\n";
+    out << "      \"scope\": \"generated_full_checkpoint_module_only\",\n";
+    out << "      \"top_module\": \"" << spec.probe_module << "\",\n";
+    out << "      \"dut_module\": \"" << spec.top_module << "\",\n";
+    out << "      \"flist\": \"" << flist_path(spec) << "\",\n";
+    out << "      \"scoreboard\": \"" << scoreboard_path() << "\",\n";
+    out << "      \"main\": \"" << main_path(spec) << "\",\n";
+    write_string_array_json(out, "build_command", recipe_build_command(spec, suite), "      ");
+    out << ",\n";
+    out << "      \"run_executable\": \"" << recipe_run_executable(suite, spec) << "\",\n";
+    write_string_array_json(out, "expected_stdout_markers", expected_stdout_markers(spec), "      ");
+    out << "\n";
+    out << "    }" << (i + 1 == specs.size() ? "\n" : ",\n");
+  }
+  out << "  ]\n";
+  out << "}\n";
+  return out.str();
 }
 
 std::string module_test_plan_json(const std::vector<ModuleSpec>& specs) {
@@ -1712,6 +1779,7 @@ int main(int argc, char** argv) {
     write_text(output_dir / "module_isolation.json", module_isolation_json(specs));
     write_text(output_dir / "cycle_contract.json", cycle_contract_json(specs));
     write_text(output_dir / "module_test_plan.json", module_test_plan_json(specs));
+    write_text(output_dir / "verilator_execution_recipe.json", verilator_execution_recipe_json(specs));
     write_text(output_dir / "readme_cycle_coverage.json", readme_cycle_coverage_json(specs));
 
     std::cout << "PASS e1_h1_generate_full_checkpoint_module_dpi " << specs.size()
