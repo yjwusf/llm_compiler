@@ -8,6 +8,7 @@
   "verilator_execution_recipe": "e1/e1-h1/generated/module_dpi/verilator_execution_recipe.json",
   "verilator_execution_report": "e1/e1-h1/generated/module_dpi/verilator_execution_report.json",
   "readme_cycle_coverage": "e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json",
+  "construction_ledger": "e1/e1-h1/generated/module_dpi/construction_ledger.json",
   "reference_implementation": "imp1",
   "candidate_implementation": "imp2",
   "construction_rule": "one_generated_probe_per_ip_with_only_that_systemverilog_dut_and_cpp_dpi_neighbors",
@@ -34,6 +35,7 @@
       "verilator_execution_recipe": "e1/e1-h1/generated/module_dpi/verilator_execution_recipe.json",
       "verilator_execution_report": "e1/e1-h1/generated/module_dpi/verilator_execution_report.json",
       "readme_cycle_coverage": "e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json",
+      "construction_ledger": "e1/e1-h1/generated/module_dpi/construction_ledger.json",
       "vip_cases": ["reset_to_first_command", "command_backpressure", "array_completion"],
       "cycle_notes": ["cycle 0 reset release", "cycle 1 command valid with backpressure", "cycle 5 array completion"],
       "cycle_contract": {
@@ -69,6 +71,7 @@
       "verilator_execution_recipe": "e1/e1-h1/generated/module_dpi/verilator_execution_recipe.json",
       "verilator_execution_report": "e1/e1-h1/generated/module_dpi/verilator_execution_report.json",
       "readme_cycle_coverage": "e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json",
+      "construction_ledger": "e1/e1-h1/generated/module_dpi/construction_ledger.json",
       "vip_cases": ["reset_idle", "minimum_frame", "downstream_backpressure"],
       "cycle_notes": ["cycle 1 frame starts", "cycles 1-5 nibbles shift", "cycle 7 downstream accepts"],
       "cycle_contract": {
@@ -106,6 +109,7 @@
       "verilator_execution_recipe": "e1/e1-h1/generated/module_dpi/verilator_execution_recipe.json",
       "verilator_execution_report": "e1/e1-h1/generated/module_dpi/verilator_execution_report.json",
       "readme_cycle_coverage": "e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json",
+      "construction_ledger": "e1/e1-h1/generated/module_dpi/construction_ledger.json",
       "vip_cases": ["reset_empty", "single_stream_word", "array_backpressure"],
       "cycle_notes": ["cycle 0 latch first word", "cycle 1 hold while array_ready_i is low", "cycle 2 release latched word"],
       "cycle_contract": {
@@ -139,6 +143,7 @@
       "verilator_execution_recipe": "e1/e1-h1/generated/module_dpi/verilator_execution_recipe.json",
       "verilator_execution_report": "e1/e1-h1/generated/module_dpi/verilator_execution_report.json",
       "readme_cycle_coverage": "e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json",
+      "construction_ledger": "e1/e1-h1/generated/module_dpi/construction_ledger.json",
       "vip_cases": ["reset_empty", "single_config_read", "parameterized_size"],
       "cycle_notes": ["cycle -1 reset clears initialized_q", "cycle 0 initialization latch sets", "cycle 1 initialized_q holds"],
       "cycle_contract": {
@@ -169,6 +174,7 @@
       "verilator_execution_recipe": "e1/e1-h1/generated/module_dpi/verilator_execution_recipe.json",
       "verilator_execution_report": "e1/e1-h1/generated/module_dpi/verilator_execution_report.json",
       "readme_cycle_coverage": "e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json",
+      "construction_ledger": "e1/e1-h1/generated/module_dpi/construction_ledger.json",
       "vip_cases": ["reset_empty", "single_config_read", "wide_accumulator_word"],
       "cycle_notes": ["cycle -1 reset clears initialized_q", "cycle 0 initialization latch sets", "cycle 1 initialized_q holds"],
       "cycle_contract": {
@@ -199,6 +205,7 @@
       "verilator_execution_recipe": "e1/e1-h1/generated/module_dpi/verilator_execution_recipe.json",
       "verilator_execution_report": "e1/e1-h1/generated/module_dpi/verilator_execution_report.json",
       "readme_cycle_coverage": "e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json",
+      "construction_ledger": "e1/e1-h1/generated/module_dpi/construction_ledger.json",
       "vip_cases": ["command_acceptance", "input_burst", "completion_pulse"],
       "cycle_notes": ["cycle 1 command accepted", "cycles 3-6 input burst drains", "cycle 6 completion pulse"],
       "cycle_contract": {

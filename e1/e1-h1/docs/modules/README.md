@@ -271,11 +271,17 @@ runner. The companion
 `e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_report.json`
 records the actual build/run result for each generated module-only Verilator
 probe.
+The generated
+`e1/e1-h1/generated/full_checkpoint_dpi/construction_ledger.json` ties each C++
+module spec to its emitted probe, flist, interface docs, cycle contract, README
+phase coverage, and Verilator recipe. The base-IP companion is
+`e1/e1-h1/generated/module_dpi/construction_ledger.json`.
 `e1/generated/pipeline/27_full_graph_module_dpi_binding.json` binds that
 module-only evidence back to the full graph lowering proof. It requires all
 generated full-graph RTL modules and the separated base `control_cpu`,
 `ingress_sram` latch buffer, and `systolic_array` modules to have passing
-module-DPI Verilator reports before the final end-to-end smoke can pass.
+module-DPI Verilator reports and passing construction-ledger checks before the
+final end-to-end smoke can pass.
 The generated `readme_cycle_coverage.json` artifacts for both base IP and
 full-checkpoint modules prove that this README lists every generated cycle
 template and phase name.

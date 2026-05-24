@@ -588,12 +588,14 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
     verilator_execution_recipe_path = module_dpi_dir / "verilator_execution_recipe.json"
     verilator_execution_path = module_dpi_dir / "verilator_execution_report.json"
     readme_cycle_coverage_path = module_dpi_dir / "readme_cycle_coverage.json"
+    construction_ledger_path = module_dpi_dir / "construction_ledger.json"
     module_isolation = load_json(module_isolation_path)
     cycle_contract = load_json(cycle_contract_path)
     module_test_plan = load_json(module_test_plan_path)
     verilator_execution_recipe = load_json(verilator_execution_recipe_path)
     verilator_execution = load_optional_json(verilator_execution_path)
     readme_cycle_coverage = load_json(readme_cycle_coverage_path)
+    construction_ledger = load_json(construction_ledger_path)
     module_names = {module["name"] for module in module_dpi_manifest["modules"]}
     isolation_by_name = {module["name"]: module for module in module_isolation["modules"]}
     cycle_contract_by_name = {module["name"]: module for module in cycle_contract["modules"]}
@@ -601,6 +603,7 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
     recipe_by_name = {module["name"]: module for module in verilator_execution_recipe["modules"]}
     verilator_execution_by_name = {module["name"]: module for module in verilator_execution["modules"]}
     readme_cycle_coverage_by_name = {module["name"]: module for module in readme_cycle_coverage["modules"]}
+    construction_ledger_by_name = {module["name"]: module for module in construction_ledger["modules"]}
     checks = [
         {
             "name": "module_dpi_manifest_exists",
@@ -641,6 +644,10 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
         {
             "name": "module_dpi_readme_cycle_coverage_exists",
             "status": "pass" if readme_cycle_coverage_path.exists() else "fail",
+        },
+        {
+            "name": "module_dpi_construction_ledger_exists",
+            "status": "pass" if construction_ledger_path.exists() else "fail",
         },
         {
             "name": "all_module_dpi_modules_have_isolation_proofs",
@@ -750,6 +757,49 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
             else "fail",
         },
         {
+            "name": "all_module_dpi_modules_have_construction_ledger_entries",
+            "status": "pass"
+            if module_names == set(construction_ledger_by_name)
+            and construction_ledger.get("manifest") == repo_rel(module_dpi_manifest_path)
+            and construction_ledger.get("cycle_contract") == module_dpi_manifest["cycle_contract"]
+            and construction_ledger.get("verilator_execution_recipe")
+            == module_dpi_manifest["verilator_execution_recipe"]
+            else "fail",
+        },
+        {
+            "name": "module_dpi_construction_ledger_matches_generated_artifacts",
+            "status": "pass"
+            if module_names == set(construction_ledger_by_name)
+            and all(
+                construction_ledger_by_name[module["name"]]["probe"] == module["probe"]
+                and construction_ledger_by_name[module["name"]]["main"] == module["main"]
+                and construction_ledger_by_name[module["name"]]["flist"] == module["flist"]
+                and construction_ledger_by_name[module["name"]]["scoreboard"] == module_dpi_manifest["scoreboard"]
+                and construction_ledger_by_name[module["name"]]["imp2_rtl"] == module["imp2_rtl"]
+                and construction_ledger_by_name[module["name"]]["latch_buffer"] == module["latch_buffer"]
+                and all(check["status"] == "pass" for check in construction_ledger_by_name[module["name"]]["checks"])
+                for module in module_dpi_manifest["modules"]
+            )
+            else "fail",
+        },
+        {
+            "name": "module_dpi_construction_ledger_matches_cycle_contracts",
+            "status": "pass"
+            if module_names == set(construction_ledger_by_name)
+            and all(
+                construction_ledger_by_name[module["name"]]["cycle_template"]
+                == cycle_contract_by_name[module["name"]]["template"]
+                and construction_ledger_by_name[module["name"]]["cycle_period"]
+                == cycle_contract_by_name[module["name"]]["cycle_period"]
+                and construction_ledger_by_name[module["name"]]["phase_source"]
+                == cycle_contract_by_name[module["name"]]["phase_source"]
+                and construction_ledger_by_name[module["name"]]["phase_names"]
+                == [step["phase"] for step in cycle_contract_by_name[module["name"]]["cycles"]]
+                for module in module_dpi_manifest["modules"]
+            )
+            else "fail",
+        },
+        {
             "name": "ingress_sram_is_latch_buffer",
             "status": "pass"
             if any(module["name"] == "ingress_sram" and module["latch_buffer"] for module in module_dpi_manifest["modules"])
@@ -768,6 +818,7 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
         "verilator_execution_recipe": module_dpi_manifest["verilator_execution_recipe"],
         "verilator_execution_report": module_dpi_manifest["verilator_execution_report"],
         "readme_cycle_coverage": module_dpi_manifest["readme_cycle_coverage"],
+        "construction_ledger": module_dpi_manifest["construction_ledger"],
         "module_count": len(module_dpi_manifest["modules"]),
         "modules": [
             {
@@ -785,6 +836,7 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
                 "verilator_execution_recipe": recipe_by_name[module["name"]],
                 "verilator_execution": verilator_execution_by_name.get(module["name"]),
                 "readme_cycle_coverage": readme_cycle_coverage_by_name[module["name"]],
+                "construction_ledger": construction_ledger_by_name[module["name"]],
             }
             for module in module_dpi_manifest["modules"]
         ],
@@ -839,12 +891,14 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
     verilator_execution_recipe_path = module_dpi_dir / "verilator_execution_recipe.json"
     verilator_execution_path = module_dpi_dir / "verilator_execution_report.json"
     readme_cycle_coverage_path = module_dpi_dir / "readme_cycle_coverage.json"
+    construction_ledger_path = module_dpi_dir / "construction_ledger.json"
     module_isolation = load_json(module_isolation_path)
     cycle_contract = load_json(cycle_contract_path)
     module_test_plan = load_json(module_test_plan_path)
     verilator_execution_recipe = load_json(verilator_execution_recipe_path)
     verilator_execution = load_optional_json(verilator_execution_path)
     readme_cycle_coverage = load_json(readme_cycle_coverage_path)
+    construction_ledger = load_json(construction_ledger_path)
     module_names = {module["name"] for module in manifest["modules"]}
     isolation_by_name = {module["name"]: module for module in module_isolation["modules"]}
     cycle_contract_by_name = {module["name"]: module for module in cycle_contract["modules"]}
@@ -852,6 +906,7 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
     recipe_by_name = {module["name"]: module for module in verilator_execution_recipe["modules"]}
     verilator_execution_by_name = {module["name"]: module for module in verilator_execution["modules"]}
     readme_cycle_coverage_by_name = {module["name"]: module for module in readme_cycle_coverage["modules"]}
+    construction_ledger_by_name = {module["name"]: module for module in construction_ledger["modules"]}
     expected_modules = {
         "linear_scheduler",
         "linear_tile_engine",
@@ -909,6 +964,10 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
         {
             "name": "generated_full_checkpoint_readme_cycle_coverage_exists",
             "status": "pass" if readme_cycle_coverage_path.exists() else "fail",
+        },
+        {
+            "name": "generated_full_checkpoint_construction_ledger_exists",
+            "status": "pass" if construction_ledger_path.exists() else "fail",
         },
         {
             "name": "all_generated_full_checkpoint_modules_have_signal_docs",
@@ -1023,6 +1082,52 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
             else "fail",
         },
         {
+            "name": "all_generated_full_checkpoint_modules_have_construction_ledger_entries",
+            "status": "pass"
+            if module_names == set(construction_ledger_by_name)
+            and construction_ledger.get("manifest") == repo_rel(manifest_path)
+            and construction_ledger.get("module_interfaces_doc") == manifest["module_interfaces_doc"]
+            and construction_ledger.get("cycle_contract") == manifest["cycle_contract"]
+            and construction_ledger.get("verilator_execution_recipe") == manifest["verilator_execution_recipe"]
+            else "fail",
+        },
+        {
+            "name": "generated_full_checkpoint_construction_ledger_matches_generated_artifacts",
+            "status": "pass"
+            if module_names == set(construction_ledger_by_name)
+            and all(
+                construction_ledger_by_name[module["name"]]["probe"] == module["probe"]
+                and construction_ledger_by_name[module["name"]]["main"] == module["main"]
+                and construction_ledger_by_name[module["name"]]["flist"] == module["flist"]
+                and construction_ledger_by_name[module["name"]]["scoreboard"] == manifest["scoreboard"]
+                and construction_ledger_by_name[module["name"]]["rtl"] == module["rtl"]
+                and construction_ledger_by_name[module["name"]]["input_signal_count"]
+                == len(module["input_signals"])
+                and construction_ledger_by_name[module["name"]]["output_signal_count"]
+                == len(module["output_signals"])
+                and all(check["status"] == "pass" for check in construction_ledger_by_name[module["name"]]["checks"])
+                for module in manifest["modules"]
+            )
+            else "fail",
+        },
+        {
+            "name": "generated_full_checkpoint_construction_ledger_matches_cycle_contracts",
+            "status": "pass"
+            if module_names == set(construction_ledger_by_name)
+            and all(
+                construction_ledger_by_name[module["name"]]["cycle_template"]
+                == cycle_contract_by_name[module["name"]]["template"]
+                and construction_ledger_by_name[module["name"]]["cycle_period"]
+                == cycle_contract_by_name[module["name"]]["cycle_period"]
+                and construction_ledger_by_name[module["name"]]["phase_signals"]
+                == cycle_contract_by_name[module["name"]]["phase_signals"]
+                and construction_ledger_by_name[module["name"]]["phase_names"]
+                == [step["phase"] for step in cycle_contract_by_name[module["name"]]["cycles"]]
+                for module in manifest["modules"]
+            )
+            else "fail",
+        },
+        {
             "name": "full_checkpoint_top_dpi_covers_slot_engines",
             "status": "pass"
             if any(
@@ -1047,6 +1152,7 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
         "verilator_execution_recipe": manifest["verilator_execution_recipe"],
         "verilator_execution_report": manifest["verilator_execution_report"],
         "readme_cycle_coverage": manifest["readme_cycle_coverage"],
+        "construction_ledger": manifest["construction_ledger"],
         "module_count": len(manifest["modules"]),
         "modules": [
             {
@@ -1066,6 +1172,7 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
                 "verilator_execution_recipe": recipe_by_name[module["name"]],
                 "verilator_execution": verilator_execution_by_name.get(module["name"]),
                 "readme_cycle_coverage": readme_cycle_coverage_by_name[module["name"]],
+                "construction_ledger": construction_ledger_by_name[module["name"]],
             }
             for module in manifest["modules"]
         ],
@@ -4667,6 +4774,7 @@ def emit_full_graph_module_dpi_binding(
                 "flist": module["flist"] if module is not None else None,
                 "cycle_contract": module["cycle_contract"] if module is not None else None,
                 "readme_cycle_coverage": module["readme_cycle_coverage"] if module is not None else None,
+                "construction_ledger": module["construction_ledger"] if module is not None else None,
                 "verilator_execution_recipe": module["verilator_execution_recipe"] if module is not None else None,
                 "verilator_execution": module["verilator_execution"] if module is not None else None,
             }
@@ -4684,6 +4792,7 @@ def emit_full_graph_module_dpi_binding(
                 "flist": module["flist"] if module is not None else None,
                 "cycle_contract": module["cycle_contract"] if module is not None else None,
                 "readme_cycle_coverage": module["readme_cycle_coverage"] if module is not None else None,
+                "construction_ledger": module["construction_ledger"] if module is not None else None,
                 "verilator_execution_recipe": module["verilator_execution_recipe"] if module is not None else None,
                 "verilator_execution": module["verilator_execution"] if module is not None else None,
             }
@@ -4697,6 +4806,15 @@ def emit_full_graph_module_dpi_binding(
         check["status"] == "pass"
         for recipe_checks in recipe_checks_by_report
         for check in recipe_checks
+    )
+    module_dpi_ledger_checks_pass = all(
+        module is not None
+        and module.get("construction_ledger") is not None
+        and all(check["status"] == "pass" for check in module["construction_ledger"]["checks"])
+        for module in [
+            *(base_by_name.get(module_name) for module_name in required_base_modules),
+            *(generated_by_name.get(module_name) for module_name in required_generated_modules),
+        ]
     )
     checks = [
         {
@@ -4759,6 +4877,10 @@ def emit_full_graph_module_dpi_binding(
         {
             "name": "module_dpi_reports_use_cpp_generated_recipes",
             "status": "pass" if module_dpi_recipe_checks_pass else "fail",
+        },
+        {
+            "name": "module_dpi_reports_have_cpp_construction_ledgers",
+            "status": "pass" if module_dpi_ledger_checks_pass else "fail",
         },
     ]
 
@@ -5298,6 +5420,7 @@ def run_pipeline(
             module_dpi_report["verilator_execution_recipe"],
             module_dpi_report["verilator_execution_report"],
             module_dpi_report["readme_cycle_coverage"],
+            module_dpi_report["construction_ledger"],
             *[module["probe"] for module in module_dpi_report["modules"]],
             *[module["main"] for module in module_dpi_report["modules"]],
             *[module["flist"] for module in module_dpi_report["modules"]],
@@ -5421,6 +5544,7 @@ def run_pipeline(
         "module_dpi_verilator_execution_recipe": module_dpi_report["verilator_execution_recipe"],
         "module_dpi_verilator_execution_report": module_dpi_report["verilator_execution_report"],
         "module_dpi_readme_cycle_coverage": module_dpi_report["readme_cycle_coverage"],
+        "module_dpi_construction_ledger": module_dpi_report["construction_ledger"],
         "rtl_lowering": repo_rel(rtl_lowering_out),
         "rtl_lowering_status": rtl_lowering["status"],
         "tinyllama_imp2_coverage": repo_rel(tinyllama_coverage_out),
@@ -5485,6 +5609,7 @@ def run_pipeline(
             "verilator_execution_report"
         ],
         "full_checkpoint_module_readme_cycle_coverage": full_checkpoint_module_dpi["readme_cycle_coverage"],
+        "full_checkpoint_module_construction_ledger": full_checkpoint_module_dpi["construction_ledger"],
         "full_checkpoint_module_dpi_status": full_checkpoint_module_dpi["status"],
         "full_checkpoint_module_dpi_count": full_checkpoint_module_dpi["module_count"],
         "full_graph_module_dpi_binding": repo_rel(full_graph_module_dpi_binding_out),
@@ -5525,6 +5650,7 @@ def run_pipeline(
         "module_dpi_verilator_execution_recipe": module_dpi_report["verilator_execution_recipe"],
         "module_dpi_verilator_execution_report": module_dpi_report["verilator_execution_report"],
         "module_dpi_readme_cycle_coverage": module_dpi_report["readme_cycle_coverage"],
+        "module_dpi_construction_ledger": module_dpi_report["construction_ledger"],
         "rtl_lowering": repo_rel(rtl_lowering_out),
         "rtl_lowering_status": rtl_lowering["status"],
         "full_tinyllama_checkpoint_execution": repo_rel(output_dir / "17_full_tinyllama_checkpoint_execution.json"),
@@ -5588,6 +5714,7 @@ def run_pipeline(
             "verilator_execution_report"
         ],
         "full_checkpoint_module_readme_cycle_coverage": full_checkpoint_module_dpi["readme_cycle_coverage"],
+        "full_checkpoint_module_construction_ledger": full_checkpoint_module_dpi["construction_ledger"],
         "full_checkpoint_module_dpi_status": full_checkpoint_module_dpi["status"],
         "full_checkpoint_module_dpi_count": full_checkpoint_module_dpi["module_count"],
         "full_graph_module_dpi_binding": repo_rel(full_graph_module_dpi_binding_out),

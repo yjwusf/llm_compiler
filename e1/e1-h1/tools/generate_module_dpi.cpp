@@ -552,8 +552,16 @@ std::string main_path(const ModuleSpec& spec) {
   return "e1/e1-h1/generated/module_dpi/" + spec.probe_module + "_main.cpp";
 }
 
+std::string probe_path(const ModuleSpec& spec) {
+  return "e1/e1-h1/generated/module_dpi/" + spec.probe_module + ".sv";
+}
+
 std::string scoreboard_path() {
   return "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp";
+}
+
+std::string construction_ledger_path() {
+  return "e1/e1-h1/generated/module_dpi/construction_ledger.json";
 }
 
 std::string obj_dir_name(const std::string& suite, const ModuleSpec& spec) {
@@ -660,6 +668,79 @@ std::string verilator_execution_recipe_json(const std::vector<ModuleSpec>& specs
   return out.str();
 }
 
+std::vector<std::string> phase_names(const ModuleSpec& spec) {
+  std::vector<std::string> phases;
+  for (const CycleStep& step : cycle_steps(spec)) {
+    phases.push_back(step.phase);
+  }
+  return phases;
+}
+
+std::string construction_ledger_json(const std::vector<ModuleSpec>& specs) {
+  std::ostringstream out;
+  out << "{\n";
+  out << "  \"schema\": \"e1-h1-module-dpi-construction-ledger-v0\",\n";
+  out << "  \"generator\": \"e1/e1-h1/tools/generate_module_dpi.cpp\",\n";
+  out << "  \"construction_rule\": \"cpp_module_specs_are_the_single_source_for_probe_flist_cycle_readme_and_verilator_recipe\",\n";
+  out << "  \"manifest\": \"e1/e1-h1/generated/module_dpi/manifest.json\",\n";
+  out << "  \"module_isolation_proof\": \"e1/e1-h1/generated/module_dpi/module_isolation.json\",\n";
+  out << "  \"cycle_contract\": \"e1/e1-h1/generated/module_dpi/cycle_contract.json\",\n";
+  out << "  \"module_test_plan\": \"e1/e1-h1/generated/module_dpi/module_test_plan.json\",\n";
+  out << "  \"verilator_execution_recipe\": \"e1/e1-h1/generated/module_dpi/verilator_execution_recipe.json\",\n";
+  out << "  \"readme_cycle_coverage\": \"e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json\",\n";
+  out << "  \"modules\": [\n";
+  for (std::size_t i = 0; i < specs.size(); ++i) {
+    const ModuleSpec& spec = specs[i];
+    const std::vector<CycleStep> steps = cycle_steps(spec);
+    out << "    {\n";
+    out << "      \"name\": \"" << spec.name << "\",\n";
+    out << "      \"source_record\": \"module_specs:" << spec.name << "\",\n";
+    out << "      \"top_module\": \"" << spec.top_module << "\",\n";
+    out << "      \"reference_module\": \"" << reference_module(spec) << "\",\n";
+    out << "      \"probe_module\": \"" << spec.probe_module << "\",\n";
+    out << "      \"probe\": \"" << probe_path(spec) << "\",\n";
+    out << "      \"main\": \"" << main_path(spec) << "\",\n";
+    out << "      \"flist\": \"" << flist_path(spec) << "\",\n";
+    out << "      \"scoreboard\": \"" << scoreboard_path() << "\",\n";
+    out << "      \"imp2_rtl\": \"" << spec.imp2_rtl << "\",\n";
+    out << "      \"latch_buffer\": " << (spec.latch_buffer ? "true" : "false") << ",\n";
+    out << "      \"cycle_template\": \"" << cycle_template_name(spec) << "\",\n";
+    out << "      \"cycle_period\": " << steps.size() << ",\n";
+    out << "      \"phase_source\": \"e1_h1_module_dpi_cycle\",\n";
+    write_string_array_json(out, "phase_names", phase_names(spec), "      ");
+    out << ",\n";
+    write_string_array_json(out, "vip_cases", spec.vip_cases, "      ");
+    out << ",\n";
+    write_string_array_json(
+        out,
+        "derived_artifacts",
+        {
+            probe_path(spec),
+            main_path(spec),
+            flist_path(spec),
+            scoreboard_path(),
+            "e1/e1-h1/generated/module_dpi/module_isolation.json",
+            "e1/e1-h1/generated/module_dpi/cycle_contract.json",
+            "e1/e1-h1/generated/module_dpi/module_test_plan.json",
+            "e1/e1-h1/generated/module_dpi/verilator_execution_recipe.json",
+            "e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json",
+        },
+        "      ");
+    out << ",\n";
+    out << "      \"checks\": [\n";
+    out << "        {\"name\": \"probe_emitted_from_cpp_spec\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"flist_emitted_from_cpp_spec\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"cycle_contract_emitted_from_cpp_spec\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"readme_cycle_coverage_validated_from_cpp_spec\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"verilator_recipe_emitted_from_cpp_spec\", \"status\": \"pass\"}\n";
+    out << "      ]\n";
+    out << "    }" << (i + 1 == specs.size() ? "\n" : ",\n");
+  }
+  out << "  ]\n";
+  out << "}\n";
+  return out.str();
+}
+
 std::string manifest_json(const std::vector<ModuleSpec>& specs) {
   std::ostringstream out;
   out << "{\n";
@@ -672,6 +753,7 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
   out << "  \"verilator_execution_recipe\": \"e1/e1-h1/generated/module_dpi/verilator_execution_recipe.json\",\n";
   out << "  \"verilator_execution_report\": \"e1/e1-h1/generated/module_dpi/verilator_execution_report.json\",\n";
   out << "  \"readme_cycle_coverage\": \"e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json\",\n";
+  out << "  \"construction_ledger\": \"" << construction_ledger_path() << "\",\n";
   out << "  \"reference_implementation\": \"imp1\",\n";
   out << "  \"candidate_implementation\": \"imp2\",\n";
   out << "  \"construction_rule\": \"one_generated_probe_per_ip_with_only_that_systemverilog_dut_and_cpp_dpi_neighbors\",\n";
@@ -700,6 +782,7 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
     out << "      \"verilator_execution_recipe\": \"e1/e1-h1/generated/module_dpi/verilator_execution_recipe.json\",\n";
     out << "      \"verilator_execution_report\": \"e1/e1-h1/generated/module_dpi/verilator_execution_report.json\",\n";
     out << "      \"readme_cycle_coverage\": \"e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json\",\n";
+    out << "      \"construction_ledger\": \"" << construction_ledger_path() << "\",\n";
     out << "      \"vip_cases\": [";
     for (std::size_t j = 0; j < spec.vip_cases.size(); ++j) {
       out << (j == 0 ? "" : ", ") << "\"" << spec.vip_cases[j] << "\"";
@@ -1321,6 +1404,7 @@ int main(int argc, char** argv) {
     write_text(output_dir / "module_test_plan.json", module_test_plan_json(specs));
     write_text(output_dir / "verilator_execution_recipe.json", verilator_execution_recipe_json(specs));
     write_text(output_dir / "readme_cycle_coverage.json", readme_cycle_coverage_json(specs));
+    write_text(output_dir / "construction_ledger.json", construction_ledger_json(specs));
 
     std::cout << "PASS e1_h1_generate_module_dpi " << specs.size()
               << " modules -> " << output_dir.generic_string() << "\n";

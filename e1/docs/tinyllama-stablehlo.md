@@ -106,7 +106,10 @@ README cycle diagrams, and that each module has a generated Verilator
 invocation. The C++ generator also emits
 `e1/e1-h1/generated/module_dpi/verilator_execution_recipe.json`, which owns the
 exact build command, obj-dir convention, run executable, and expected DPI
-markers for every module-only run. `e1/tools/run_module_dpi_verilator.py`
+markers for every module-only run, and
+`e1/e1-h1/generated/module_dpi/construction_ledger.json`, which ties each C++
+module spec to its generated probe, flist, cycle contract, README phase
+coverage, and Verilator recipe. `e1/tools/run_module_dpi_verilator.py`
 consumes that generated recipe with the test plan and emits
 `e1/e1-h1/generated/module_dpi/verilator_execution_report.json`, which records
 the actual module-only Verilator build/run result and observed DPI stdout
@@ -225,15 +228,20 @@ records the C++-generated commands and expected DPI markers consumed by the
 runner. The execution report
 `e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_report.json`
 records the actual Verilator build/run result for each generated module-only
-probe. This extends the module-only construction rule from the base E1-H1 IPs
-to the generated TinyLlama RTL modules.
+probe. The generated
+`e1/e1-h1/generated/full_checkpoint_dpi/construction_ledger.json` is the
+per-module source-of-truth ledger tying the C++ spec to probes, flists,
+interfaces, isolation, cycle phases, README coverage, and Verilator recipes.
+This extends the module-only construction rule from the base E1-H1 IPs to the
+generated TinyLlama RTL modules.
 
 `e1/generated/pipeline/27_full_graph_module_dpi_binding.json` then binds the
 full graph RTL proof to module-only verification. It requires the generated
 linear scheduler, tile engine, control scheduler, graph sequencer, slot
 engines, and full-checkpoint top to have passing module-DPI Verilator reports,
 and also requires the separated base `control_cpu`, `ingress_sram` latch
-buffer, and `systolic_array` modules to have passing module-only DPI reports.
+buffer, and `systolic_array` modules to have passing module-only DPI reports
+and passing C++ construction-ledger checks.
 
 ## Full Checkpoint Execution
 
