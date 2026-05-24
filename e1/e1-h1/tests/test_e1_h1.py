@@ -38,6 +38,9 @@ DPI_PROBE = E1_H1 / "dpi" / "e1_h1_imp_equiv_probe.sv"
 DPI_REF = E1_H1 / "dpi" / "e1_h1_imp1_reference.sv"
 DPI_SCOREBOARD = E1_H1 / "dpi" / "e1_h1_imp_equiv_dpi.cpp"
 DPI_MAIN = E1_H1 / "dpi" / "e1_h1_imp_equiv_main.cpp"
+MODULE_DPI_GENERATOR = E1_H1 / "tools" / "generate_module_dpi.cpp"
+MODULE_DPI_DIR = E1_H1 / "generated" / "module_dpi"
+MODULE_DPI_MANIFEST = MODULE_DPI_DIR / "manifest.json"
 
 
 def load_generator():
@@ -64,6 +67,24 @@ def run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
         check=True,
         **kwargs,
     )
+
+
+def regenerate_module_dpi(tmp_path: Path) -> subprocess.CompletedProcess[str]:
+    exe = tmp_path / "e1_h1_generate_module_dpi"
+    run([
+        "c++",
+        "-std=c++17",
+        str(MODULE_DPI_GENERATOR.relative_to(REPO_ROOT)),
+        "-o",
+        str(exe),
+    ])
+    return run([
+        str(exe),
+        "--repo-root",
+        str(REPO_ROOT),
+        "--output-dir",
+        str(MODULE_DPI_DIR),
+    ])
 
 
 def interface_signature_payload(interface: dict[str, object]) -> dict[str, object]:
@@ -260,6 +281,33 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual(dpi["scoreboard"], "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp", vip_path)
             self.assertTrue((REPO_ROOT / dpi["probe"]).exists(), vip_path)
             self.assertTrue((REPO_ROOT / dpi["scoreboard"]).exists(), vip_path)
+            self.assertEqual(dpi["module_generator"], "e1/e1-h1/tools/generate_module_dpi.cpp", vip_path)
+            self.assertEqual(dpi["module_manifest"], "e1/e1-h1/generated/module_dpi/manifest.json", vip_path)
+            self.assertEqual(
+                dpi["module_probe"],
+                f"e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_{ip['name']}.sv",
+                vip_path,
+            )
+            self.assertEqual(
+                dpi["module_main"],
+                f"e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_{ip['name']}_main.cpp",
+                vip_path,
+            )
+            self.assertEqual(dpi["module_flist"], f"e1/e1-h1/generated/module_dpi/flists/{ip['name']}.f", vip_path)
+            self.assertEqual(
+                dpi["module_scoreboard"],
+                "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+                vip_path,
+            )
+            for key in [
+                "module_generator",
+                "module_manifest",
+                "module_probe",
+                "module_main",
+                "module_flist",
+                "module_scoreboard",
+            ]:
+                self.assertTrue((REPO_ROOT / dpi[key]).exists(), (vip_path, key))
             self.assertEqual(dpi["stream_space"]["kind"], "sensible_bounded", vip_path)
             self.assertGreaterEqual(len(dpi["stream_space"]["cases"]), 3, vip_path)
 
@@ -329,6 +377,100 @@ class E1H1Tests(unittest.TestCase):
             ])
             run([str(obj_dir / "Ve1_h1_imp_equiv_probe")])
 
+    def test_module_dpi_generator_outputs_separated_probes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            result = regenerate_module_dpi(Path(tmp))
+        self.assertIn("PASS e1_h1_generate_module_dpi 6 modules", result.stdout)
+
+        manifest = json.loads(MODULE_DPI_MANIFEST.read_text(encoding="utf-8"))
+        self.assertEqual(manifest["schema"], "e1-h1-generated-module-dpi-v0")
+        self.assertEqual(manifest["generator"], "e1/e1-h1/tools/generate_module_dpi.cpp")
+        self.assertEqual(manifest["reference_implementation"], "imp1")
+        self.assertEqual(manifest["candidate_implementation"], "imp2")
+        self.assertEqual(manifest["scoreboard"], "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp")
+        self.assertIn("one_generated_probe_per_ip", manifest["construction_rule"])
+        self.assertIn("CPU command issue is tested without the systolic array RTL", manifest["separation_of_concerns"]["control_cpu"])
+        self.assertIn("The array is tested without CPU RTL", manifest["separation_of_concerns"]["systolic_array"])
+        self.assertIn("latched boundary", manifest["separation_of_concerns"]["ingress_sram"])
+
+        modules = {module["name"]: module for module in manifest["modules"]}
+        self.assertEqual(set(modules), {path.stem for path in IP_DIR.glob("*.json")})
+        self.assertEqual([name for name, module in modules.items() if module["latch_buffer"]], ["ingress_sram"])
+        for name, module in modules.items():
+            vip = json.loads((REPO_ROOT / f"e1/e1-h1/vip/{name}.json").read_text(encoding="utf-8"))
+            dpi = vip["dpi_equivalence"]
+            self.assertEqual(module["scope"], "module_only")
+            self.assertEqual(module["neighbors"], "cpp_dpi_environment")
+            self.assertEqual(module["probe"], dpi["module_probe"])
+            self.assertEqual(module["main"], dpi["module_main"])
+            self.assertEqual(module["flist"], dpi["module_flist"])
+            self.assertEqual(manifest["scoreboard"], dpi["module_scoreboard"])
+            self.assertEqual(module["vip_cases"], dpi["stream_space"]["cases"])
+            self.assertGreater(len(module["cycle_notes"]), 0, module)
+            self.assertTrue((REPO_ROOT / module["probe"]).exists(), module)
+            self.assertTrue((REPO_ROOT / module["main"]).exists(), module)
+            self.assertTrue((REPO_ROOT / module["flist"]).exists(), module)
+            flist = (REPO_ROOT / module["flist"]).read_text(encoding="utf-8").splitlines()
+            self.assertEqual(
+                flist,
+                [
+                    "e1/e1-h1/dpi/e1_h1_imp1_reference.sv",
+                    module["imp2_rtl"],
+                    module["probe"],
+                ],
+                module,
+            )
+            probe_text = (REPO_ROOT / module["probe"]).read_text(encoding="utf-8")
+            self.assertIn(f"module {module['probe_module']};", probe_text)
+            self.assertIn("e1_h1_module_dpi_begin", probe_text)
+            self.assertIn("e1_h1_module_dpi_cycle", probe_text)
+
+        control_probe = (REPO_ROOT / modules["control_cpu"]["probe"]).read_text(encoding="utf-8")
+        array_probe = (REPO_ROOT / modules["systolic_array"]["probe"]).read_text(encoding="utf-8")
+        buffer_probe = (REPO_ROOT / modules["ingress_sram"]["probe"]).read_text(encoding="utf-8")
+        self.assertNotIn("e1_h1_systolic_array", control_probe)
+        self.assertNotIn("e1_h1_control_cpu", array_probe)
+        self.assertNotIn("e1_h1_control_cpu", buffer_probe)
+        self.assertNotIn("e1_h1_systolic_array", buffer_probe)
+        self.assertIn("drive_latch_boundary", buffer_probe)
+        self.assertIn("sample_latched_output", buffer_probe)
+        self.assertIn("array_ready_i = (cycle >= 2);", buffer_probe)
+
+    def test_generated_module_dpi_probes_run_under_verilator(self) -> None:
+        verilator = shutil.which("verilator")
+        self.assertIsNotNone(verilator, "verilator is required for generated module DPI probes")
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            regenerate_module_dpi(tmp_path)
+            manifest = json.loads(MODULE_DPI_MANIFEST.read_text(encoding="utf-8"))
+            for module in manifest["modules"]:
+                with self.subTest(module=module["name"]):
+                    obj_dir = tmp_path / f"obj_{module['name']}"
+                    run([
+                        verilator,
+                        "--cc",
+                        "--exe",
+                        "--build",
+                        "--sv",
+                        "-Wall",
+                        "-Wno-DECLFILENAME",
+                        "-Wno-UNUSEDSIGNAL",
+                        "-Wno-UNUSEDPARAM",
+                        "-Wno-WIDTHEXPAND",
+                        "--timing",
+                        "--top-module",
+                        module["probe_module"],
+                        "-Mdir",
+                        str(obj_dir),
+                        "-f",
+                        module["flist"],
+                        manifest["scoreboard"],
+                        module["main"],
+                    ])
+                    result = run([str(obj_dir / f"V{module['probe_module']}")])
+                    self.assertIn(f"module={module['name']}", result.stdout)
+                    self.assertIn("E1_H1_MODULE_DPI_CYCLE", result.stdout)
+
     def test_implementation_matrix_and_flists_define_imp1_imp2(self) -> None:
         run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])
         matrix = json.loads(IMPLEMENTATION_MATRIX.read_text(encoding="utf-8"))
@@ -339,6 +481,12 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(matrix["dpi"]["probe"], "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv")
         self.assertEqual(matrix["dpi"]["scoreboard"], "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp")
         self.assertEqual(matrix["dpi"]["main"], "e1/e1-h1/dpi/e1_h1_imp_equiv_main.cpp")
+        self.assertEqual(matrix["dpi"]["module_generator"], "e1/e1-h1/tools/generate_module_dpi.cpp")
+        self.assertEqual(matrix["dpi"]["module_manifest"], "e1/e1-h1/generated/module_dpi/manifest.json")
+        self.assertEqual(
+            matrix["dpi"]["module_scoreboard"],
+            "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+        )
 
         target = json.loads((TARGETS / "manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(target["implementation_matrix"], "e1/e1-h1/generated/implementation_matrix.json")
@@ -371,6 +519,23 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual(entry["dpi_equivalence"]["reference"], "imp1")
             self.assertEqual(entry["dpi_equivalence"]["candidate"], "imp2")
             self.assertEqual(entry["dpi_equivalence"]["status"], "accepted")
+            self.assertEqual(entry["dpi_equivalence"]["module_generator"], matrix["dpi"]["module_generator"])
+            self.assertEqual(entry["dpi_equivalence"]["module_manifest"], matrix["dpi"]["module_manifest"])
+            self.assertEqual(entry["dpi_equivalence"]["module_scoreboard"], matrix["dpi"]["module_scoreboard"])
+            self.assertEqual(
+                entry["dpi_equivalence"]["module_probe"],
+                f"e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_{entry['name']}.sv",
+            )
+            self.assertEqual(
+                entry["dpi_equivalence"]["module_main"],
+                f"e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_{entry['name']}_main.cpp",
+            )
+            self.assertEqual(
+                entry["dpi_equivalence"]["module_flist"],
+                f"e1/e1-h1/generated/module_dpi/flists/{entry['name']}.f",
+            )
+            for key in ["module_probe", "module_main", "module_flist", "module_scoreboard"]:
+                self.assertTrue((REPO_ROOT / entry["dpi_equivalence"][key]).exists(), (entry["name"], key))
             imp1_flist = REPO_ROOT / entry["imp1"]["flist"]
             self.assertTrue(imp1_flist.exists(), imp1_flist)
             self.assertEqual(imp1_flist.read_text(encoding="utf-8").splitlines(), [entry["imp1"]["rtl"]])

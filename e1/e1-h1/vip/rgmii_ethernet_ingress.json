@@ -22,6 +22,12 @@
     "candidate_implementation": "imp2",
     "probe": "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv",
     "scoreboard": "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp",
+    "module_generator": "e1/e1-h1/tools/generate_module_dpi.cpp",
+    "module_manifest": "e1/e1-h1/generated/module_dpi/manifest.json",
+    "module_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_rgmii_ethernet_ingress.sv",
+    "module_scoreboard": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+    "module_main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_rgmii_ethernet_ingress_main.cpp",
+    "module_flist": "e1/e1-h1/generated/module_dpi/flists/rgmii_ethernet_ingress.f",
     "stream_space": {
       "kind": "sensible_bounded",
       "cases": [

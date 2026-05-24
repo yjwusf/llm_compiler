@@ -100,6 +100,8 @@ def emit_implementation_matrix(
     imp2_flists: dict[str, str] = {}
     entries: list[dict[str, Any]] = []
     active_implementations: list[str] = []
+    module_dpi_dir = "e1/e1-h1/generated/module_dpi"
+    module_dpi_scoreboard = f"{module_dpi_dir}/e1_h1_module_dpi_scoreboard.cpp"
 
     for ip in ip_manifests:
         scheme = implementation_scheme(ip)
@@ -163,6 +165,12 @@ def emit_implementation_matrix(
                     "candidate": "imp2",
                     "probe": "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv",
                     "scoreboard": "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp",
+                    "module_generator": "e1/e1-h1/tools/generate_module_dpi.cpp",
+                    "module_manifest": f"{module_dpi_dir}/manifest.json",
+                    "module_probe": f"{module_dpi_dir}/e1_h1_module_dpi_{ip['name']}.sv",
+                    "module_main": f"{module_dpi_dir}/e1_h1_module_dpi_{ip['name']}_main.cpp",
+                    "module_scoreboard": module_dpi_scoreboard,
+                    "module_flist": f"{module_dpi_dir}/flists/{ip['name']}.f",
                     "status": imp2["status"],
                 },
             }
@@ -187,6 +195,9 @@ def emit_implementation_matrix(
             "probe": "e1/e1-h1/dpi/e1_h1_imp_equiv_probe.sv",
             "scoreboard": "e1/e1-h1/dpi/e1_h1_imp_equiv_dpi.cpp",
             "main": "e1/e1-h1/dpi/e1_h1_imp_equiv_main.cpp",
+            "module_generator": "e1/e1-h1/tools/generate_module_dpi.cpp",
+            "module_manifest": f"{module_dpi_dir}/manifest.json",
+            "module_scoreboard": module_dpi_scoreboard,
         },
         "flists": {
             "active": repo_rel(active_flist),

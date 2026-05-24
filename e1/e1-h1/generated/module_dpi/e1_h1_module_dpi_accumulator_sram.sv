@@ -1,0 +1,61 @@
+`default_nettype none
+
+module e1_h1_module_dpi_accumulator_sram;
+  import "DPI-C" function void e1_h1_module_dpi_begin(input string module_name, input string vip_case);
+  import "DPI-C" function void e1_h1_module_dpi_cycle(input string module_name, input int cycle, input string phase);
+  import "DPI-C" function int e1_h1_module_dpi_compare_u32(
+    input string signal_name,
+    input int cycle,
+    input int imp1_value,
+    input int imp2_value
+  );
+
+  logic clk_i;
+  logic rst_ni;
+
+  e1_h1_imp1_config_sram_ref #(
+    .SIZE_BYTES(524288),
+    .DATA_WIDTH(256),
+    .BANKS(8)
+  ) u_imp1 (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni)
+  );
+
+  e1_h1_config_sram #(
+    .SIZE_BYTES(524288),
+    .DATA_WIDTH(256),
+    .BANKS(8)
+  ) u_imp2 (
+    .clk_i(clk_i),
+    .rst_ni(rst_ni)
+  );
+
+  task automatic tick;
+    clk_i = 1'b0; #1;
+    clk_i = 1'b1; #1;
+  endtask
+
+  task automatic check_initialized(input int cycle);
+    if (e1_h1_module_dpi_compare_u32("initialized_q", cycle, int'({31'd0, u_imp1.initialized_q}), int'({31'd0, u_imp2.initialized_q})) == 0) begin
+      $fatal(1, "accumulator_sram mismatch initialized_q cycle %0d", cycle);
+    end
+  endtask
+
+  initial begin
+    e1_h1_module_dpi_begin("accumulator_sram", "module_only_config_sram");
+    clk_i = 1'b0;
+    rst_ni = 1'b0;
+    tick();
+    check_initialized(-1);
+    rst_ni = 1'b1;
+    for (int cycle = 0; cycle < 3; cycle++) begin
+      e1_h1_module_dpi_cycle("accumulator_sram", cycle, "sample_initialized_latch");
+      tick();
+      check_initialized(cycle);
+    end
+    $finish;
+  end
+endmodule
+
+`default_nettype wire
