@@ -1,0 +1,113 @@
+{
+  "checks": [
+    {
+      "name": "full_checkpoint_plan_is_shape_complete",
+      "status": "planned"
+    },
+    {
+      "name": "command_stream_smoke",
+      "status": "pass"
+    },
+    {
+      "name": "all_linear_ops_have_tile_commands",
+      "status": "pass"
+    },
+    {
+      "name": "command_count_matches_plan",
+      "status": "pass"
+    }
+  ],
+  "commands_per_layer": 172032,
+  "full_checkpoint_graph_lowering": false,
+  "full_checkpoint_rtl_execution": false,
+  "header": "e1/code/program/e1_tinyllama_full_schedule.hpp",
+  "host_smoke": "e1/code/program/e1_tinyllama_full_schedule_smoke.cpp",
+  "layers": 22,
+  "linear_ops": [
+    {
+      "cols": 16,
+      "depth": 16,
+      "input_tiles": 128,
+      "input_width": 2048,
+      "name": "q_proj",
+      "output_tiles": 128,
+      "output_width": 2048,
+      "rows": 16
+    },
+    {
+      "cols": 16,
+      "depth": 16,
+      "input_tiles": 128,
+      "input_width": 2048,
+      "name": "k_proj",
+      "output_tiles": 16,
+      "output_width": 256,
+      "rows": 16
+    },
+    {
+      "cols": 16,
+      "depth": 16,
+      "input_tiles": 128,
+      "input_width": 2048,
+      "name": "v_proj",
+      "output_tiles": 16,
+      "output_width": 256,
+      "rows": 16
+    },
+    {
+      "cols": 16,
+      "depth": 16,
+      "input_tiles": 128,
+      "input_width": 2048,
+      "name": "o_proj",
+      "output_tiles": 128,
+      "output_width": 2048,
+      "rows": 16
+    },
+    {
+      "cols": 16,
+      "depth": 16,
+      "input_tiles": 128,
+      "input_width": 2048,
+      "name": "gate_proj",
+      "output_tiles": 352,
+      "output_width": 5632,
+      "rows": 16
+    },
+    {
+      "cols": 16,
+      "depth": 16,
+      "input_tiles": 128,
+      "input_width": 2048,
+      "name": "up_proj",
+      "output_tiles": 352,
+      "output_width": 5632,
+      "rows": 16
+    },
+    {
+      "cols": 16,
+      "depth": 16,
+      "input_tiles": 352,
+      "input_width": 5632,
+      "name": "down_proj",
+      "output_tiles": 128,
+      "output_width": 2048,
+      "rows": 16
+    }
+  ],
+  "model_id": "tinyllama-1.1b-chat-v1.0",
+  "schema": "e1-full-checkpoint-command-stream-v0",
+  "smoke": {
+    "commands_per_layer": 172032,
+    "first_input_addr": 16777216,
+    "last_output_addr": 827727808,
+    "layers": 22,
+    "linear_ops_per_layer": 7,
+    "schema": "e1-full-checkpoint-command-stream-smoke-v0",
+    "status": "pass",
+    "total_tile_commands": 3784704
+  },
+  "status": "pass",
+  "total_tile_commands": 3784704,
+  "truth_boundary": "compressed_tile_command_stream"
+}

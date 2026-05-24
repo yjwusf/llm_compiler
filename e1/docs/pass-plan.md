@@ -82,7 +82,12 @@ hardware and device code.
       TinyLlama layers to the CPU/control path, systolic array, SRAMs, Ethernet
       ingress, and latch buffer. This is a plan artifact and explicitly does
       not claim full checkpoint RTL execution.
-19. `e1_end_to_end_smoke`
+19. `e1_emit_full_checkpoint_command_stream`
+    - Input: full-checkpoint RTL lowering plan and E1-H1 array tile shape.
+    - Output: compact C++ tile-command stream descriptors for all planned
+      TinyLlama linear ops, plus a host smoke proving the command count and
+      boundary commands without unrolling millions of commands into source.
+20. `e1_end_to_end_smoke`
     - Input: all prior pass artifacts.
     - Output: one evidence report tying StableHLO, E1-H1 binding, device code,
       C++ chip model, generated SystemVerilog top, and target packages together.
@@ -106,6 +111,8 @@ E1 is complete when TinyLlama-derived reduced workloads can run through:
 - Full-checkpoint RTL lowering plan for the pinned TinyLlama layer inventory,
   with an explicit non-claim until full StableHLO export and RTL execution are
   proven.
+- Full-checkpoint compressed tile-command stream code that can enumerate the
+  planned systolic-array commands and pass a host smoke.
 - Implementation matrix showing active `imp2` candidates and `imp1` mock
   references.
 - Generated SystemVerilog mocks.

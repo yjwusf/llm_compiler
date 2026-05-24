@@ -920,6 +920,274 @@ def emit_full_checkpoint_rtl_lowering_plan(
     return plan
 
 
+def full_checkpoint_linear_ops(shape: dict[str, Any], rows: int, cols: int, depth: int) -> list[dict[str, Any]]:
+    hidden = int(shape["hidden_size"])
+    intermediate = int(shape["intermediate_size"])
+    heads = int(shape["num_attention_heads"])
+    kv_heads = int(shape["num_key_value_heads"])
+    head_dim = hidden // heads
+    kv_width = kv_heads * head_dim
+    ops = [
+        ("q_proj", hidden, hidden),
+        ("k_proj", hidden, kv_width),
+        ("v_proj", hidden, kv_width),
+        ("o_proj", hidden, hidden),
+        ("gate_proj", hidden, intermediate),
+        ("up_proj", hidden, intermediate),
+        ("down_proj", intermediate, hidden),
+    ]
+    return [
+        {
+            "name": name,
+            "input_width": input_width,
+            "output_width": output_width,
+            "input_tiles": ceil_div(input_width, depth),
+            "output_tiles": ceil_div(output_width, cols),
+            "rows": rows,
+            "cols": cols,
+            "depth": depth,
+        }
+        for name, input_width, output_width in ops
+    ]
+
+
+def emit_full_checkpoint_command_stream(
+    output_path: Path,
+    manifest: dict[str, Any],
+    architecture: dict[str, Any],
+    full_checkpoint_rtl_lowering: dict[str, Any],
+) -> dict[str, Any]:
+    shape = manifest["checkpoint_shape"]
+    array = architecture["accelerator"]
+    rows = int(array["rows"])
+    cols = int(array["cols"])
+    depth = rows
+    layers = int(shape["num_hidden_layers"])
+    linear_ops = full_checkpoint_linear_ops(shape, rows, cols, depth)
+    commands_per_layer = sum(op["input_tiles"] * op["output_tiles"] for op in linear_ops)
+    total_commands = layers * commands_per_layer
+
+    header_path = REPO_ROOT / "e1/code/program/e1_tinyllama_full_schedule.hpp"
+    smoke_path = REPO_ROOT / "e1/code/program/e1_tinyllama_full_schedule_smoke.cpp"
+
+    op_initializers = ",\n".join(
+        (
+            "    {"
+            f"\"{op['name']}\", {op['input_width']}u, {op['output_width']}u, "
+            f"{op['input_tiles']}u, {op['output_tiles']}u"
+            "}"
+        )
+        for op in linear_ops
+    )
+    write_text(
+        header_path,
+        f"""#ifndef E1_CODE_PROGRAM_E1_TINYLLAMA_FULL_SCHEDULE_HPP
+#define E1_CODE_PROGRAM_E1_TINYLLAMA_FULL_SCHEDULE_HPP
+
+#include <cstdint>
+
+namespace e1_device::tinyllama_full {{
+
+struct LinearOpPlan {{
+  const char* name;
+  std::uint32_t input_width;
+  std::uint32_t output_width;
+  std::uint32_t input_tiles;
+  std::uint32_t output_tiles;
+}};
+
+struct TileCommand {{
+  std::uint32_t input_addr;
+  std::uint32_t weight_addr;
+  std::uint32_t output_addr;
+  std::uint16_t rows;
+  std::uint16_t cols;
+  std::uint16_t depth;
+}};
+
+constexpr std::uint32_t kLayerCount = {layers}u;
+constexpr std::uint32_t kLinearOpCount = {len(linear_ops)}u;
+constexpr std::uint16_t kTileRows = {rows}u;
+constexpr std::uint16_t kTileCols = {cols}u;
+constexpr std::uint16_t kTileDepth = {depth}u;
+constexpr std::uint32_t kTileBytes = 64u;
+constexpr std::uint32_t kInputBase = 0x01000000u;
+constexpr std::uint32_t kWeightBase = 0x10000000u;
+constexpr std::uint32_t kOutputBase = 0x30000000u;
+constexpr std::uint32_t kLayerInputStride = 0x00100000u;
+constexpr std::uint32_t kLayerWeightStride = 0x01000000u;
+constexpr std::uint32_t kLayerOutputStride = 0x00100000u;
+constexpr std::uint32_t kOpInputStride = 0x00010000u;
+constexpr std::uint32_t kOpWeightStride = 0x00100000u;
+constexpr std::uint32_t kOpOutputStride = 0x00010000u;
+
+static constexpr LinearOpPlan kLinearOps[kLinearOpCount] = {{
+{op_initializers}
+}};
+
+inline std::uint64_t tile_count(const LinearOpPlan& op) {{
+  return static_cast<std::uint64_t>(op.input_tiles) *
+         static_cast<std::uint64_t>(op.output_tiles);
+}}
+
+inline std::uint64_t commands_per_layer() {{
+  std::uint64_t total = 0;
+  for (std::uint32_t op = 0; op < kLinearOpCount; ++op) {{
+    total += tile_count(kLinearOps[op]);
+  }}
+  return total;
+}}
+
+inline std::uint64_t total_tile_commands() {{
+  return static_cast<std::uint64_t>(kLayerCount) * commands_per_layer();
+}}
+
+inline TileCommand command_for(
+    std::uint32_t layer,
+    std::uint32_t op_index,
+    std::uint32_t input_tile,
+    std::uint32_t output_tile) {{
+  const LinearOpPlan& op = kLinearOps[op_index];
+  const std::uint32_t input_addr =
+      kInputBase + layer * kLayerInputStride + op_index * kOpInputStride +
+      input_tile * kTileBytes;
+  const std::uint32_t weight_addr =
+      kWeightBase + layer * kLayerWeightStride + op_index * kOpWeightStride +
+      (output_tile * op.input_tiles + input_tile) * kTileBytes;
+  const std::uint32_t output_addr =
+      kOutputBase + layer * kLayerOutputStride + op_index * kOpOutputStride +
+      output_tile * kTileBytes;
+  return {{
+      input_addr,
+      weight_addr,
+      output_addr,
+      kTileRows,
+      kTileCols,
+      kTileDepth,
+  }};
+}}
+
+}}  // namespace e1_device::tinyllama_full
+
+#endif  // E1_CODE_PROGRAM_E1_TINYLLAMA_FULL_SCHEDULE_HPP
+""",
+    )
+
+    first_op = linear_ops[0]
+    last_op_index = len(linear_ops) - 1
+    last_op = linear_ops[-1]
+    write_text(
+        smoke_path,
+        f"""#include "e1_tinyllama_full_schedule.hpp"
+
+#include <cstdint>
+#include <iostream>
+
+int main() {{
+  using namespace e1_device::tinyllama_full;
+
+  const TileCommand first = command_for(0, 0, 0, 0);
+  const TileCommand last = command_for(
+      kLayerCount - 1,
+      kLinearOpCount - 1,
+      kLinearOps[kLinearOpCount - 1].input_tiles - 1,
+      kLinearOps[kLinearOpCount - 1].output_tiles - 1);
+
+  const bool pass =
+      kLayerCount == {layers}u &&
+      kLinearOpCount == {len(linear_ops)}u &&
+      commands_per_layer() == {commands_per_layer}ull &&
+      total_tile_commands() == {total_commands}ull &&
+      kLinearOps[0].input_tiles == {first_op['input_tiles']}u &&
+      kLinearOps[0].output_tiles == {first_op['output_tiles']}u &&
+      kLinearOps[{last_op_index}].input_tiles == {last_op['input_tiles']}u &&
+      kLinearOps[{last_op_index}].output_tiles == {last_op['output_tiles']}u &&
+      first.input_addr == kInputBase &&
+      first.weight_addr == kWeightBase &&
+      first.output_addr == kOutputBase &&
+      first.rows == kTileRows &&
+      first.cols == kTileCols &&
+      first.depth == kTileDepth &&
+      last.rows == kTileRows &&
+      last.cols == kTileCols &&
+      last.depth == kTileDepth;
+
+  std::cout
+      << "{{\\n"
+      << "  \\"schema\\": \\"e1-full-checkpoint-command-stream-smoke-v0\\",\\n"
+      << "  \\"status\\": \\"" << (pass ? "pass" : "fail") << "\\",\\n"
+      << "  \\"layers\\": " << kLayerCount << ",\\n"
+      << "  \\"linear_ops_per_layer\\": " << kLinearOpCount << ",\\n"
+      << "  \\"commands_per_layer\\": " << commands_per_layer() << ",\\n"
+      << "  \\"total_tile_commands\\": " << total_tile_commands() << ",\\n"
+      << "  \\"first_input_addr\\": " << first.input_addr << ",\\n"
+      << "  \\"last_output_addr\\": " << last.output_addr << "\\n"
+      << "}}\\n";
+
+  return pass ? 0 : 1;
+}}
+""",
+    )
+
+    with tempfile.TemporaryDirectory() as tmp:
+        exe = Path(tmp) / "e1_tinyllama_full_schedule_smoke"
+        subprocess.run(
+            [
+                "c++",
+                "-std=c++17",
+                "-I",
+                "e1/code/program",
+                repo_rel(smoke_path),
+                "-o",
+                str(exe),
+            ],
+            cwd=REPO_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=True,
+        )
+        result = subprocess.run(
+            [str(exe)],
+            cwd=REPO_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=True,
+        )
+    smoke = json.loads(result.stdout)
+    checks = [
+        {"name": "full_checkpoint_plan_is_shape_complete", "status": full_checkpoint_rtl_lowering["status"]},
+        {"name": "command_stream_smoke", "status": smoke["status"]},
+        {
+            "name": "all_linear_ops_have_tile_commands",
+            "status": "pass" if all(op["input_tiles"] > 0 and op["output_tiles"] > 0 for op in linear_ops) else "fail",
+        },
+        {
+            "name": "command_count_matches_plan",
+            "status": "pass" if smoke["total_tile_commands"] == total_commands else "fail",
+        },
+    ]
+    report = {
+        "schema": "e1-full-checkpoint-command-stream-v0",
+        "status": "pass" if all(check["status"] in {"pass", "planned"} for check in checks) else "fail",
+        "model_id": manifest["model_id"],
+        "truth_boundary": "compressed_tile_command_stream",
+        "full_checkpoint_graph_lowering": False,
+        "full_checkpoint_rtl_execution": False,
+        "header": repo_rel(header_path),
+        "host_smoke": repo_rel(smoke_path),
+        "layers": layers,
+        "linear_ops": linear_ops,
+        "commands_per_layer": commands_per_layer,
+        "total_tile_commands": total_commands,
+        "smoke": smoke,
+        "checks": checks,
+    }
+    write_json(output_path, report)
+    return report
+
+
 def emit_tinyllama_imp2_coverage(
     output_path: Path,
     manifest: dict[str, Any],
@@ -1287,7 +1555,21 @@ def run_pipeline(
         }
     )
 
-    e2e_out = output_dir / "19_end_to_end_smoke.json"
+    full_checkpoint_command_stream_out = output_dir / "19_full_checkpoint_command_stream.json"
+    full_checkpoint_command_stream = emit_full_checkpoint_command_stream(
+        full_checkpoint_command_stream_out,
+        manifest,
+        architecture,
+        full_checkpoint_rtl_lowering,
+    )
+    passes.append(
+        {
+            "pass": "e1_emit_full_checkpoint_command_stream",
+            "artifact": repo_rel(full_checkpoint_command_stream_out),
+        }
+    )
+
+    e2e_out = output_dir / "20_end_to_end_smoke.json"
     target_manifest_path = "e1/e1-h1/generated/targets/manifest.json"
     generated_soc_top_exists = all(
         (REPO_ROOT / path).exists()
@@ -1349,6 +1631,10 @@ def run_pipeline(
             "name": "full_checkpoint_rtl_lowering_plan",
             "status": "pass" if full_checkpoint_rtl_lowering["status"] == "planned" else "fail",
         },
+        {
+            "name": "full_checkpoint_command_stream",
+            "status": full_checkpoint_command_stream["status"],
+        },
         {"name": "target_package", "status": "pass" if target_package_exists else "fail"},
     ]
     e2e = {
@@ -1392,6 +1678,9 @@ def run_pipeline(
         "full_checkpoint_rtl_lowering_plan": repo_rel(full_checkpoint_rtl_lowering_out),
         "full_checkpoint_rtl_lowering_status": full_checkpoint_rtl_lowering["status"],
         "full_checkpoint_graph_lowered_to_rtl": full_checkpoint_rtl_lowering["full_checkpoint_graph_lowering"],
+        "full_checkpoint_command_stream": repo_rel(full_checkpoint_command_stream_out),
+        "full_checkpoint_command_stream_status": full_checkpoint_command_stream["status"],
+        "full_checkpoint_total_tile_commands": full_checkpoint_command_stream["total_tile_commands"],
         "systemverilog_plan": repo_rel(sv_out),
         "generated_soc_top": soc_top_artifacts,
         "target_package_plan": repo_rel(target_out),
@@ -1423,6 +1712,9 @@ def run_pipeline(
         "full_checkpoint_rtl_lowering_plan": repo_rel(full_checkpoint_rtl_lowering_out),
         "full_checkpoint_rtl_lowering_status": full_checkpoint_rtl_lowering["status"],
         "full_checkpoint_graph_lowered_to_rtl": full_checkpoint_rtl_lowering["full_checkpoint_graph_lowering"],
+        "full_checkpoint_command_stream": repo_rel(full_checkpoint_command_stream_out),
+        "full_checkpoint_command_stream_status": full_checkpoint_command_stream["status"],
+        "full_checkpoint_total_tile_commands": full_checkpoint_command_stream["total_tile_commands"],
         "pipeline": architecture["pipeline"],
     }
     write_json(summary_out, summary)

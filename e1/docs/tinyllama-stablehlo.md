@@ -79,7 +79,8 @@ StableHLO fixture, not the full TinyLlama checkpoint. The pipeline emits:
 - `e1/generated/pipeline/16_tinyllama_imp2_coverage.json`
 - `e1/generated/pipeline/17_full_tinyllama_checkpoint_execution.json`
 - `e1/generated/pipeline/18_full_checkpoint_rtl_lowering_plan.json`
-- `e1/generated/pipeline/19_end_to_end_smoke.json`
+- `e1/generated/pipeline/19_full_checkpoint_command_stream.json`
+- `e1/generated/pipeline/20_end_to_end_smoke.json`
 
 The coverage artifact requires every StableHLO operation in
 `tinyllama_block.mlir` to bind to an accepted active `imp2` implementation and
@@ -102,6 +103,13 @@ control/elementwise pieces to the CPU/control path, using the generated
 module-DPI collateral as the construction proof boundary. It records
 `full_checkpoint_graph_lowering: false` until a real full StableHLO export and
 Verilator/hybrid RTL execution prove the whole graph.
+
+The full-checkpoint command-stream artifact emits
+`e1/code/program/e1_tinyllama_full_schedule.hpp` and
+`e1/code/program/e1_tinyllama_full_schedule_smoke.cpp`. The C++ schedule is a
+compressed descriptor for 3,784,704 planned systolic-array tile commands across
+22 layers; the smoke compiles and verifies the command count and first/last
+command boundaries.
 
 ## Full Checkpoint Execution
 

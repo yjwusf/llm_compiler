@@ -47,6 +47,10 @@
       "status": "pass"
     },
     {
+      "name": "full_checkpoint_command_stream",
+      "status": "pass"
+    },
+    {
       "name": "target_package",
       "status": "pass"
     }
@@ -63,9 +67,12 @@
     "run": "e1/generated/pipeline/07_device_program_run.json",
     "status": "pass"
   },
+  "full_checkpoint_command_stream": "e1/generated/pipeline/19_full_checkpoint_command_stream.json",
+  "full_checkpoint_command_stream_status": "pass",
   "full_checkpoint_graph_lowered_to_rtl": false,
   "full_checkpoint_rtl_lowering_plan": "e1/generated/pipeline/18_full_checkpoint_rtl_lowering_plan.json",
   "full_checkpoint_rtl_lowering_status": "planned",
+  "full_checkpoint_total_tile_commands": 3784704,
   "full_tinyllama_checkpoint_execution": "e1/generated/pipeline/17_full_tinyllama_checkpoint_execution.json",
   "full_tinyllama_checkpoint_execution_status": "missing_python_dependencies",
   "full_tinyllama_checkpoint_implemented": false,
