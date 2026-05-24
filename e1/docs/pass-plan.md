@@ -74,7 +74,15 @@ hardware and device code.
       Python dependencies instead of claiming execution. The same pass can be
       selected in `live` mode from the pipeline CLI when the checkpoint cache
       and dependencies are present.
-18. `e1_end_to_end_smoke`
+18. `e1_plan_full_checkpoint_rtl_lowering`
+    - Input: pinned checkpoint shape, active `imp2` implementation matrix,
+      module-DPI report, reduced-fixture RTL lowering report, and checkpoint
+      execution artifact.
+    - Output: a shape-complete full-checkpoint RTL lowering plan that maps all
+      TinyLlama layers to the CPU/control path, systolic array, SRAMs, Ethernet
+      ingress, and latch buffer. This is a plan artifact and explicitly does
+      not claim full checkpoint RTL execution.
+19. `e1_end_to_end_smoke`
     - Input: all prior pass artifacts.
     - Output: one evidence report tying StableHLO, E1-H1 binding, device code,
       C++ chip model, generated SystemVerilog top, and target packages together.
@@ -95,6 +103,9 @@ E1 is complete when TinyLlama-derived reduced workloads can run through:
 - C++-generated module-DPI probes and per-module Verilator runs.
 - RTL lowering evidence that maps StableHLO fixture operations to active `imp2`
   RTL and the documented cycle/latch schedule.
+- Full-checkpoint RTL lowering plan for the pinned TinyLlama layer inventory,
+  with an explicit non-claim until full StableHLO export and RTL execution are
+  proven.
 - Implementation matrix showing active `imp2` candidates and `imp1` mock
   references.
 - Generated SystemVerilog mocks.

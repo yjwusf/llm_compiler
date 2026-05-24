@@ -856,21 +856,27 @@ class E1H1Tests(unittest.TestCase):
 
     def test_e1_pipeline_generates_e1_h1_artifacts(self) -> None:
         result = run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])
-        self.assertIn("PASS e1_pipeline 18 passes", result.stdout)
+        self.assertIn("PASS e1_pipeline 19 passes", result.stdout)
 
         summary = json.loads((E1_PIPELINE_OUT / "summary.json").read_text(encoding="utf-8"))
         self.assertEqual(summary["schema"], "e1-pipeline-summary-v0")
         self.assertEqual(summary["model_id"], "tinyllama-1.1b-chat-v1.0")
         self.assertEqual(summary["architecture_id"], "e1-h1")
-        self.assertEqual(summary["pass_count"], 18)
+        self.assertEqual(summary["pass_count"], 19)
         self.assertEqual(summary["operation_counts"]["dot_general"], 6)
         self.assertTrue(summary["all_current_modules_have_l1_5_harnesses"])
         self.assertEqual(summary["generated_top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
-        self.assertEqual(summary["end_to_end_smoke"], "e1/generated/pipeline/18_end_to_end_smoke.json")
+        self.assertEqual(summary["end_to_end_smoke"], "e1/generated/pipeline/19_end_to_end_smoke.json")
         self.assertEqual(summary["end_to_end_status"], "pass")
         self.assertEqual(summary["module_dpi_generation"], "e1/generated/pipeline/12_module_dpi_generation.json")
         self.assertEqual(summary["rtl_lowering"], "e1/generated/pipeline/15_rtl_lowering.json")
         self.assertEqual(summary["rtl_lowering_status"], "pass")
+        self.assertEqual(
+            summary["full_checkpoint_rtl_lowering_plan"],
+            "e1/generated/pipeline/18_full_checkpoint_rtl_lowering_plan.json",
+        )
+        self.assertEqual(summary["full_checkpoint_rtl_lowering_status"], "planned")
+        self.assertFalse(summary["full_checkpoint_graph_lowered_to_rtl"])
         self.assertEqual(
             summary["full_tinyllama_checkpoint_execution"],
             "e1/generated/pipeline/17_full_tinyllama_checkpoint_execution.json",
@@ -902,6 +908,7 @@ class E1H1Tests(unittest.TestCase):
             "e1_lower_to_rtl",
             "e1_check_tinyllama_imp2_coverage",
             "e1_run_full_tinyllama_checkpoint",
+            "e1_plan_full_checkpoint_rtl_lowering",
             "e1_end_to_end_smoke",
         ]
         self.assertEqual([entry["pass"] for entry in summary["passes"]], expected_passes)
@@ -950,6 +957,14 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(fetch["source"]["revision"], "2539c747f7b95a4dac517d6620f2244efdca3543")
         self.assertEqual(fetch["command"][:4], ["hf", "download", "TinyLlama/TinyLlama-1.1B-Chat-v1.0", "--revision"])
         self.assertFalse(fetch["large_artifacts_committed"])
+
+        model_manifest = json.loads((E1_PIPELINE_OUT / "00_model_manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual(model_manifest["checkpoint_shape"]["model_type"], "llama")
+        self.assertEqual(model_manifest["checkpoint_shape"]["num_hidden_layers"], 22)
+        self.assertEqual(model_manifest["checkpoint_shape"]["hidden_size"], 2048)
+        self.assertEqual(model_manifest["checkpoint_shape"]["intermediate_size"], 5632)
+        self.assertEqual(model_manifest["checkpoint_shape"]["num_attention_heads"], 32)
+        self.assertEqual(model_manifest["checkpoint_shape"]["num_key_value_heads"], 4)
 
         export = json.loads((E1_PIPELINE_OUT / "02_stablehlo_export.json").read_text(encoding="utf-8"))
         self.assertEqual(export["schema"], "e1-stablehlo-export-report-v0")
@@ -1134,7 +1149,39 @@ class E1H1Tests(unittest.TestCase):
                 full_checkpoint,
             )
 
-        e2e = json.loads((E1_PIPELINE_OUT / "18_end_to_end_smoke.json").read_text(encoding="utf-8"))
+        full_checkpoint_rtl = json.loads(
+            (E1_PIPELINE_OUT / "18_full_checkpoint_rtl_lowering_plan.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(full_checkpoint_rtl["schema"], "e1-full-checkpoint-rtl-lowering-plan-v0")
+        self.assertEqual(full_checkpoint_rtl["status"], "planned")
+        self.assertEqual(full_checkpoint_rtl["model_id"], summary["model_id"])
+        self.assertFalse(full_checkpoint_rtl["full_checkpoint_graph_lowering"])
+        self.assertFalse(full_checkpoint_rtl["full_checkpoint_rtl_execution"])
+        self.assertEqual(full_checkpoint_rtl["truth_boundary"], "shape_complete_layer_plan_only")
+        self.assertEqual(full_checkpoint_rtl["checkpoint_shape"]["num_hidden_layers"], 22)
+        self.assertEqual(full_checkpoint_rtl["head_dim"], 64)
+        self.assertEqual(full_checkpoint_rtl["kv_projection_width"], 256)
+        self.assertEqual(full_checkpoint_rtl["aggregate"]["layers"], 22)
+        self.assertEqual(full_checkpoint_rtl["aggregate"]["linear_ops_per_layer"], 7)
+        self.assertEqual(full_checkpoint_rtl["aggregate"]["control_ops_per_layer"], 7)
+        self.assertEqual(full_checkpoint_rtl["aggregate"]["total_linear_ops"], 154)
+        self.assertEqual(full_checkpoint_rtl["aggregate"]["total_control_ops"], 154)
+        self.assertEqual(full_checkpoint_rtl["aggregate"]["module_dpi_manifest"], module_dpi_report["manifest"])
+        self.assertEqual(full_checkpoint_rtl["aggregate"]["reduced_fixture_rtl_lowering"], "e1/generated/pipeline/15_rtl_lowering.json")
+        self.assertEqual({check["status"] for check in full_checkpoint_rtl["construction_checks"]}, {"pass"})
+        self.assertEqual(len(full_checkpoint_rtl["layers"]), 22)
+        first_layer = full_checkpoint_rtl["layers"][0]
+        self.assertEqual(first_layer["layer"], 0)
+        self.assertEqual(len(first_layer["ops"]), 14)
+        self.assertEqual(
+            [op["name"] for op in first_layer["ops"] if op["kind"] == "linear"],
+            ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        )
+        self.assertEqual({op["ip"] for op in first_layer["ops"] if op["kind"] == "linear"}, {"systolic_array"})
+        self.assertEqual({op["ip"] for op in first_layer["ops"] if op["kind"] != "linear"}, {"control_cpu"})
+        self.assertGreater(len(full_checkpoint_rtl["remaining_to_execute_full_rtl"]), 0)
+
+        e2e = json.loads((E1_PIPELINE_OUT / "19_end_to_end_smoke.json").read_text(encoding="utf-8"))
         self.assertEqual(e2e["schema"], "e1-end-to-end-smoke-v0")
         self.assertEqual(e2e["status"], "pass")
         self.assertEqual(e2e["model_id"], summary["model_id"])
@@ -1164,6 +1211,12 @@ class E1H1Tests(unittest.TestCase):
             full_checkpoint["status"],
         )
         self.assertFalse(e2e["full_tinyllama_checkpoint_implemented"])
+        self.assertEqual(
+            e2e["full_checkpoint_rtl_lowering_plan"],
+            "e1/generated/pipeline/18_full_checkpoint_rtl_lowering_plan.json",
+        )
+        self.assertEqual(e2e["full_checkpoint_rtl_lowering_status"], "planned")
+        self.assertFalse(e2e["full_checkpoint_graph_lowered_to_rtl"])
         self.assertEqual(e2e["target_package"], "e1/e1-h1/generated/targets/manifest.json")
         self.assertIn("full_tinyllama_checkpoint", {check["name"] for check in e2e["checks"]})
         self.assertEqual({check["status"] for check in e2e["checks"]}, {"pass"})
@@ -1180,6 +1233,7 @@ class E1H1Tests(unittest.TestCase):
                 "rtl_lowering",
                 "tinyllama_imp2_coverage",
                 "full_tinyllama_checkpoint",
+                "full_checkpoint_rtl_lowering_plan",
                 "target_package",
             },
         )
@@ -1203,6 +1257,7 @@ class E1H1Tests(unittest.TestCase):
             e2e["rtl_lowering"],
             e2e["tinyllama_imp2_coverage"],
             e2e["full_tinyllama_checkpoint_execution"],
+            e2e["full_checkpoint_rtl_lowering_plan"],
             e2e["systemverilog_plan"],
             e2e["target_package_plan"],
             e2e["target_package"],

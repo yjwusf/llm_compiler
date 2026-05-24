@@ -11,6 +11,18 @@
     "command": "hf download TinyLlama/TinyLlama-1.1B-Chat-v1.0 --revision 2539c747f7b95a4dac517d6620f2244efdca3543 --local-dir .cache/e1/tinyllama-1.1b-chat-v1.0",
     "large_artifacts_committed": false
   },
+  "checkpoint_shape": {
+    "source": "pinned_huggingface_config",
+    "model_type": "llama",
+    "hidden_size": 2048,
+    "intermediate_size": 5632,
+    "max_position_embeddings": 2048,
+    "num_attention_heads": 32,
+    "num_hidden_layers": 22,
+    "num_key_value_heads": 4,
+    "torch_dtype": "bfloat16",
+    "vocab_size": 32000
+  },
   "frontend": {
     "target_ir": "stablehlo",
     "fixture": "e1/fixtures/stablehlo/tinyllama_block.mlir"

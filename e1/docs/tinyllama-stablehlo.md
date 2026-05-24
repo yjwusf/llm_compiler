@@ -78,7 +78,8 @@ StableHLO fixture, not the full TinyLlama checkpoint. The pipeline emits:
 - `e1/generated/pipeline/15_rtl_lowering.json`
 - `e1/generated/pipeline/16_tinyllama_imp2_coverage.json`
 - `e1/generated/pipeline/17_full_tinyllama_checkpoint_execution.json`
-- `e1/generated/pipeline/18_end_to_end_smoke.json`
+- `e1/generated/pipeline/18_full_checkpoint_rtl_lowering_plan.json`
+- `e1/generated/pipeline/19_end_to_end_smoke.json`
 
 The coverage artifact requires every StableHLO operation in
 `tinyllama_block.mlir` to bind to an accepted active `imp2` implementation and
@@ -92,6 +93,15 @@ It also records the cycle schedule and latch-buffer checks from
 `e1/e1-h1/docs/modules/README.md`. This is a construction check for the reduced
 fixture path, not a claim that the entire TinyLlama checkpoint graph has already
 been lowered to RTL.
+
+The full-checkpoint RTL lowering plan uses the pinned TinyLlama config shape
+from `e1/model/tinyllama_manifest.json`: 22 layers, hidden width 2048,
+intermediate width 5632, 32 attention heads, 4 KV heads, and bfloat16 weights.
+It maps every layer's linear projections to the systolic array and the
+control/elementwise pieces to the CPU/control path, using the generated
+module-DPI collateral as the construction proof boundary. It records
+`full_checkpoint_graph_lowering: false` until a real full StableHLO export and
+Verilator/hybrid RTL execution prove the whole graph.
 
 ## Full Checkpoint Execution
 

@@ -31,3 +31,5 @@ when the pinned checkpoint cache is present.
   `imp2` as the active candidate RTL after Verilator+DPI VIP equivalence.
 - RTL lowering evidence must point at generated module-DPI probes and the
   cycle/latch diagram in `e1/e1-h1/docs/modules/README.md`.
+- Full-checkpoint RTL lowering plans must preserve the distinction between a
+  shape-complete plan and proven full checkpoint RTL execution.

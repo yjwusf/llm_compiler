@@ -1,0 +1,5285 @@
+{
+  "aggregate": {
+    "control_ops_per_layer": 7,
+    "layers": 22,
+    "linear_ops_per_layer": 7,
+    "module_dpi_manifest": "e1/e1-h1/generated/module_dpi/manifest.json",
+    "reduced_fixture_rtl_lowering": "e1/generated/pipeline/15_rtl_lowering.json",
+    "required_modules": [
+      "control_cpu",
+      "rgmii_ethernet_ingress",
+      "ingress_sram",
+      "activation_sram",
+      "accumulator_sram",
+      "systolic_array"
+    ],
+    "total_control_ops": 154,
+    "total_linear_ops": 154
+  },
+  "architecture_id": "e1-h1",
+  "array_tile_shape": {
+    "accumulator_width": 32,
+    "cols": 16,
+    "data_width": 16,
+    "depth": 16,
+    "rows": 16
+  },
+  "checkpoint_shape": {
+    "hidden_size": 2048,
+    "intermediate_size": 5632,
+    "max_position_embeddings": 2048,
+    "model_type": "llama",
+    "num_attention_heads": 32,
+    "num_hidden_layers": 22,
+    "num_key_value_heads": 4,
+    "source": "pinned_huggingface_config",
+    "torch_dtype": "bfloat16",
+    "vocab_size": 32000
+  },
+  "construction_checks": [
+    {
+      "name": "checkpoint_shape_present",
+      "status": "pass"
+    },
+    {
+      "name": "all_required_modules_have_module_dpi",
+      "status": "pass"
+    },
+    {
+      "name": "linear_ops_map_to_systolic_array",
+      "status": "pass"
+    },
+    {
+      "name": "control_ops_map_to_cpu",
+      "status": "pass"
+    },
+    {
+      "name": "latch_buffer_available",
+      "status": "pass"
+    },
+    {
+      "name": "reduced_fixture_rtl_lowering_passed",
+      "status": "pass"
+    },
+    {
+      "name": "checkpoint_execution_artifact_present",
+      "status": "pass"
+    }
+  ],
+  "full_checkpoint_graph_lowering": false,
+  "full_checkpoint_rtl_execution": false,
+  "head_dim": 64,
+  "kv_projection_width": 256,
+  "layers": [
+    {
+      "layer": 0,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    },
+    {
+      "layer": 1,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    },
+    {
+      "layer": 2,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    },
+    {
+      "layer": 3,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    },
+    {
+      "layer": 4,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    },
+    {
+      "layer": 5,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    },
+    {
+      "layer": 6,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    },
+    {
+      "layer": 7,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    },
+    {
+      "layer": 8,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    },
+    {
+      "layer": 9,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    },
+    {
+      "layer": 10,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    },
+    {
+      "layer": 11,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    },
+    {
+      "layer": 12,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    },
+    {
+      "layer": 13,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    },
+    {
+      "layer": 14,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    },
+    {
+      "layer": 15,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    },
+    {
+      "layer": 16,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    },
+    {
+      "layer": 17,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    },
+    {
+      "layer": 18,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    },
+    {
+      "layer": 19,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    },
+    {
+      "layer": 20,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    },
+    {
+      "layer": 21,
+      "ops": [
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "input_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "q_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "k_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "v_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            256
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 16
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rope",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "rope_qk",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "attention_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "attention_scores_softmax",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "o_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "rms_norm",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_attention_rms_norm",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "gate_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "up_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            2048,
+            5632
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 128,
+            "output_tiles": 352
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "activation_control",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "silu_gate_multiply",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        },
+        {
+          "ip": "systolic_array",
+          "kind": "linear",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "name": "down_proj",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl",
+          "tile_shape": {
+            "cols": 16,
+            "depth": 16,
+            "rows": 16
+          },
+          "weight_shape": [
+            5632,
+            2048
+          ],
+          "weight_tile_grid": {
+            "input_tiles": 352,
+            "output_tiles": 128
+          }
+        },
+        {
+          "ip": "control_cpu",
+          "kind": "residual_add",
+          "module_dpi_probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "name": "post_mlp_residual",
+          "rtl_files": [
+            "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
+          ],
+          "status": "planned_with_active_imp2_rtl"
+        }
+      ]
+    }
+  ],
+  "model_id": "tinyllama-1.1b-chat-v1.0",
+  "note": "This plans the full TinyLlama checkpoint layer inventory against active imp2 RTL modules and module-DPI proof collateral. It does not yet prove full StableHLO export, full op legalization, or full RTL execution of the checkpoint graph.",
+  "remaining_to_execute_full_rtl": [
+    "Export the full checkpoint graph to StableHLO instead of using only the checked-in reduced fixture.",
+    "Legalize full Llama ops including RMSNorm, RoPE, attention softmax, cache updates, and SiLU multiply into explicit CPU/control and systolic-array schedules.",
+    "Allocate all checkpoint weights and KV/cache tensors across the configurable SRAM hierarchy and Ethernet ingress stream.",
+    "Generate full device code that emits every layer command sequence, not only the first tile smoke.",
+    "Run generated full-graph RTL or hybrid RTL/C++ execution under Verilator and compare against the checkpoint source-of-truth output."
+  ],
+  "schema": "e1-full-checkpoint-rtl-lowering-plan-v0",
+  "source": {
+    "kind": "huggingface",
+    "repo": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+    "revision": "2539c747f7b95a4dac517d6620f2244efdca3543",
+    "url": "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+  },
+  "status": "planned",
+  "truth_boundary": "shape_complete_layer_plan_only"
+}

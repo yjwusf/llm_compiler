@@ -72,6 +72,10 @@ def unique_ordered(values: list[str]) -> list[str]:
     return ordered
 
 
+def ceil_div(numerator: int, denominator: int) -> int:
+    return (numerator + denominator - 1) // denominator
+
+
 def implementation_scheme(ip: dict[str, Any]) -> dict[str, Any]:
     scheme = ip.get("implementation_scheme")
     if not isinstance(scheme, dict):
@@ -743,6 +747,179 @@ def emit_rtl_lowering(
     return lowering
 
 
+def emit_full_checkpoint_rtl_lowering_plan(
+    output_path: Path,
+    manifest: dict[str, Any],
+    architecture: dict[str, Any],
+    implementation_matrix: dict[str, Any],
+    module_dpi_report: dict[str, Any],
+    rtl_lowering: dict[str, Any],
+    full_checkpoint_execution: dict[str, Any],
+) -> dict[str, Any]:
+    shape = manifest["checkpoint_shape"]
+    array = architecture["accelerator"]
+    rows = int(array["rows"])
+    cols = int(array["cols"])
+    depth = rows
+    hidden = int(shape["hidden_size"])
+    intermediate = int(shape["intermediate_size"])
+    layers = int(shape["num_hidden_layers"])
+    heads = int(shape["num_attention_heads"])
+    kv_heads = int(shape["num_key_value_heads"])
+    head_dim = hidden // heads
+    kv_width = kv_heads * head_dim
+
+    module_dpi_by_name = {module["name"]: module for module in module_dpi_report["modules"]}
+    ips_by_name = {entry["name"]: entry for entry in implementation_matrix["ips"]}
+
+    def linear_op(name: str, input_width: int, output_width: int) -> dict[str, Any]:
+        return {
+            "name": name,
+            "kind": "linear",
+            "ip": "systolic_array",
+            "rtl_files": ips_by_name["systolic_array"]["imp2"]["rtl_files"],
+            "module_dpi_probe": module_dpi_by_name["systolic_array"]["probe"],
+            "weight_shape": [input_width, output_width],
+            "tile_shape": {
+                "rows": rows,
+                "cols": cols,
+                "depth": depth,
+            },
+            "weight_tile_grid": {
+                "input_tiles": ceil_div(input_width, depth),
+                "output_tiles": ceil_div(output_width, cols),
+            },
+            "status": "planned_with_active_imp2_rtl",
+        }
+
+    def control_op(name: str, kind: str) -> dict[str, Any]:
+        return {
+            "name": name,
+            "kind": kind,
+            "ip": "control_cpu",
+            "rtl_files": ips_by_name["control_cpu"]["imp2"]["rtl_files"],
+            "module_dpi_probe": module_dpi_by_name["control_cpu"]["probe"],
+            "status": "planned_with_active_imp2_rtl",
+        }
+
+    layer_template = [
+        control_op("input_rms_norm", "rms_norm"),
+        linear_op("q_proj", hidden, hidden),
+        linear_op("k_proj", hidden, kv_width),
+        linear_op("v_proj", hidden, kv_width),
+        control_op("rope_qk", "rope"),
+        control_op("attention_scores_softmax", "attention_control"),
+        linear_op("o_proj", hidden, hidden),
+        control_op("post_attention_residual", "residual_add"),
+        control_op("post_attention_rms_norm", "rms_norm"),
+        linear_op("gate_proj", hidden, intermediate),
+        linear_op("up_proj", hidden, intermediate),
+        control_op("silu_gate_multiply", "activation_control"),
+        linear_op("down_proj", intermediate, hidden),
+        control_op("post_mlp_residual", "residual_add"),
+    ]
+    layers_planned = [
+        {
+            "layer": index,
+            "ops": layer_template,
+        }
+        for index in range(layers)
+    ]
+
+    linear_ops_per_layer = sum(1 for op in layer_template if op["kind"] == "linear")
+    control_ops_per_layer = len(layer_template) - linear_ops_per_layer
+    required_module_names = [
+        "control_cpu",
+        "rgmii_ethernet_ingress",
+        "ingress_sram",
+        "activation_sram",
+        "accumulator_sram",
+        "systolic_array",
+    ]
+    checks = [
+        {
+            "name": "checkpoint_shape_present",
+            "status": "pass" if shape["model_type"] == "llama" and layers > 0 and hidden > 0 else "fail",
+        },
+        {
+            "name": "all_required_modules_have_module_dpi",
+            "status": "pass" if all(name in module_dpi_by_name for name in required_module_names) else "fail",
+        },
+        {
+            "name": "linear_ops_map_to_systolic_array",
+            "status": "pass"
+            if all(op["ip"] == "systolic_array" for op in layer_template if op["kind"] == "linear")
+            else "fail",
+        },
+        {
+            "name": "control_ops_map_to_cpu",
+            "status": "pass"
+            if all(op["ip"] == "control_cpu" for op in layer_template if op["kind"] != "linear")
+            else "fail",
+        },
+        {
+            "name": "latch_buffer_available",
+            "status": "pass" if module_dpi_by_name["ingress_sram"]["latch_buffer"] else "fail",
+        },
+        {
+            "name": "reduced_fixture_rtl_lowering_passed",
+            "status": rtl_lowering["status"],
+        },
+        {
+            "name": "checkpoint_execution_artifact_present",
+            "status": "pass" if full_checkpoint_execution["status"] in {
+                "pass",
+                "ready",
+                "missing_python_dependencies",
+                "missing_checkpoint_cache",
+                "missing_checkpoint_files",
+            } else "fail",
+        },
+    ]
+    plan = {
+        "schema": "e1-full-checkpoint-rtl-lowering-plan-v0",
+        "status": "planned" if all(check["status"] == "pass" for check in checks) else "incomplete",
+        "model_id": manifest["model_id"],
+        "source": manifest["source"],
+        "checkpoint_shape": shape,
+        "architecture_id": architecture["architecture_id"],
+        "full_checkpoint_graph_lowering": False,
+        "full_checkpoint_rtl_execution": False,
+        "truth_boundary": "shape_complete_layer_plan_only",
+        "note": "This plans the full TinyLlama checkpoint layer inventory against active imp2 RTL modules and module-DPI proof collateral. It does not yet prove full StableHLO export, full op legalization, or full RTL execution of the checkpoint graph.",
+        "array_tile_shape": {
+            "rows": rows,
+            "cols": cols,
+            "depth": depth,
+            "data_width": array["data_width"],
+            "accumulator_width": array["accumulator_width"],
+        },
+        "head_dim": head_dim,
+        "kv_projection_width": kv_width,
+        "layers": layers_planned,
+        "aggregate": {
+            "layers": layers,
+            "linear_ops_per_layer": linear_ops_per_layer,
+            "control_ops_per_layer": control_ops_per_layer,
+            "total_linear_ops": layers * linear_ops_per_layer,
+            "total_control_ops": layers * control_ops_per_layer,
+            "required_modules": required_module_names,
+            "module_dpi_manifest": module_dpi_report["manifest"],
+            "reduced_fixture_rtl_lowering": "e1/generated/pipeline/15_rtl_lowering.json",
+        },
+        "construction_checks": checks,
+        "remaining_to_execute_full_rtl": [
+            "Export the full checkpoint graph to StableHLO instead of using only the checked-in reduced fixture.",
+            "Legalize full Llama ops including RMSNorm, RoPE, attention softmax, cache updates, and SiLU multiply into explicit CPU/control and systolic-array schedules.",
+            "Allocate all checkpoint weights and KV/cache tensors across the configurable SRAM hierarchy and Ethernet ingress stream.",
+            "Generate full device code that emits every layer command sequence, not only the first tile smoke.",
+            "Run generated full-graph RTL or hybrid RTL/C++ execution under Verilator and compare against the checkpoint source-of-truth output.",
+        ],
+    }
+    write_json(output_path, plan)
+    return plan
+
+
 def emit_tinyllama_imp2_coverage(
     output_path: Path,
     manifest: dict[str, Any],
@@ -1093,7 +1270,24 @@ def run_pipeline(
         }
     )
 
-    e2e_out = output_dir / "18_end_to_end_smoke.json"
+    full_checkpoint_rtl_lowering_out = output_dir / "18_full_checkpoint_rtl_lowering_plan.json"
+    full_checkpoint_rtl_lowering = emit_full_checkpoint_rtl_lowering_plan(
+        full_checkpoint_rtl_lowering_out,
+        manifest,
+        architecture,
+        implementation_matrix,
+        module_dpi_report,
+        rtl_lowering,
+        full_checkpoint_execution,
+    )
+    passes.append(
+        {
+            "pass": "e1_plan_full_checkpoint_rtl_lowering",
+            "artifact": repo_rel(full_checkpoint_rtl_lowering_out),
+        }
+    )
+
+    e2e_out = output_dir / "19_end_to_end_smoke.json"
     target_manifest_path = "e1/e1-h1/generated/targets/manifest.json"
     generated_soc_top_exists = all(
         (REPO_ROOT / path).exists()
@@ -1151,6 +1345,10 @@ def run_pipeline(
         {"name": "rtl_lowering", "status": rtl_lowering["status"]},
         {"name": "tinyllama_imp2_coverage", "status": tinyllama_coverage["status"]},
         {"name": "full_tinyllama_checkpoint", "status": "pass" if checkpoint_check_passes else "fail"},
+        {
+            "name": "full_checkpoint_rtl_lowering_plan",
+            "status": "pass" if full_checkpoint_rtl_lowering["status"] == "planned" else "fail",
+        },
         {"name": "target_package", "status": "pass" if target_package_exists else "fail"},
     ]
     e2e = {
@@ -1191,6 +1389,9 @@ def run_pipeline(
         "full_tinyllama_checkpoint_execution": repo_rel(output_dir / "17_full_tinyllama_checkpoint_execution.json"),
         "full_tinyllama_checkpoint_execution_status": full_checkpoint_execution["status"],
         "full_tinyllama_checkpoint_implemented": full_checkpoint_execution["full_checkpoint_execution"],
+        "full_checkpoint_rtl_lowering_plan": repo_rel(full_checkpoint_rtl_lowering_out),
+        "full_checkpoint_rtl_lowering_status": full_checkpoint_rtl_lowering["status"],
+        "full_checkpoint_graph_lowered_to_rtl": full_checkpoint_rtl_lowering["full_checkpoint_graph_lowering"],
         "systemverilog_plan": repo_rel(sv_out),
         "generated_soc_top": soc_top_artifacts,
         "target_package_plan": repo_rel(target_out),
@@ -1219,6 +1420,9 @@ def run_pipeline(
         "full_tinyllama_checkpoint_execution": repo_rel(output_dir / "17_full_tinyllama_checkpoint_execution.json"),
         "full_tinyllama_checkpoint_execution_status": full_checkpoint_execution["status"],
         "full_tinyllama_checkpoint_implemented": full_checkpoint_execution["full_checkpoint_execution"],
+        "full_checkpoint_rtl_lowering_plan": repo_rel(full_checkpoint_rtl_lowering_out),
+        "full_checkpoint_rtl_lowering_status": full_checkpoint_rtl_lowering["status"],
+        "full_checkpoint_graph_lowered_to_rtl": full_checkpoint_rtl_lowering["full_checkpoint_graph_lowering"],
         "pipeline": architecture["pipeline"],
     }
     write_json(summary_out, summary)
