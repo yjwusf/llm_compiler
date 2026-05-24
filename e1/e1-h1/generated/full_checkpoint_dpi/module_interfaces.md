@@ -306,6 +306,7 @@ Each section is the review contract for a generated RTL module and its module-on
 | `buffer_array_ready_o` | 1 | Array input-ready signal toward the latch buffer. |
 | `array_done_o` | 1 | Array completion pulse. |
 | `array_debug_busy_o` | 1 | Array debug busy signal. |
+| `debug_scheduler_cmd_valid_o` | 1 | Observed scheduler command-valid at the full top boundary. |
 | `debug_array_cmd_valid_o` | 1 | Observed array command-valid at the full top boundary. |
 | `debug_array_cmd_ready_o` | 1 | Observed array command-ready at the full top boundary. |
 | `debug_cmd_input_addr_o` | 32 | Observed input tile base address for payload schedule checks. |

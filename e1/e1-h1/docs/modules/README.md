@@ -180,9 +180,10 @@ covered quickly. The generated full-command top harness compiles the same RTL
 with `SmokeMaxTilesPerLinearSlot=0` and runs all 3,784,704 planned linear tile
 commands through the graph sequencer, selected slot engine, latch buffer, and
 systolic-array handshake path. It checks every accepted command payload against
-`e1/code/program/e1_tinyllama_full_schedule.hpp`. This is full command-stream
-RTL execution evidence; it still does not claim TinyLlama numeric output
-equivalence.
+`e1/code/program/e1_tinyllama_full_schedule.hpp` and checks the phase 1
+scheduler-valid, phase 2 array-handshake, and phase 6 array-done sequence for
+every command. This is full command-stream RTL execution evidence; it still
+does not claim TinyLlama numeric output equivalence.
 
 The generated full-checkpoint module-DPI collateral applies the same
 module-only rule to generated RTL modules. The C++ generator emits one probe

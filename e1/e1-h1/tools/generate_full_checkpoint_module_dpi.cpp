@@ -777,6 +777,7 @@ std::string sv_full_top() {
   logic buffer_array_ready_o;
   logic array_done_o;
   logic array_debug_busy_o;
+  logic debug_scheduler_cmd_valid_o;
   logic debug_array_cmd_valid_o;
   logic debug_array_cmd_ready_o;
   logic [31:0] debug_cmd_input_addr_o;
@@ -820,6 +821,7 @@ std::string sv_full_top() {
     .buffer_array_ready_o(buffer_array_ready_o),
     .array_done_o(array_done_o),
     .array_debug_busy_o(array_debug_busy_o),
+    .debug_scheduler_cmd_valid_o(debug_scheduler_cmd_valid_o),
     .debug_array_cmd_valid_o(debug_array_cmd_valid_o),
     .debug_array_cmd_ready_o(debug_array_cmd_ready_o),
     .debug_cmd_input_addr_o(debug_cmd_input_addr_o),
@@ -1129,6 +1131,7 @@ std::vector<ModuleSpec> module_specs() {
               {"buffer_array_ready_o", "1", "Array input-ready signal toward the latch buffer."},
               {"array_done_o", "1", "Array completion pulse."},
               {"array_debug_busy_o", "1", "Array debug busy signal."},
+              {"debug_scheduler_cmd_valid_o", "1", "Observed scheduler command-valid at the full top boundary."},
               {"debug_array_cmd_valid_o", "1", "Observed array command-valid at the full top boundary."},
               {"debug_array_cmd_ready_o", "1", "Observed array command-ready at the full top boundary."},
               {"debug_cmd_input_addr_o", "32", "Observed input tile base address for payload schedule checks."},

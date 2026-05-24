@@ -25,6 +25,10 @@
       "status": "pass"
     },
     {
+      "name": "full_command_cycle_phases_checked",
+      "status": "pass"
+    },
+    {
       "name": "phase_template_names_each_cycle",
       "status": "pass"
     }
@@ -35,7 +39,8 @@
   "full_checkpoint_ordered_graph_integrated_rtl": true,
   "full_checkpoint_rtl_execution": false,
   "full_command_count_rtl_execution": true,
-  "full_command_count_rtl_execution_note": "Runs every planned linear tile command through generated RTL control/handshake paths; checks every command payload against the generated C++ schedule; does not yet prove TinyLlama numeric output equivalence.",
+  "full_command_count_rtl_execution_note": "Runs every planned linear tile command through generated RTL control/handshake paths; checks every command payload against the generated C++ schedule; checks the phase 1 scheduler-valid, phase 2 array-handshake, and phase 6 array-done sequence for every command; does not yet prove TinyLlama numeric output equivalence.",
+  "full_command_cycle_phase_check": true,
   "full_command_payload_schedule": "e1/code/program/e1_tinyllama_full_schedule.hpp",
   "full_command_payload_schedule_check": true,
   "full_execution_cycle_limit": 45422400,

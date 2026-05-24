@@ -985,6 +985,11 @@
           "width": "1"
         },
         {
+          "description": "Observed scheduler command-valid at the full top boundary.",
+          "name": "debug_scheduler_cmd_valid_o",
+          "width": "1"
+        },
+        {
           "description": "Observed array command-valid at the full top boundary.",
           "name": "debug_array_cmd_valid_o",
           "width": "1"

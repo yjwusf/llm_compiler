@@ -30,6 +30,7 @@ module e1_h1_tinyllama_full_checkpoint_top #(
   output logic        buffer_array_ready_o,
   output logic        array_done_o,
   output logic        array_debug_busy_o,
+  output logic        debug_scheduler_cmd_valid_o,
   output logic        debug_array_cmd_valid_o,
   output logic        debug_array_cmd_ready_o,
   output logic [31:0] debug_cmd_input_addr_o,
@@ -82,6 +83,7 @@ module e1_h1_tinyllama_full_checkpoint_top #(
   assign graph_op_done = active_is_linear ? linear_done : control_done;
   assign busy_o = graph_busy || linear_busy_o || control_busy_o;
   assign error_o = linear_error;
+  assign debug_scheduler_cmd_valid_o = scheduler_cmd_valid;
   assign debug_array_cmd_valid_o = array_cmd_valid;
   assign debug_array_cmd_ready_o = array_cmd_ready;
   assign debug_cmd_input_addr_o = cmd_input_addr;

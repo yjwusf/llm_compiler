@@ -109,6 +109,7 @@
   "full_checkpoint_rtl_lowering_status": "planned",
   "full_checkpoint_rtl_top": "e1/generated/pipeline/24_full_checkpoint_rtl_top.json",
   "full_checkpoint_rtl_top_full_command_count_rtl_execution": true,
+  "full_checkpoint_rtl_top_full_command_cycle_phase_check": true,
   "full_checkpoint_rtl_top_full_command_payload_schedule_check": true,
   "full_checkpoint_rtl_top_full_expected_linear_commands": 3784704,
   "full_checkpoint_rtl_top_full_verilator_tb": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top_full_tb.cpp",

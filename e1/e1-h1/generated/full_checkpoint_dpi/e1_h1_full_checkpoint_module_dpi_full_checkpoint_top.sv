@@ -49,6 +49,7 @@ module e1_h1_full_checkpoint_module_dpi_full_checkpoint_top;
   logic buffer_array_ready_o;
   logic array_done_o;
   logic array_debug_busy_o;
+  logic debug_scheduler_cmd_valid_o;
   logic debug_array_cmd_valid_o;
   logic debug_array_cmd_ready_o;
   logic [31:0] debug_cmd_input_addr_o;
@@ -92,6 +93,7 @@ module e1_h1_full_checkpoint_module_dpi_full_checkpoint_top;
     .buffer_array_ready_o(buffer_array_ready_o),
     .array_done_o(array_done_o),
     .array_debug_busy_o(array_debug_busy_o),
+    .debug_scheduler_cmd_valid_o(debug_scheduler_cmd_valid_o),
     .debug_array_cmd_valid_o(debug_array_cmd_valid_o),
     .debug_array_cmd_ready_o(debug_array_cmd_ready_o),
     .debug_cmd_input_addr_o(debug_cmd_input_addr_o),

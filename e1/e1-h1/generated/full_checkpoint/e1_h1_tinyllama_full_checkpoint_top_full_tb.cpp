@@ -86,6 +86,8 @@ int main(int argc, char** argv) {
   bool saw_linear_busy = false;
   bool saw_control_busy = false;
   std::uint32_t checked_payloads = 0;
+  std::uint32_t checked_phase1_scheduler_valids = 0;
+  std::uint32_t checked_phase6_array_dones = 0;
   std::uint32_t layer = 0;
   std::uint32_t op_index = 0;
   std::uint32_t input_tile = 0;
@@ -116,6 +118,22 @@ int main(int argc, char** argv) {
     }
     saw_linear_busy = saw_linear_busy || top.linear_busy_o;
     saw_control_busy = saw_control_busy || top.control_busy_o;
+    if (top.debug_scheduler_cmd_valid_o && top.linear_cycle_phase_o != 1 &&
+        top.linear_cycle_phase_o != 2) {
+      fail("scheduler command valid outside documented phases");
+    }
+    if (top.debug_scheduler_cmd_valid_o && top.linear_cycle_phase_o == 1) {
+      if (top.debug_array_cmd_valid_o) {
+        fail("array command valid too early in phase 1");
+      }
+      ++checked_phase1_scheduler_valids;
+    }
+    if (top.debug_array_cmd_valid_o && !top.debug_scheduler_cmd_valid_o) {
+      fail("array command valid without scheduler command valid");
+    }
+    if (top.debug_array_cmd_valid_o && top.linear_cycle_phase_o != 2) {
+      fail("array command valid outside phase 2");
+    }
     if (top.debug_array_cmd_valid_o && top.debug_array_cmd_ready_o) {
       using namespace e1_device::tinyllama_full;
       const TileCommand expected = command_for(layer, op_index, input_tile, output_tile);
@@ -133,6 +151,12 @@ int main(int argc, char** argv) {
       }
       ++checked_payloads;
       advance(layer, op_index, input_tile, output_tile);
+    }
+    if (top.array_done_o) {
+      if (top.linear_cycle_phase_o != 6) {
+        fail("array done outside phase 6");
+      }
+      ++checked_phase6_array_dones;
     }
     tick(context, top);
   }
@@ -156,6 +180,12 @@ int main(int argc, char** argv) {
   if (checked_payloads != kExpectedLinearCommands) {
     fail("checked command payload count mismatch");
   }
+  if (checked_phase1_scheduler_valids != kExpectedLinearCommands) {
+    fail("phase 1 scheduler-valid count mismatch");
+  }
+  if (checked_phase6_array_dones != kExpectedLinearCommands) {
+    fail("phase 6 array-done count mismatch");
+  }
   if (top.issued_control_ops_o != kTotalControlSlots) {
     fail("control op count mismatch");
   }
@@ -175,6 +205,8 @@ int main(int argc, char** argv) {
       << "  \"issued_linear_commands\": " << top.issued_linear_commands_o << ",\n"
       << "  \"expected_linear_commands\": " << kExpectedLinearCommands << ",\n"
       << "  \"checked_command_payloads\": " << checked_payloads << ",\n"
+      << "  \"checked_phase1_scheduler_valids\": " << checked_phase1_scheduler_valids << ",\n"
+      << "  \"checked_phase6_array_dones\": " << checked_phase6_array_dones << ",\n"
       << "  \"issued_control_ops\": " << top.issued_control_ops_o << ",\n"
       << "  \"issued_graph_slots\": " << top.issued_graph_slots_o << ",\n"
       << "  \"cycles\": " << cycles << ",\n"

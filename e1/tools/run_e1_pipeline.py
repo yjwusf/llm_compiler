@@ -3370,6 +3370,7 @@ module e1_h1_tinyllama_full_checkpoint_top #(
   output logic        buffer_array_ready_o,
   output logic        array_done_o,
   output logic        array_debug_busy_o,
+  output logic        debug_scheduler_cmd_valid_o,
   output logic        debug_array_cmd_valid_o,
   output logic        debug_array_cmd_ready_o,
   output logic [31:0] debug_cmd_input_addr_o,
@@ -3422,6 +3423,7 @@ module e1_h1_tinyllama_full_checkpoint_top #(
   assign graph_op_done = active_is_linear ? linear_done : control_done;
   assign busy_o = graph_busy || linear_busy_o || control_busy_o;
   assign error_o = linear_error;
+  assign debug_scheduler_cmd_valid_o = scheduler_cmd_valid;
   assign debug_array_cmd_valid_o = array_cmd_valid;
   assign debug_array_cmd_ready_o = array_cmd_ready;
   assign debug_cmd_input_addr_o = cmd_input_addr;
@@ -3776,6 +3778,8 @@ int main(int argc, char** argv) {{
   bool saw_linear_busy = false;
   bool saw_control_busy = false;
   std::uint32_t checked_payloads = 0;
+  std::uint32_t checked_phase1_scheduler_valids = 0;
+  std::uint32_t checked_phase6_array_dones = 0;
   std::uint32_t layer = 0;
   std::uint32_t op_index = 0;
   std::uint32_t input_tile = 0;
@@ -3806,6 +3810,22 @@ int main(int argc, char** argv) {{
     }}
     saw_linear_busy = saw_linear_busy || top.linear_busy_o;
     saw_control_busy = saw_control_busy || top.control_busy_o;
+    if (top.debug_scheduler_cmd_valid_o && top.linear_cycle_phase_o != 1 &&
+        top.linear_cycle_phase_o != 2) {{
+      fail("scheduler command valid outside documented phases");
+    }}
+    if (top.debug_scheduler_cmd_valid_o && top.linear_cycle_phase_o == 1) {{
+      if (top.debug_array_cmd_valid_o) {{
+        fail("array command valid too early in phase 1");
+      }}
+      ++checked_phase1_scheduler_valids;
+    }}
+    if (top.debug_array_cmd_valid_o && !top.debug_scheduler_cmd_valid_o) {{
+      fail("array command valid without scheduler command valid");
+    }}
+    if (top.debug_array_cmd_valid_o && top.linear_cycle_phase_o != 2) {{
+      fail("array command valid outside phase 2");
+    }}
     if (top.debug_array_cmd_valid_o && top.debug_array_cmd_ready_o) {{
       using namespace e1_device::tinyllama_full;
       const TileCommand expected = command_for(layer, op_index, input_tile, output_tile);
@@ -3823,6 +3843,12 @@ int main(int argc, char** argv) {{
       }}
       ++checked_payloads;
       advance(layer, op_index, input_tile, output_tile);
+    }}
+    if (top.array_done_o) {{
+      if (top.linear_cycle_phase_o != 6) {{
+        fail("array done outside phase 6");
+      }}
+      ++checked_phase6_array_dones;
     }}
     tick(context, top);
   }}
@@ -3846,6 +3872,12 @@ int main(int argc, char** argv) {{
   if (checked_payloads != kExpectedLinearCommands) {{
     fail("checked command payload count mismatch");
   }}
+  if (checked_phase1_scheduler_valids != kExpectedLinearCommands) {{
+    fail("phase 1 scheduler-valid count mismatch");
+  }}
+  if (checked_phase6_array_dones != kExpectedLinearCommands) {{
+    fail("phase 6 array-done count mismatch");
+  }}
   if (top.issued_control_ops_o != kTotalControlSlots) {{
     fail("control op count mismatch");
   }}
@@ -3865,6 +3897,8 @@ int main(int argc, char** argv) {{
       << "  \\"issued_linear_commands\\": " << top.issued_linear_commands_o << ",\\n"
       << "  \\"expected_linear_commands\\": " << kExpectedLinearCommands << ",\\n"
       << "  \\"checked_command_payloads\\": " << checked_payloads << ",\\n"
+      << "  \\"checked_phase1_scheduler_valids\\": " << checked_phase1_scheduler_valids << ",\\n"
+      << "  \\"checked_phase6_array_dones\\": " << checked_phase6_array_dones << ",\\n"
       << "  \\"issued_control_ops\\": " << top.issued_control_ops_o << ",\\n"
       << "  \\"issued_graph_slots\\": " << top.issued_graph_slots_o << ",\\n"
       << "  \\"cycles\\": " << cycles << ",\\n"
@@ -3936,6 +3970,10 @@ int main(int argc, char** argv) {{
             "status": "pass",
         },
         {
+            "name": "full_command_cycle_phases_checked",
+            "status": "pass",
+        },
+        {
             "name": "phase_template_names_each_cycle",
             "status": "pass" if [entry["cycle"] for entry in phase_template] == [0, 1, 2, 3] else "fail",
         },
@@ -3969,10 +4007,13 @@ int main(int argc, char** argv) {{
         "full_execution_cycle_limit": full_execution_cycle_limit,
         "full_command_count_rtl_execution": True,
         "full_command_payload_schedule_check": True,
+        "full_command_cycle_phase_check": True,
         "full_command_payload_schedule": "e1/code/program/e1_tinyllama_full_schedule.hpp",
         "full_command_count_rtl_execution_note": (
             "Runs every planned linear tile command through generated RTL control/handshake paths; "
-            "checks every command payload against the generated C++ schedule; "
+            "checks every command payload against the generated C++ schedule; checks the "
+            "phase 1 scheduler-valid, phase 2 array-handshake, and phase 6 array-done "
+            "sequence for every command; "
             "does not yet prove TinyLlama numeric output equivalence."
         ),
         "phase_template": phase_template,
@@ -4612,6 +4653,9 @@ def run_pipeline(
         "full_checkpoint_rtl_top_full_command_payload_schedule_check": full_checkpoint_rtl_top[
             "full_command_payload_schedule_check"
         ],
+        "full_checkpoint_rtl_top_full_command_cycle_phase_check": full_checkpoint_rtl_top[
+            "full_command_cycle_phase_check"
+        ],
         "full_checkpoint_module_dpi_generation": repo_rel(full_checkpoint_module_dpi_out),
         "full_checkpoint_module_dpi_manifest": full_checkpoint_module_dpi["manifest"],
         "full_checkpoint_module_interfaces_doc": full_checkpoint_module_dpi["module_interfaces_doc"],
@@ -4676,6 +4720,9 @@ def run_pipeline(
         ],
         "full_checkpoint_rtl_top_full_command_payload_schedule_check": full_checkpoint_rtl_top[
             "full_command_payload_schedule_check"
+        ],
+        "full_checkpoint_rtl_top_full_command_cycle_phase_check": full_checkpoint_rtl_top[
+            "full_command_cycle_phase_check"
         ],
         "full_checkpoint_module_dpi_generation": repo_rel(full_checkpoint_module_dpi_out),
         "full_checkpoint_module_dpi_manifest": full_checkpoint_module_dpi["manifest"],
