@@ -22,6 +22,7 @@ from typing import Any
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_CHECKPOINT_CACHE = REPO_ROOT / ".cache/e1/tinyllama-1.1b-chat-v1.0"
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -40,7 +41,10 @@ def write_text(path: Path, text: str) -> None:
 
 
 def repo_rel(path: Path) -> str:
-    return str(path.relative_to(REPO_ROOT))
+    try:
+        return str(path.relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
 
 
 def stablehlo_ops(text: str) -> Counter[str]:
@@ -491,6 +495,36 @@ def run_device_program_smoke(output_dir: Path) -> dict[str, Any]:
         return report
 
 
+def run_full_checkpoint(
+    output_dir: Path,
+    mode: str,
+    cache_dir: Path,
+    allow_download: bool,
+) -> dict[str, Any]:
+    report_path = output_dir / "14_full_tinyllama_checkpoint_execution.json"
+    command = [
+        sys.executable,
+        "e1/tools/run_tinyllama_checkpoint.py",
+        "--mode",
+        mode,
+        "--cache-dir",
+        repo_rel(cache_dir),
+        "--report",
+        repo_rel(report_path),
+    ]
+    if allow_download:
+        command.append("--allow-download")
+    subprocess.run(
+        command,
+        cwd=REPO_ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=True,
+    )
+    return load_json(report_path)
+
+
 def emit_tinyllama_imp2_coverage(
     output_path: Path,
     manifest: dict[str, Any],
@@ -582,7 +616,14 @@ def emit_tinyllama_imp2_coverage(
     return coverage
 
 
-def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path) -> dict[str, Any]:
+def run_pipeline(
+    manifest_path: Path,
+    architecture_path: Path,
+    output_dir: Path,
+    full_checkpoint_mode: str = "preflight",
+    checkpoint_cache_dir: Path = DEFAULT_CHECKPOINT_CACHE,
+    allow_checkpoint_download: bool = False,
+) -> dict[str, Any]:
     manifest = load_json(manifest_path)
     architecture = load_json(architecture_path)
     e1_h1_dir = architecture_path.parent.parent
@@ -804,7 +845,20 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
     )
     passes.append({"pass": "e1_check_tinyllama_imp2_coverage", "artifact": repo_rel(tinyllama_coverage_out)})
 
-    e2e_out = output_dir / "14_end_to_end_smoke.json"
+    full_checkpoint_execution = run_full_checkpoint(
+        output_dir,
+        full_checkpoint_mode,
+        checkpoint_cache_dir,
+        allow_checkpoint_download,
+    )
+    passes.append(
+        {
+            "pass": "e1_run_full_tinyllama_checkpoint",
+            "artifact": repo_rel(output_dir / "14_full_tinyllama_checkpoint_execution.json"),
+        }
+    )
+
+    e2e_out = output_dir / "15_end_to_end_smoke.json"
     target_manifest_path = "e1/e1-h1/generated/targets/manifest.json"
     generated_soc_top_exists = all(
         (REPO_ROOT / path).exists()
@@ -828,6 +882,19 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
             target_manifest["openroad"]["config"],
         ]
     )
+    checkpoint_preflight_statuses = {
+        "missing_python_dependencies",
+        "missing_checkpoint_cache",
+        "missing_checkpoint_files",
+        "ready",
+    }
+    checkpoint_check_passes = (
+        full_checkpoint_execution["status"] == "pass"
+        or (
+            full_checkpoint_execution["mode"] == "preflight"
+            and full_checkpoint_execution["status"] in checkpoint_preflight_statuses
+        )
+    )
     e2e_checks = [
         {"name": "stablehlo_supported", "status": "pass" if not inspection["unsupported_ops"] else "fail"},
         {"name": "e1_h1_binding", "status": "pass" if (REPO_ROOT / repo_rel(binding_out)).exists() else "fail"},
@@ -836,6 +903,7 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
         {"name": "generated_soc_top", "status": "pass" if generated_soc_top_exists else "fail"},
         {"name": "implementation_flists", "status": "pass" if target_package_exists else "fail"},
         {"name": "tinyllama_imp2_coverage", "status": tinyllama_coverage["status"]},
+        {"name": "full_tinyllama_checkpoint", "status": "pass" if checkpoint_check_passes else "fail"},
         {"name": "target_package", "status": "pass" if target_package_exists else "fail"},
     ]
     e2e = {
@@ -869,6 +937,9 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
         "implementation_matrix": implementation_matrix["matrix"],
         "implementation_flists": implementation_matrix["flists"],
         "tinyllama_imp2_coverage": repo_rel(tinyllama_coverage_out),
+        "full_tinyllama_checkpoint_execution": repo_rel(output_dir / "14_full_tinyllama_checkpoint_execution.json"),
+        "full_tinyllama_checkpoint_execution_status": full_checkpoint_execution["status"],
+        "full_tinyllama_checkpoint_implemented": full_checkpoint_execution["full_checkpoint_execution"],
         "systemverilog_plan": repo_rel(sv_out),
         "generated_soc_top": soc_top_artifacts,
         "target_package_plan": repo_rel(target_out),
@@ -891,6 +962,9 @@ def run_pipeline(manifest_path: Path, architecture_path: Path, output_dir: Path)
         "generated_top": "e1/e1-h1/generated/e1_h1_soc_top.sv",
         "end_to_end_smoke": repo_rel(e2e_out),
         "end_to_end_status": e2e["status"],
+        "full_tinyllama_checkpoint_execution": repo_rel(output_dir / "14_full_tinyllama_checkpoint_execution.json"),
+        "full_tinyllama_checkpoint_execution_status": full_checkpoint_execution["status"],
+        "full_tinyllama_checkpoint_implemented": full_checkpoint_execution["full_checkpoint_execution"],
         "pipeline": architecture["pipeline"],
     }
     write_json(summary_out, summary)
@@ -902,10 +976,16 @@ def main() -> int:
     parser.add_argument("--manifest", type=Path, default=REPO_ROOT / "e1/model/tinyllama_manifest.json")
     parser.add_argument("--architecture", type=Path, default=REPO_ROOT / "e1/e1-h1/config/architecture.json")
     parser.add_argument("--output-dir", type=Path, default=REPO_ROOT / "e1/generated/pipeline")
+    parser.add_argument("--full-checkpoint-mode", choices=["preflight", "live"], default="preflight")
+    parser.add_argument("--checkpoint-cache-dir", type=Path, default=DEFAULT_CHECKPOINT_CACHE)
+    parser.add_argument("--allow-checkpoint-download", action="store_true")
     parser.add_argument("--clean", action="store_true")
     args = parser.parse_args()
 
     output_dir = args.output_dir if args.output_dir.is_absolute() else REPO_ROOT / args.output_dir
+    checkpoint_cache_dir = (
+        args.checkpoint_cache_dir if args.checkpoint_cache_dir.is_absolute() else REPO_ROOT / args.checkpoint_cache_dir
+    )
     if args.clean and output_dir.exists():
         shutil.rmtree(output_dir)
 
@@ -913,6 +993,9 @@ def main() -> int:
         args.manifest if args.manifest.is_absolute() else REPO_ROOT / args.manifest,
         args.architecture if args.architecture.is_absolute() else REPO_ROOT / args.architecture,
         output_dir,
+        args.full_checkpoint_mode,
+        checkpoint_cache_dir,
+        args.allow_checkpoint_download,
     )
     print(f"PASS e1_pipeline {summary['pass_count']} passes -> {repo_rel(output_dir)}")
     return 0

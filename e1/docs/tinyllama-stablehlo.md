@@ -75,10 +75,41 @@ The executable E1-H1 path currently proves the checked-in reduced TinyLlama
 StableHLO fixture, not the full TinyLlama checkpoint. The pipeline emits:
 
 - `e1/generated/pipeline/13_tinyllama_imp2_coverage.json`
-- `e1/generated/pipeline/14_end_to_end_smoke.json`
+- `e1/generated/pipeline/14_full_tinyllama_checkpoint_execution.json`
+- `e1/generated/pipeline/15_end_to_end_smoke.json`
 
 The coverage artifact requires every StableHLO operation in
 `tinyllama_block.mlir` to bind to an accepted active `imp2` implementation and
 requires the target RTL filelist to use `e1/e1-h1/rtl/imp2/*.sv`. It also
 records `full_tinyllama_checkpoint_implemented: false` until live checkpoint
 export and execution are added.
+
+## Full Checkpoint Execution
+
+The full-checkpoint runner is:
+
+```sh
+python3 e1/tools/run_tinyllama_checkpoint.py --mode live \
+  --report e1/generated/pipeline/14_full_tinyllama_checkpoint_execution.json
+```
+
+The same check is wired into the E1 pipeline:
+
+```sh
+python3 e1/tools/run_e1_pipeline.py --clean --full-checkpoint-mode live \
+  --checkpoint-cache-dir .cache/e1/tinyllama-1.1b-chat-v1.0
+```
+
+Live mode requires the pinned checkpoint under
+`.cache/e1/tinyllama-1.1b-chat-v1.0` plus local `torch`, `transformers`, and
+`safetensors` Python packages. It loads the checkpoint locally, runs a
+deterministic one-token prompt, records generated token ids and top logits, and
+writes a checksum. The checked-in pipeline currently runs the same command in
+`preflight` mode so test runs remain network-free and do not require large model
+artifacts. A successful live run sets `full_tinyllama_checkpoint_implemented`
+to `true` in the pipeline summary and end-to-end smoke report.
+
+This live checkpoint execution is a Python/Transformers source-of-truth check
+for the pinned model. It does not yet mean the full TinyLlama graph has been
+lowered through imp2 RTL; that claim still belongs to the reduced StableHLO
+fixture until full export/lowering coverage is implemented.

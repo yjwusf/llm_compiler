@@ -28,6 +28,7 @@ L1_5_DIR = E1_H1 / "l1_5"
 E1_PIPELINE = REPO_ROOT / "e1" / "tools" / "run_e1_pipeline.py"
 E1_FETCH = REPO_ROOT / "e1" / "tools" / "fetch_tinyllama.py"
 E1_EXPORT = REPO_ROOT / "e1" / "tools" / "export_stablehlo.py"
+E1_CHECKPOINT = REPO_ROOT / "e1" / "tools" / "run_tinyllama_checkpoint.py"
 E1_PIPELINE_OUT = REPO_ROOT / "e1" / "generated" / "pipeline"
 TARGETS = E1_H1 / "generated" / "targets"
 IMPLEMENTATION_MATRIX = E1_H1 / "generated" / "implementation_matrix.json"
@@ -690,18 +691,27 @@ class E1H1Tests(unittest.TestCase):
 
     def test_e1_pipeline_generates_e1_h1_artifacts(self) -> None:
         result = run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])
-        self.assertIn("PASS e1_pipeline 15 passes", result.stdout)
+        self.assertIn("PASS e1_pipeline 16 passes", result.stdout)
 
         summary = json.loads((E1_PIPELINE_OUT / "summary.json").read_text(encoding="utf-8"))
         self.assertEqual(summary["schema"], "e1-pipeline-summary-v0")
         self.assertEqual(summary["model_id"], "tinyllama-1.1b-chat-v1.0")
         self.assertEqual(summary["architecture_id"], "e1-h1")
-        self.assertEqual(summary["pass_count"], 15)
+        self.assertEqual(summary["pass_count"], 16)
         self.assertEqual(summary["operation_counts"]["dot_general"], 6)
         self.assertTrue(summary["all_current_modules_have_l1_5_harnesses"])
         self.assertEqual(summary["generated_top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
-        self.assertEqual(summary["end_to_end_smoke"], "e1/generated/pipeline/14_end_to_end_smoke.json")
+        self.assertEqual(summary["end_to_end_smoke"], "e1/generated/pipeline/15_end_to_end_smoke.json")
         self.assertEqual(summary["end_to_end_status"], "pass")
+        self.assertEqual(
+            summary["full_tinyllama_checkpoint_execution"],
+            "e1/generated/pipeline/14_full_tinyllama_checkpoint_execution.json",
+        )
+        self.assertFalse(summary["full_tinyllama_checkpoint_implemented"])
+        self.assertIn(
+            summary["full_tinyllama_checkpoint_execution_status"],
+            {"missing_python_dependencies", "missing_checkpoint_cache", "missing_checkpoint_files", "ready"},
+        )
         self.assertEqual(summary["pipeline"]["cpu_to_accelerator_depth"], 1)
         self.assertEqual(summary["pipeline"]["array_input_depth"], 2)
         self.assertEqual(summary["pipeline"]["array_output_depth"], 2)
@@ -721,6 +731,7 @@ class E1H1Tests(unittest.TestCase):
             "e1_emit_systemverilog",
             "e1_package_targets",
             "e1_check_tinyllama_imp2_coverage",
+            "e1_run_full_tinyllama_checkpoint",
             "e1_end_to_end_smoke",
         ]
         self.assertEqual([entry["pass"] for entry in summary["passes"]], expected_passes)
@@ -881,7 +892,23 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(sv_plan["pipeline_source"], "e1/e1-h1/config/architecture.json")
         self.assertEqual(sv_plan["pipeline"], summary["pipeline"])
 
-        e2e = json.loads((E1_PIPELINE_OUT / "14_end_to_end_smoke.json").read_text(encoding="utf-8"))
+        full_checkpoint = json.loads(
+            (E1_PIPELINE_OUT / "14_full_tinyllama_checkpoint_execution.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(full_checkpoint["schema"], "e1-full-tinyllama-checkpoint-execution-v0")
+        self.assertEqual(full_checkpoint["model_id"], summary["model_id"])
+        self.assertEqual(full_checkpoint["mode"], "preflight")
+        self.assertEqual(full_checkpoint["full_checkpoint_execution"], False)
+        self.assertEqual(full_checkpoint["status"], summary["full_tinyllama_checkpoint_execution_status"])
+        self.assertIn("torch", full_checkpoint["dependencies"])
+        self.assertIn("transformers", full_checkpoint["dependencies"])
+        if full_checkpoint["status"] != "ready":
+            self.assertTrue(
+                full_checkpoint["missing_dependencies"] or full_checkpoint["missing_checkpoint_files"],
+                full_checkpoint,
+            )
+
+        e2e = json.loads((E1_PIPELINE_OUT / "15_end_to_end_smoke.json").read_text(encoding="utf-8"))
         self.assertEqual(e2e["schema"], "e1-end-to-end-smoke-v0")
         self.assertEqual(e2e["status"], "pass")
         self.assertEqual(e2e["model_id"], summary["model_id"])
@@ -898,7 +925,17 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(e2e["implementation_matrix"], "e1/e1-h1/generated/implementation_matrix.json")
         self.assertEqual(e2e["implementation_flists"], implementation_matrix["flists"])
         self.assertEqual(e2e["tinyllama_imp2_coverage"], "e1/generated/pipeline/13_tinyllama_imp2_coverage.json")
+        self.assertEqual(
+            e2e["full_tinyllama_checkpoint_execution"],
+            "e1/generated/pipeline/14_full_tinyllama_checkpoint_execution.json",
+        )
+        self.assertEqual(
+            e2e["full_tinyllama_checkpoint_execution_status"],
+            full_checkpoint["status"],
+        )
+        self.assertFalse(e2e["full_tinyllama_checkpoint_implemented"])
         self.assertEqual(e2e["target_package"], "e1/e1-h1/generated/targets/manifest.json")
+        self.assertIn("full_tinyllama_checkpoint", {check["name"] for check in e2e["checks"]})
         self.assertEqual({check["status"] for check in e2e["checks"]}, {"pass"})
         self.assertEqual(
             {check["name"] for check in e2e["checks"]},
@@ -910,6 +947,7 @@ class E1H1Tests(unittest.TestCase):
                 "generated_soc_top",
                 "implementation_flists",
                 "tinyllama_imp2_coverage",
+                "full_tinyllama_checkpoint",
                 "target_package",
             },
         )
@@ -929,6 +967,7 @@ class E1H1Tests(unittest.TestCase):
             e2e["implementation_matrix"],
             e2e["implementation_flists"]["active"],
             e2e["tinyllama_imp2_coverage"],
+            e2e["full_tinyllama_checkpoint_execution"],
             e2e["systemverilog_plan"],
             e2e["target_package_plan"],
             e2e["target_package"],
@@ -969,6 +1008,35 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual(export["schema"], "e1-stablehlo-export-report-v0")
             self.assertTrue(stablehlo_out.exists())
             self.assertIn("stablehlo.dot_general", stablehlo_out.read_text(encoding="utf-8"))
+
+    def test_full_tinyllama_checkpoint_runner_reports_preflight_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            report_path = Path(tmp) / "checkpoint.json"
+            result = run([
+                "python3",
+                str(E1_CHECKPOINT.relative_to(REPO_ROOT)),
+                "--mode",
+                "preflight",
+                "--report",
+                str(report_path),
+            ])
+            self.assertIn("PASS e1_full_tinyllama_checkpoint", result.stdout)
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+            self.assertEqual(report["schema"], "e1-full-tinyllama-checkpoint-execution-v0")
+            self.assertEqual(report["model_id"], "tinyllama-1.1b-chat-v1.0")
+            self.assertEqual(report["mode"], "preflight")
+            self.assertFalse(report["full_checkpoint_execution"])
+            self.assertIn(
+                report["status"],
+                {"missing_python_dependencies", "missing_checkpoint_cache", "missing_checkpoint_files", "ready"},
+            )
+            self.assertEqual(report["source"]["repo"], "TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+            self.assertIn("torch", report["dependencies"])
+            self.assertIn("transformers", report["dependencies"])
+            self.assertIn("model", report["checkpoint_files"])
+            self.assertIn("tokenizer", report["checkpoint_files"])
+            if report["status"] != "ready":
+                self.assertTrue(report["missing_dependencies"] or report["missing_checkpoint_files"], report)
 
     def test_target_packages_cover_fpga_and_openroad(self) -> None:
         run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])

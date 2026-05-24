@@ -3,7 +3,9 @@
 E1 is the first complete example flow. It starts with TinyLlama, inspects
 StableHLO/MLIR output, plans the compiler passes through generated
 SystemVerilog, begins the C++ chip model and device program, and records one
-end-to-end smoke artifact for the current scaffold.
+end-to-end smoke artifact for the current scaffold. The default flow remains
+network-free, while the full TinyLlama checkpoint pass can be run in live mode
+when the pinned checkpoint cache is present.
 
 ## Documents
 

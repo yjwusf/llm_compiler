@@ -31,6 +31,10 @@
       "status": "pass"
     },
     {
+      "name": "full_tinyllama_checkpoint",
+      "status": "pass"
+    },
+    {
       "name": "target_package",
       "status": "pass"
     }
@@ -47,6 +51,9 @@
     "run": "e1/generated/pipeline/07_device_program_run.json",
     "status": "pass"
   },
+  "full_tinyllama_checkpoint_execution": "e1/generated/pipeline/14_full_tinyllama_checkpoint_execution.json",
+  "full_tinyllama_checkpoint_execution_status": "missing_python_dependencies",
+  "full_tinyllama_checkpoint_implemented": false,
   "generated_soc_top": {
     "composition_manifest": "e1/e1-h1/generated/e1_h1_soc_top_manifest.json",
     "interface_contracts": "e1/e1-h1/generated/e1_h1_interface_contracts.json",
