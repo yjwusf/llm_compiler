@@ -19,6 +19,14 @@ struct SignalSpec {
   std::string description;
 };
 
+struct CycleStep {
+  int cycle;
+  std::string phase;
+  std::string responsibility;
+  std::string observed_signals;
+  std::string dpi_check;
+};
+
 struct ModuleSpec {
   std::string name;
   std::string top_module;
@@ -227,6 +235,199 @@ void write_string_array_json(std::ostringstream& out,
   out << "]";
 }
 
+std::vector<std::string> cycle_phase_signals(const ModuleSpec& spec) {
+  std::vector<std::string> signals;
+  for (const SignalSpec& signal : spec.output_signals) {
+    if (signal.name.find("cycle_phase") != std::string::npos) {
+      signals.push_back(signal.name);
+    }
+  }
+  return signals;
+}
+
+std::string cycle_template_name(const ModuleSpec& spec) {
+  if (spec.name == "linear_scheduler" || spec.name == "linear_tile_engine" ||
+      spec.name == "linear_slot_engine") {
+    return "tile_command_8_cycle_cpu_latch_array_template";
+  }
+  if (spec.name == "control_scheduler" || spec.name == "control_slot_engine") {
+    return "control_op_4_cycle_cpu_template";
+  }
+  if (spec.name == "graph_sequencer") {
+    return "graph_slot_4_cycle_launch_template";
+  }
+  if (spec.name == "full_checkpoint_top") {
+    return "top_dispatch_4_cycle_slot_engine_template";
+  }
+  throw std::runtime_error("no cycle template for " + spec.name);
+}
+
+std::vector<CycleStep> cycle_steps(const ModuleSpec& spec) {
+  if (spec.name == "linear_scheduler") {
+    return {
+        {0, "setup_tile_command", "Select the next TinyLlama linear tile command.",
+         "cycle_phase_o, layer_o, op_index_o, input_tile_o, output_tile_o",
+         "DPI records the phase and later checks issued_commands_o."},
+        {1, "assert_scheduler_valid", "Present cmd_valid_o and hold the payload stable.",
+         "cycle_phase_o, cmd_valid_o, cmd_*_o", "DPI records the valid phase."},
+        {2, "accept_command_handshake", "Accept the command when cmd_ready_i is high.",
+         "cycle_phase_o, cmd_valid_o, cmd_ready_i", "DPI records the handshake phase."},
+        {3, "wait_for_array_progress_0", "Wait for the first array progress beat.",
+         "cycle_phase_o, array_done_i", "DPI records the in-flight phase."},
+        {4, "wait_for_array_progress_1", "Wait for the second array progress beat.",
+         "cycle_phase_o, array_done_i", "DPI records the in-flight phase."},
+        {5, "wait_for_array_progress_2", "Wait for the third array progress beat.",
+         "cycle_phase_o, array_done_i", "DPI records the in-flight phase."},
+        {6, "sample_array_done", "Sample array_done_i or array_error_i for the command.",
+         "cycle_phase_o, array_done_i, array_error_i", "DPI drives array_done_i in this phase."},
+        {7, "advance_tile_counters", "Advance layer/op/tile counters for the next command.",
+         "cycle_phase_o, issued_commands_o", "DPI checks the accepted command count."},
+    };
+  }
+  if (spec.name == "linear_tile_engine") {
+    return {
+        {0, "setup_tile_engine", "Start the scheduler/latch/array composition.",
+         "cycle_phase_o, scheduler_cmd_valid_o", "DPI records the composed engine phase."},
+        {1, "scheduler_valid_visible", "Expose the ungated scheduler command-valid.",
+         "cycle_phase_o, scheduler_cmd_valid_o", "DPI records valid before array valid."},
+        {2, "array_command_handshake", "Gate the command into the systolic array.",
+         "cycle_phase_o, array_cmd_valid_o, array_cmd_ready_o", "DPI observes the array handshake."},
+        {3, "latch_to_array_beat_0", "Present the first latched stream beat to the array.",
+         "cycle_phase_o, buffer_array_valid_o, buffer_array_data_o", "DPI records latch output."},
+        {4, "latch_to_array_beat_1", "Stage or forward the next stream beat.",
+         "cycle_phase_o, buffer_array_valid_o, buffer_array_ready_o", "DPI records latch readiness."},
+        {5, "latch_to_array_beat_2", "Continue array input transfer.",
+         "cycle_phase_o, buffer_array_valid_o, buffer_array_ready_o", "DPI records latch transfer."},
+        {6, "array_done_pulse", "Observe the systolic-array completion pulse.",
+         "cycle_phase_o, array_done_o, array_debug_busy_o", "DPI checks completion progress."},
+        {7, "return_ready", "Return the composition to ready for the next tile.",
+         "cycle_phase_o, issued_commands_o", "DPI checks issued command progress."},
+    };
+  }
+  if (spec.name == "control_scheduler") {
+    return {
+        {0, "issue_control_op", "Present the current non-linear control op.",
+         "cycle_phase_o, control_valid_o, layer_o, layer_op_slot_o", "DPI records issue."},
+        {1, "read_control_metadata", "Read source/control metadata for the op.",
+         "cycle_phase_o, control_kind_o", "DPI records metadata phase."},
+        {2, "execute_control_op", "Execute the CPU/control operation.",
+         "cycle_phase_o, control_ready_i", "DPI records execute phase."},
+        {3, "commit_control_op", "Commit the op and advance counters.",
+         "cycle_phase_o, control_commit_o, issued_control_ops_o", "DPI checks committed count."},
+    };
+  }
+  if (spec.name == "graph_sequencer") {
+    return {
+        {0, "present_graph_slot", "Present the ordered TinyLlama layer graph slot.",
+         "cycle_phase_o, slot_valid_o, layer_o, layer_slot_o", "DPI records slot issue."},
+        {1, "launch_selected_engine", "Launch either the control or linear slot engine.",
+         "cycle_phase_o, launch_control_o, launch_linear_o", "DPI counts launch pulses."},
+        {2, "wait_for_slot_done", "Wait for the selected slot engine to complete.",
+         "cycle_phase_o, op_done_i", "DPI drives op_done_i in this phase."},
+        {3, "commit_graph_slot", "Commit the graph slot and advance layer/slot counters.",
+         "cycle_phase_o, issued_graph_slots_o", "DPI checks committed slot count."},
+    };
+  }
+  if (spec.name == "linear_slot_engine") {
+    return {
+        {0, "latch_selected_linear_slot", "Latch graph-selected layer and linear op.",
+         "cycle_phase_o, layer_o, op_index_o", "DPI records selected slot."},
+        {1, "slot_command_valid", "Expose the slot-local scheduler command-valid.",
+         "cycle_phase_o, scheduler_cmd_valid_o", "DPI records scheduler valid."},
+        {2, "array_command_handshake", "Gate the slot command into the systolic array.",
+         "cycle_phase_o, array_cmd_valid_o, array_cmd_ready_o", "DPI observes the array handshake."},
+        {3, "latch_to_array_beat_0", "Present the first latched stream beat to the array.",
+         "cycle_phase_o, buffer_array_valid_o, buffer_array_data_o", "DPI records latch output."},
+        {4, "latch_to_array_beat_1", "Stage or forward the next stream beat.",
+         "cycle_phase_o, buffer_array_valid_o, buffer_array_ready_o", "DPI records latch readiness."},
+        {5, "latch_to_array_beat_2", "Continue array input transfer.",
+         "cycle_phase_o, buffer_array_valid_o, buffer_array_ready_o", "DPI records latch transfer."},
+        {6, "array_done_pulse", "Observe the systolic-array completion pulse.",
+         "cycle_phase_o, array_done_o, array_debug_busy_o", "DPI checks completion progress."},
+        {7, "slot_done_or_next_tile", "Finish the slot or advance to its next tile.",
+         "cycle_phase_o, issued_commands_o, expected_commands_o", "DPI checks bounded command count."},
+    };
+  }
+  if (spec.name == "control_slot_engine") {
+    return {
+        {0, "issue_selected_control_slot", "Present the selected control graph slot.",
+         "cycle_phase_o, control_valid_o, layer_o", "DPI records issue."},
+        {1, "read_selected_control_metadata", "Read selected control-kind metadata.",
+         "cycle_phase_o, control_kind_o", "DPI records metadata phase."},
+        {2, "execute_selected_control_slot", "Execute the selected CPU/control operation.",
+         "cycle_phase_o, control_ready_i", "DPI records execute phase."},
+        {3, "commit_selected_control_slot", "Commit the selected control slot.",
+         "cycle_phase_o, control_commit_o, issued_control_ops_o", "DPI checks committed count."},
+    };
+  }
+  if (spec.name == "full_checkpoint_top") {
+    return {
+        {0, "present_top_graph_slot", "Present the next graph slot at the top boundary.",
+         "graph_cycle_phase_o, active_layer_o, active_slot_o", "DPI records top slot issue."},
+        {1, "start_selected_slot_engine", "Pulse exactly one selected slot engine.",
+         "graph_cycle_phase_o, launch_linear_o, launch_control_o", "DPI counts launch pulses."},
+        {2, "run_selected_slot_engine", "Run either the control slot or linear slot engine.",
+         "graph_cycle_phase_o, linear_cycle_phase_o, control_cycle_phase_o",
+         "DPI records selected engine progress."},
+        {3, "commit_top_graph_slot", "Return slot done to the graph sequencer.",
+         "graph_cycle_phase_o, issued_graph_slots_o", "DPI checks top committed slots."},
+    };
+  }
+  throw std::runtime_error("no cycle steps for " + spec.name);
+}
+
+void validate_cycle_contract(const ModuleSpec& spec) {
+  const std::vector<CycleStep> steps = cycle_steps(spec);
+  const std::vector<std::string> phase_signals = cycle_phase_signals(spec);
+  if (steps.empty()) {
+    throw std::runtime_error(spec.name + " has no generated cycle contract");
+  }
+  if (phase_signals.empty()) {
+    throw std::runtime_error(spec.name + " has no documented cycle phase signal");
+  }
+  for (std::size_t i = 0; i < steps.size(); ++i) {
+    if (steps[i].cycle != static_cast<int>(i)) {
+      throw std::runtime_error(spec.name + " cycle contract is not contiguous");
+    }
+    if (steps[i].phase.empty() || steps[i].responsibility.empty() ||
+        steps[i].observed_signals.empty() || steps[i].dpi_check.empty()) {
+      throw std::runtime_error(spec.name + " has an incomplete cycle contract row");
+    }
+  }
+  const std::string expected_dpi = "e1_h1_full_dpi_cycle(\"" + spec.name + "\"";
+  if (spec.probe_sv.find(expected_dpi) == std::string::npos) {
+    throw std::runtime_error(spec.name + " probe does not report DPI cycles");
+  }
+}
+
+void write_cycle_steps_json(std::ostringstream& out,
+                            const std::vector<CycleStep>& steps,
+                            const std::string& indent) {
+  out << indent << "\"cycles\": [\n";
+  for (std::size_t i = 0; i < steps.size(); ++i) {
+    const CycleStep& step = steps[i];
+    out << indent << "  {\"cycle\": " << step.cycle << ", \"phase\": \"" << step.phase
+        << "\", \"responsibility\": \"" << step.responsibility
+        << "\", \"observed_signals\": \"" << step.observed_signals
+        << "\", \"dpi_check\": \"" << step.dpi_check << "\"}"
+        << (i + 1 == steps.size() ? "\n" : ",\n");
+  }
+  out << indent << "]";
+}
+
+void write_cycle_contract_object_json(std::ostringstream& out,
+                                      const ModuleSpec& spec,
+                                      const std::string& indent) {
+  const std::vector<CycleStep> steps = cycle_steps(spec);
+  out << indent << "\"cycle_contract\": {\n";
+  out << indent << "  \"template\": \"" << cycle_template_name(spec) << "\",\n";
+  out << indent << "  \"cycle_period\": " << steps.size() << ",\n";
+  write_string_array_json(out, "phase_signals", cycle_phase_signals(spec), indent + "  ");
+  out << ",\n";
+  write_cycle_steps_json(out, steps, indent + "  ");
+  out << "\n" << indent << "}";
+}
+
 std::string module_interfaces_markdown(const std::vector<ModuleSpec>& specs) {
   std::ostringstream out;
   out << "# Generated Full-Checkpoint RTL Module Interfaces\n\n";
@@ -254,6 +455,22 @@ std::string module_interfaces_markdown(const std::vector<ModuleSpec>& specs) {
     for (const std::string& note : spec.cycle_notes) {
       out << "- " << note << "\n";
     }
+    out << "\n### Cycle Contract\n\n";
+    out << "- Template: `" << cycle_template_name(spec) << "`\n";
+    out << "- Period: " << cycle_steps(spec).size() << " cycles\n";
+    out << "- Phase signal(s): ";
+    const std::vector<std::string> phase_signals = cycle_phase_signals(spec);
+    for (std::size_t j = 0; j < phase_signals.size(); ++j) {
+      out << (j == 0 ? "" : ", ") << "`" << phase_signals[j] << "`";
+    }
+    out << "\n\n";
+    out << "| Cycle | Phase | Responsibility | Observed Signals | DPI Check |\n";
+    out << "| ---: | --- | --- | --- | --- |\n";
+    for (const CycleStep& step : cycle_steps(spec)) {
+      out << "| " << step.cycle << " | `" << step.phase << "` | "
+          << step.responsibility << " | " << step.observed_signals << " | "
+          << step.dpi_check << " |\n";
+    }
     if (i + 1 != specs.size()) {
       out << "\n";
     }
@@ -269,6 +486,7 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
   out << "  \"scoreboard\": \"e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp\",\n";
   out << "  \"module_interfaces_doc\": \"e1/e1-h1/generated/full_checkpoint_dpi/module_interfaces.md\",\n";
   out << "  \"module_isolation_proof\": \"e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json\",\n";
+  out << "  \"cycle_contract\": \"e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json\",\n";
   out << "  \"construction_rule\": \"one_generated_probe_per_full_checkpoint_rtl_module_with_cpp_dpi_driven_neighbors\",\n";
   out << "  \"modules\": [\n";
   for (std::size_t i = 0; i < specs.size(); ++i) {
@@ -295,6 +513,8 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
     write_signal_array_json(out, "input_signals", spec.input_signals, "      ");
     out << ",\n";
     write_signal_array_json(out, "output_signals", spec.output_signals, "      ");
+    out << ",\n";
+    write_cycle_contract_object_json(out, spec, "      ");
     out << "\n";
     out << "    }" << (i + 1 == specs.size() ? "\n" : ",\n");
   }
@@ -330,6 +550,41 @@ std::string module_isolation_json(const std::vector<ModuleSpec>& specs) {
     out << "        {\"name\": \"allowed_child_modules_present\", \"status\": \"pass\"},\n";
     out << "        {\"name\": \"forbidden_child_modules_absent\", \"status\": \"pass\"},\n";
     out << "        {\"name\": \"flist_contains_declared_rtl_plus_probe\", \"status\": \"pass\"}\n";
+    out << "      ]\n";
+    out << "    }" << (i + 1 == specs.size() ? "\n" : ",\n");
+  }
+  out << "  ]\n";
+  out << "}\n";
+  return out.str();
+}
+
+std::string cycle_contract_json(const std::vector<ModuleSpec>& specs) {
+  std::ostringstream out;
+  out << "{\n";
+  out << "  \"schema\": \"e1-h1-full-checkpoint-cycle-contract-v0\",\n";
+  out << "  \"generator\": \"e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp\",\n";
+  out << "  \"readme_diagram\": \"e1/e1-h1/docs/modules/README.md#cycle-diagram\",\n";
+  out << "  \"construction_rule\": \"every_generated_module_has_contiguous_named_cycle_phases_and_dpi_cycle_reporting\",\n";
+  out << "  \"modules\": [\n";
+  for (std::size_t i = 0; i < specs.size(); ++i) {
+    const ModuleSpec& spec = specs[i];
+    const std::vector<CycleStep> steps = cycle_steps(spec);
+    out << "    {\n";
+    out << "      \"name\": \"" << spec.name << "\",\n";
+    out << "      \"top_module\": \"" << spec.top_module << "\",\n";
+    out << "      \"probe_module\": \"" << spec.probe_module << "\",\n";
+    out << "      \"readme_diagram\": \"e1/e1-h1/docs/modules/README.md#cycle-diagram\",\n";
+    out << "      \"template\": \"" << cycle_template_name(spec) << "\",\n";
+    out << "      \"cycle_period\": " << steps.size() << ",\n";
+    write_string_array_json(out, "phase_signals", cycle_phase_signals(spec), "      ");
+    out << ",\n";
+    write_cycle_steps_json(out, steps, "      ");
+    out << ",\n";
+    out << "      \"checks\": [\n";
+    out << "        {\"name\": \"cycle_indices_contiguous\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"cycle_phase_signals_documented\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"dpi_probe_reports_cycles\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"readme_cycle_diagram_declared\", \"status\": \"pass\"}\n";
     out << "      ]\n";
     out << "    }" << (i + 1 == specs.size() ? "\n" : ",\n");
   }
@@ -1296,6 +1551,7 @@ int main(int argc, char** argv) {
     for (const ModuleSpec& spec : specs) {
       validate_rtl_inputs(repo_root, spec);
       validate_isolation(repo_root, spec);
+      validate_cycle_contract(spec);
     }
 
     write_text(output_dir / "e1_h1_full_checkpoint_module_dpi_scoreboard.cpp", scoreboard_cpp());
@@ -1308,6 +1564,7 @@ int main(int argc, char** argv) {
     write_text(output_dir / "manifest.json", manifest_json(specs));
     write_text(output_dir / "module_interfaces.md", module_interfaces_markdown(specs));
     write_text(output_dir / "module_isolation.json", module_isolation_json(specs));
+    write_text(output_dir / "cycle_contract.json", cycle_contract_json(specs));
 
     std::cout << "PASS e1_h1_generate_full_checkpoint_module_dpi " << specs.size()
               << " modules -> " << output_dir.generic_string() << "\n";

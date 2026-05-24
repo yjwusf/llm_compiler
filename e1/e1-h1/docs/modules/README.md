@@ -114,6 +114,7 @@ The generated artifacts are:
 - `e1/e1-h1/generated/full_checkpoint_dpi/manifest.json`
 - `e1/e1-h1/generated/full_checkpoint_dpi/module_interfaces.md`
 - `e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json`
+- `e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json`
 - `e1/e1-h1/generated/full_checkpoint_dpi/flists/*.f`
 
 The Verilator harness checks sampled RTL command payloads against
@@ -195,4 +196,7 @@ main, so review can build and run the modules individually. The same generator
 also emits `e1/e1-h1/generated/full_checkpoint_dpi/module_interfaces.md`, which
 is the generated input/output signal table for every full-checkpoint RTL module,
 and `e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json`, which lists
-the allowed and forbidden RTL child modules for each generated DUT.
+the allowed and forbidden RTL child modules for each generated DUT. The same
+generator emits `e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json`,
+which names every cycle in each generated module's phase template and links it
+back to this README's cycle diagrams.

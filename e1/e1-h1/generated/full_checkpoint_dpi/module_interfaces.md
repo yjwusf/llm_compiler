@@ -46,6 +46,23 @@ Each section is the review contract for a generated RTL module and its module-on
 - cycle 2 command handshake
 - cycle 6 array done
 
+### Cycle Contract
+
+- Template: `tile_command_8_cycle_cpu_latch_array_template`
+- Period: 8 cycles
+- Phase signal(s): `cycle_phase_o`
+
+| Cycle | Phase | Responsibility | Observed Signals | DPI Check |
+| ---: | --- | --- | --- | --- |
+| 0 | `setup_tile_command` | Select the next TinyLlama linear tile command. | cycle_phase_o, layer_o, op_index_o, input_tile_o, output_tile_o | DPI records the phase and later checks issued_commands_o. |
+| 1 | `assert_scheduler_valid` | Present cmd_valid_o and hold the payload stable. | cycle_phase_o, cmd_valid_o, cmd_*_o | DPI records the valid phase. |
+| 2 | `accept_command_handshake` | Accept the command when cmd_ready_i is high. | cycle_phase_o, cmd_valid_o, cmd_ready_i | DPI records the handshake phase. |
+| 3 | `wait_for_array_progress_0` | Wait for the first array progress beat. | cycle_phase_o, array_done_i | DPI records the in-flight phase. |
+| 4 | `wait_for_array_progress_1` | Wait for the second array progress beat. | cycle_phase_o, array_done_i | DPI records the in-flight phase. |
+| 5 | `wait_for_array_progress_2` | Wait for the third array progress beat. | cycle_phase_o, array_done_i | DPI records the in-flight phase. |
+| 6 | `sample_array_done` | Sample array_done_i or array_error_i for the command. | cycle_phase_o, array_done_i, array_error_i | DPI drives array_done_i in this phase. |
+| 7 | `advance_tile_counters` | Advance layer/op/tile counters for the next command. | cycle_phase_o, issued_commands_o | DPI checks the accepted command count. |
+
 ## linear_tile_engine
 
 - Top module: `e1_h1_tinyllama_linear_tile_engine`
@@ -98,6 +115,23 @@ Each section is the review contract for a generated RTL module and its module-on
 - cycle 2 gated array command
 - cycles 3-6 latch/array transfer
 
+### Cycle Contract
+
+- Template: `tile_command_8_cycle_cpu_latch_array_template`
+- Period: 8 cycles
+- Phase signal(s): `cycle_phase_o`
+
+| Cycle | Phase | Responsibility | Observed Signals | DPI Check |
+| ---: | --- | --- | --- | --- |
+| 0 | `setup_tile_engine` | Start the scheduler/latch/array composition. | cycle_phase_o, scheduler_cmd_valid_o | DPI records the composed engine phase. |
+| 1 | `scheduler_valid_visible` | Expose the ungated scheduler command-valid. | cycle_phase_o, scheduler_cmd_valid_o | DPI records valid before array valid. |
+| 2 | `array_command_handshake` | Gate the command into the systolic array. | cycle_phase_o, array_cmd_valid_o, array_cmd_ready_o | DPI observes the array handshake. |
+| 3 | `latch_to_array_beat_0` | Present the first latched stream beat to the array. | cycle_phase_o, buffer_array_valid_o, buffer_array_data_o | DPI records latch output. |
+| 4 | `latch_to_array_beat_1` | Stage or forward the next stream beat. | cycle_phase_o, buffer_array_valid_o, buffer_array_ready_o | DPI records latch readiness. |
+| 5 | `latch_to_array_beat_2` | Continue array input transfer. | cycle_phase_o, buffer_array_valid_o, buffer_array_ready_o | DPI records latch transfer. |
+| 6 | `array_done_pulse` | Observe the systolic-array completion pulse. | cycle_phase_o, array_done_o, array_debug_busy_o | DPI checks completion progress. |
+| 7 | `return_ready` | Return the composition to ready for the next tile. | cycle_phase_o, issued_commands_o | DPI checks issued command progress. |
+
 ## control_scheduler
 
 - Top module: `e1_h1_tinyllama_control_scheduler`
@@ -132,6 +166,19 @@ Each section is the review contract for a generated RTL module and its module-on
 - cycle 0 control issue
 - cycle 2 execute
 - cycle 3 commit
+
+### Cycle Contract
+
+- Template: `control_op_4_cycle_cpu_template`
+- Period: 4 cycles
+- Phase signal(s): `cycle_phase_o`
+
+| Cycle | Phase | Responsibility | Observed Signals | DPI Check |
+| ---: | --- | --- | --- | --- |
+| 0 | `issue_control_op` | Present the current non-linear control op. | cycle_phase_o, control_valid_o, layer_o, layer_op_slot_o | DPI records issue. |
+| 1 | `read_control_metadata` | Read source/control metadata for the op. | cycle_phase_o, control_kind_o | DPI records metadata phase. |
+| 2 | `execute_control_op` | Execute the CPU/control operation. | cycle_phase_o, control_ready_i | DPI records execute phase. |
+| 3 | `commit_control_op` | Commit the op and advance counters. | cycle_phase_o, control_commit_o, issued_control_ops_o | DPI checks committed count. |
 
 ## graph_sequencer
 
@@ -172,6 +219,19 @@ Each section is the review contract for a generated RTL module and its module-on
 - cycle 1 launch selected engine
 - cycle 2 wait done
 - cycle 3 commit
+
+### Cycle Contract
+
+- Template: `graph_slot_4_cycle_launch_template`
+- Period: 4 cycles
+- Phase signal(s): `cycle_phase_o`
+
+| Cycle | Phase | Responsibility | Observed Signals | DPI Check |
+| ---: | --- | --- | --- | --- |
+| 0 | `present_graph_slot` | Present the ordered TinyLlama layer graph slot. | cycle_phase_o, slot_valid_o, layer_o, layer_slot_o | DPI records slot issue. |
+| 1 | `launch_selected_engine` | Launch either the control or linear slot engine. | cycle_phase_o, launch_control_o, launch_linear_o | DPI counts launch pulses. |
+| 2 | `wait_for_slot_done` | Wait for the selected slot engine to complete. | cycle_phase_o, op_done_i | DPI drives op_done_i in this phase. |
+| 3 | `commit_graph_slot` | Commit the graph slot and advance layer/slot counters. | cycle_phase_o, issued_graph_slots_o | DPI checks committed slot count. |
 
 ## linear_slot_engine
 
@@ -228,6 +288,23 @@ Each section is the review contract for a generated RTL module and its module-on
 - cycle 2 array command
 - cycles 3-6 separated latch/array
 
+### Cycle Contract
+
+- Template: `tile_command_8_cycle_cpu_latch_array_template`
+- Period: 8 cycles
+- Phase signal(s): `cycle_phase_o`
+
+| Cycle | Phase | Responsibility | Observed Signals | DPI Check |
+| ---: | --- | --- | --- | --- |
+| 0 | `latch_selected_linear_slot` | Latch graph-selected layer and linear op. | cycle_phase_o, layer_o, op_index_o | DPI records selected slot. |
+| 1 | `slot_command_valid` | Expose the slot-local scheduler command-valid. | cycle_phase_o, scheduler_cmd_valid_o | DPI records scheduler valid. |
+| 2 | `array_command_handshake` | Gate the slot command into the systolic array. | cycle_phase_o, array_cmd_valid_o, array_cmd_ready_o | DPI observes the array handshake. |
+| 3 | `latch_to_array_beat_0` | Present the first latched stream beat to the array. | cycle_phase_o, buffer_array_valid_o, buffer_array_data_o | DPI records latch output. |
+| 4 | `latch_to_array_beat_1` | Stage or forward the next stream beat. | cycle_phase_o, buffer_array_valid_o, buffer_array_ready_o | DPI records latch readiness. |
+| 5 | `latch_to_array_beat_2` | Continue array input transfer. | cycle_phase_o, buffer_array_valid_o, buffer_array_ready_o | DPI records latch transfer. |
+| 6 | `array_done_pulse` | Observe the systolic-array completion pulse. | cycle_phase_o, array_done_o, array_debug_busy_o | DPI checks completion progress. |
+| 7 | `slot_done_or_next_tile` | Finish the slot or advance to its next tile. | cycle_phase_o, issued_commands_o, expected_commands_o | DPI checks bounded command count. |
+
 ## control_slot_engine
 
 - Top module: `e1_h1_tinyllama_control_slot_engine`
@@ -264,6 +341,19 @@ Each section is the review contract for a generated RTL module and its module-on
 - cycle 0 control valid
 - cycle 2 execute
 - cycle 3 commit
+
+### Cycle Contract
+
+- Template: `control_op_4_cycle_cpu_template`
+- Period: 4 cycles
+- Phase signal(s): `cycle_phase_o`
+
+| Cycle | Phase | Responsibility | Observed Signals | DPI Check |
+| ---: | --- | --- | --- | --- |
+| 0 | `issue_selected_control_slot` | Present the selected control graph slot. | cycle_phase_o, control_valid_o, layer_o | DPI records issue. |
+| 1 | `read_selected_control_metadata` | Read selected control-kind metadata. | cycle_phase_o, control_kind_o | DPI records metadata phase. |
+| 2 | `execute_selected_control_slot` | Execute the selected CPU/control operation. | cycle_phase_o, control_ready_i | DPI records execute phase. |
+| 3 | `commit_selected_control_slot` | Commit the selected control slot. | cycle_phase_o, control_commit_o, issued_control_ops_o | DPI checks committed count. |
 
 ## full_checkpoint_top
 
@@ -326,3 +416,16 @@ Each section is the review contract for a generated RTL module and its module-on
 - cycle 1 slot start
 - cycle 2 selected engine runs
 - cycle 3 graph commit
+
+### Cycle Contract
+
+- Template: `top_dispatch_4_cycle_slot_engine_template`
+- Period: 4 cycles
+- Phase signal(s): `graph_cycle_phase_o`, `linear_cycle_phase_o`, `control_cycle_phase_o`
+
+| Cycle | Phase | Responsibility | Observed Signals | DPI Check |
+| ---: | --- | --- | --- | --- |
+| 0 | `present_top_graph_slot` | Present the next graph slot at the top boundary. | graph_cycle_phase_o, active_layer_o, active_slot_o | DPI records top slot issue. |
+| 1 | `start_selected_slot_engine` | Pulse exactly one selected slot engine. | graph_cycle_phase_o, launch_linear_o, launch_control_o | DPI counts launch pulses. |
+| 2 | `run_selected_slot_engine` | Run either the control slot or linear slot engine. | graph_cycle_phase_o, linear_cycle_phase_o, control_cycle_phase_o | DPI records selected engine progress. |
+| 3 | `commit_top_graph_slot` | Return slot done to the graph sequencer. | graph_cycle_phase_o, issued_graph_slots_o | DPI checks top committed slots. |

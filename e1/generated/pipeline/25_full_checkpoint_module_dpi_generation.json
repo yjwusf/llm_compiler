@@ -25,6 +25,10 @@
       "status": "pass"
     },
     {
+      "name": "generated_full_checkpoint_cycle_contract_exists",
+      "status": "pass"
+    },
+    {
       "name": "all_generated_full_checkpoint_modules_have_signal_docs",
       "status": "pass"
     },
@@ -33,11 +37,16 @@
       "status": "pass"
     },
     {
+      "name": "all_generated_full_checkpoint_modules_have_cycle_contracts",
+      "status": "pass"
+    },
+    {
       "name": "full_checkpoint_top_dpi_covers_slot_engines",
       "status": "pass"
     }
   ],
   "construction_rule": "one_generated_probe_per_full_checkpoint_rtl_module_with_cpp_dpi_driven_neighbors",
+  "cycle_contract": "e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json",
   "generator": "e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp",
   "manifest": "e1/e1-h1/generated/full_checkpoint_dpi/manifest.json",
   "module_count": 7,
@@ -45,6 +54,93 @@
   "module_isolation_proof": "e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json",
   "modules": [
     {
+      "cycle_contract": {
+        "checks": [
+          {
+            "name": "cycle_indices_contiguous",
+            "status": "pass"
+          },
+          {
+            "name": "cycle_phase_signals_documented",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_diagram_declared",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 8,
+        "cycles": [
+          {
+            "cycle": 0,
+            "dpi_check": "DPI records the phase and later checks issued_commands_o.",
+            "observed_signals": "cycle_phase_o, layer_o, op_index_o, input_tile_o, output_tile_o",
+            "phase": "setup_tile_command",
+            "responsibility": "Select the next TinyLlama linear tile command."
+          },
+          {
+            "cycle": 1,
+            "dpi_check": "DPI records the valid phase.",
+            "observed_signals": "cycle_phase_o, cmd_valid_o, cmd_*_o",
+            "phase": "assert_scheduler_valid",
+            "responsibility": "Present cmd_valid_o and hold the payload stable."
+          },
+          {
+            "cycle": 2,
+            "dpi_check": "DPI records the handshake phase.",
+            "observed_signals": "cycle_phase_o, cmd_valid_o, cmd_ready_i",
+            "phase": "accept_command_handshake",
+            "responsibility": "Accept the command when cmd_ready_i is high."
+          },
+          {
+            "cycle": 3,
+            "dpi_check": "DPI records the in-flight phase.",
+            "observed_signals": "cycle_phase_o, array_done_i",
+            "phase": "wait_for_array_progress_0",
+            "responsibility": "Wait for the first array progress beat."
+          },
+          {
+            "cycle": 4,
+            "dpi_check": "DPI records the in-flight phase.",
+            "observed_signals": "cycle_phase_o, array_done_i",
+            "phase": "wait_for_array_progress_1",
+            "responsibility": "Wait for the second array progress beat."
+          },
+          {
+            "cycle": 5,
+            "dpi_check": "DPI records the in-flight phase.",
+            "observed_signals": "cycle_phase_o, array_done_i",
+            "phase": "wait_for_array_progress_2",
+            "responsibility": "Wait for the third array progress beat."
+          },
+          {
+            "cycle": 6,
+            "dpi_check": "DPI drives array_done_i in this phase.",
+            "observed_signals": "cycle_phase_o, array_done_i, array_error_i",
+            "phase": "sample_array_done",
+            "responsibility": "Sample array_done_i or array_error_i for the command."
+          },
+          {
+            "cycle": 7,
+            "dpi_check": "DPI checks the accepted command count.",
+            "observed_signals": "cycle_phase_o, issued_commands_o",
+            "phase": "advance_tile_counters",
+            "responsibility": "Advance layer/op/tile counters for the next command."
+          }
+        ],
+        "name": "linear_scheduler",
+        "phase_signals": [
+          "cycle_phase_o"
+        ],
+        "probe_module": "e1_h1_full_checkpoint_module_dpi_linear_scheduler",
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "template": "tile_command_8_cycle_cpu_latch_array_template",
+        "top_module": "e1_h1_tinyllama_linear_scheduler"
+      },
       "cycle_notes": [
         "cycle 0 setup",
         "cycle 2 command handshake",
@@ -215,6 +311,93 @@
       "top_module": "e1_h1_tinyllama_linear_scheduler"
     },
     {
+      "cycle_contract": {
+        "checks": [
+          {
+            "name": "cycle_indices_contiguous",
+            "status": "pass"
+          },
+          {
+            "name": "cycle_phase_signals_documented",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_diagram_declared",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 8,
+        "cycles": [
+          {
+            "cycle": 0,
+            "dpi_check": "DPI records the composed engine phase.",
+            "observed_signals": "cycle_phase_o, scheduler_cmd_valid_o",
+            "phase": "setup_tile_engine",
+            "responsibility": "Start the scheduler/latch/array composition."
+          },
+          {
+            "cycle": 1,
+            "dpi_check": "DPI records valid before array valid.",
+            "observed_signals": "cycle_phase_o, scheduler_cmd_valid_o",
+            "phase": "scheduler_valid_visible",
+            "responsibility": "Expose the ungated scheduler command-valid."
+          },
+          {
+            "cycle": 2,
+            "dpi_check": "DPI observes the array handshake.",
+            "observed_signals": "cycle_phase_o, array_cmd_valid_o, array_cmd_ready_o",
+            "phase": "array_command_handshake",
+            "responsibility": "Gate the command into the systolic array."
+          },
+          {
+            "cycle": 3,
+            "dpi_check": "DPI records latch output.",
+            "observed_signals": "cycle_phase_o, buffer_array_valid_o, buffer_array_data_o",
+            "phase": "latch_to_array_beat_0",
+            "responsibility": "Present the first latched stream beat to the array."
+          },
+          {
+            "cycle": 4,
+            "dpi_check": "DPI records latch readiness.",
+            "observed_signals": "cycle_phase_o, buffer_array_valid_o, buffer_array_ready_o",
+            "phase": "latch_to_array_beat_1",
+            "responsibility": "Stage or forward the next stream beat."
+          },
+          {
+            "cycle": 5,
+            "dpi_check": "DPI records latch transfer.",
+            "observed_signals": "cycle_phase_o, buffer_array_valid_o, buffer_array_ready_o",
+            "phase": "latch_to_array_beat_2",
+            "responsibility": "Continue array input transfer."
+          },
+          {
+            "cycle": 6,
+            "dpi_check": "DPI checks completion progress.",
+            "observed_signals": "cycle_phase_o, array_done_o, array_debug_busy_o",
+            "phase": "array_done_pulse",
+            "responsibility": "Observe the systolic-array completion pulse."
+          },
+          {
+            "cycle": 7,
+            "dpi_check": "DPI checks issued command progress.",
+            "observed_signals": "cycle_phase_o, issued_commands_o",
+            "phase": "return_ready",
+            "responsibility": "Return the composition to ready for the next tile."
+          }
+        ],
+        "name": "linear_tile_engine",
+        "phase_signals": [
+          "cycle_phase_o"
+        ],
+        "probe_module": "e1_h1_full_checkpoint_module_dpi_linear_tile_engine",
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "template": "tile_command_8_cycle_cpu_latch_array_template",
+        "top_module": "e1_h1_tinyllama_linear_tile_engine"
+      },
       "cycle_notes": [
         "cycle 1 scheduler valid",
         "cycle 2 gated array command",
@@ -437,6 +620,65 @@
       "top_module": "e1_h1_tinyllama_linear_tile_engine"
     },
     {
+      "cycle_contract": {
+        "checks": [
+          {
+            "name": "cycle_indices_contiguous",
+            "status": "pass"
+          },
+          {
+            "name": "cycle_phase_signals_documented",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_diagram_declared",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 4,
+        "cycles": [
+          {
+            "cycle": 0,
+            "dpi_check": "DPI records issue.",
+            "observed_signals": "cycle_phase_o, control_valid_o, layer_o, layer_op_slot_o",
+            "phase": "issue_control_op",
+            "responsibility": "Present the current non-linear control op."
+          },
+          {
+            "cycle": 1,
+            "dpi_check": "DPI records metadata phase.",
+            "observed_signals": "cycle_phase_o, control_kind_o",
+            "phase": "read_control_metadata",
+            "responsibility": "Read source/control metadata for the op."
+          },
+          {
+            "cycle": 2,
+            "dpi_check": "DPI records execute phase.",
+            "observed_signals": "cycle_phase_o, control_ready_i",
+            "phase": "execute_control_op",
+            "responsibility": "Execute the CPU/control operation."
+          },
+          {
+            "cycle": 3,
+            "dpi_check": "DPI checks committed count.",
+            "observed_signals": "cycle_phase_o, control_commit_o, issued_control_ops_o",
+            "phase": "commit_control_op",
+            "responsibility": "Commit the op and advance counters."
+          }
+        ],
+        "name": "control_scheduler",
+        "phase_signals": [
+          "cycle_phase_o"
+        ],
+        "probe_module": "e1_h1_full_checkpoint_module_dpi_control_scheduler",
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "template": "control_op_4_cycle_cpu_template",
+        "top_module": "e1_h1_tinyllama_control_scheduler"
+      },
       "cycle_notes": [
         "cycle 0 control issue",
         "cycle 2 execute",
@@ -567,6 +809,65 @@
       "top_module": "e1_h1_tinyllama_control_scheduler"
     },
     {
+      "cycle_contract": {
+        "checks": [
+          {
+            "name": "cycle_indices_contiguous",
+            "status": "pass"
+          },
+          {
+            "name": "cycle_phase_signals_documented",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_diagram_declared",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 4,
+        "cycles": [
+          {
+            "cycle": 0,
+            "dpi_check": "DPI records slot issue.",
+            "observed_signals": "cycle_phase_o, slot_valid_o, layer_o, layer_slot_o",
+            "phase": "present_graph_slot",
+            "responsibility": "Present the ordered TinyLlama layer graph slot."
+          },
+          {
+            "cycle": 1,
+            "dpi_check": "DPI counts launch pulses.",
+            "observed_signals": "cycle_phase_o, launch_control_o, launch_linear_o",
+            "phase": "launch_selected_engine",
+            "responsibility": "Launch either the control or linear slot engine."
+          },
+          {
+            "cycle": 2,
+            "dpi_check": "DPI drives op_done_i in this phase.",
+            "observed_signals": "cycle_phase_o, op_done_i",
+            "phase": "wait_for_slot_done",
+            "responsibility": "Wait for the selected slot engine to complete."
+          },
+          {
+            "cycle": 3,
+            "dpi_check": "DPI checks committed slot count.",
+            "observed_signals": "cycle_phase_o, issued_graph_slots_o",
+            "phase": "commit_graph_slot",
+            "responsibility": "Commit the graph slot and advance layer/slot counters."
+          }
+        ],
+        "name": "graph_sequencer",
+        "phase_signals": [
+          "cycle_phase_o"
+        ],
+        "probe_module": "e1_h1_full_checkpoint_module_dpi_graph_sequencer",
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "template": "graph_slot_4_cycle_launch_template",
+        "top_module": "e1_h1_tinyllama_graph_sequencer"
+      },
       "cycle_notes": [
         "cycle 0 present graph slot",
         "cycle 1 launch selected engine",
@@ -718,6 +1019,93 @@
       "top_module": "e1_h1_tinyllama_graph_sequencer"
     },
     {
+      "cycle_contract": {
+        "checks": [
+          {
+            "name": "cycle_indices_contiguous",
+            "status": "pass"
+          },
+          {
+            "name": "cycle_phase_signals_documented",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_diagram_declared",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 8,
+        "cycles": [
+          {
+            "cycle": 0,
+            "dpi_check": "DPI records selected slot.",
+            "observed_signals": "cycle_phase_o, layer_o, op_index_o",
+            "phase": "latch_selected_linear_slot",
+            "responsibility": "Latch graph-selected layer and linear op."
+          },
+          {
+            "cycle": 1,
+            "dpi_check": "DPI records scheduler valid.",
+            "observed_signals": "cycle_phase_o, scheduler_cmd_valid_o",
+            "phase": "slot_command_valid",
+            "responsibility": "Expose the slot-local scheduler command-valid."
+          },
+          {
+            "cycle": 2,
+            "dpi_check": "DPI observes the array handshake.",
+            "observed_signals": "cycle_phase_o, array_cmd_valid_o, array_cmd_ready_o",
+            "phase": "array_command_handshake",
+            "responsibility": "Gate the slot command into the systolic array."
+          },
+          {
+            "cycle": 3,
+            "dpi_check": "DPI records latch output.",
+            "observed_signals": "cycle_phase_o, buffer_array_valid_o, buffer_array_data_o",
+            "phase": "latch_to_array_beat_0",
+            "responsibility": "Present the first latched stream beat to the array."
+          },
+          {
+            "cycle": 4,
+            "dpi_check": "DPI records latch readiness.",
+            "observed_signals": "cycle_phase_o, buffer_array_valid_o, buffer_array_ready_o",
+            "phase": "latch_to_array_beat_1",
+            "responsibility": "Stage or forward the next stream beat."
+          },
+          {
+            "cycle": 5,
+            "dpi_check": "DPI records latch transfer.",
+            "observed_signals": "cycle_phase_o, buffer_array_valid_o, buffer_array_ready_o",
+            "phase": "latch_to_array_beat_2",
+            "responsibility": "Continue array input transfer."
+          },
+          {
+            "cycle": 6,
+            "dpi_check": "DPI checks completion progress.",
+            "observed_signals": "cycle_phase_o, array_done_o, array_debug_busy_o",
+            "phase": "array_done_pulse",
+            "responsibility": "Observe the systolic-array completion pulse."
+          },
+          {
+            "cycle": 7,
+            "dpi_check": "DPI checks bounded command count.",
+            "observed_signals": "cycle_phase_o, issued_commands_o, expected_commands_o",
+            "phase": "slot_done_or_next_tile",
+            "responsibility": "Finish the slot or advance to its next tile."
+          }
+        ],
+        "name": "linear_slot_engine",
+        "phase_signals": [
+          "cycle_phase_o"
+        ],
+        "probe_module": "e1_h1_full_checkpoint_module_dpi_linear_slot_engine",
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "template": "tile_command_8_cycle_cpu_latch_array_template",
+        "top_module": "e1_h1_tinyllama_linear_slot_engine"
+      },
       "cycle_notes": [
         "cycle 1 slot command valid",
         "cycle 2 array command",
@@ -953,6 +1341,65 @@
       "top_module": "e1_h1_tinyllama_linear_slot_engine"
     },
     {
+      "cycle_contract": {
+        "checks": [
+          {
+            "name": "cycle_indices_contiguous",
+            "status": "pass"
+          },
+          {
+            "name": "cycle_phase_signals_documented",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_diagram_declared",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 4,
+        "cycles": [
+          {
+            "cycle": 0,
+            "dpi_check": "DPI records issue.",
+            "observed_signals": "cycle_phase_o, control_valid_o, layer_o",
+            "phase": "issue_selected_control_slot",
+            "responsibility": "Present the selected control graph slot."
+          },
+          {
+            "cycle": 1,
+            "dpi_check": "DPI records metadata phase.",
+            "observed_signals": "cycle_phase_o, control_kind_o",
+            "phase": "read_selected_control_metadata",
+            "responsibility": "Read selected control-kind metadata."
+          },
+          {
+            "cycle": 2,
+            "dpi_check": "DPI records execute phase.",
+            "observed_signals": "cycle_phase_o, control_ready_i",
+            "phase": "execute_selected_control_slot",
+            "responsibility": "Execute the selected CPU/control operation."
+          },
+          {
+            "cycle": 3,
+            "dpi_check": "DPI checks committed count.",
+            "observed_signals": "cycle_phase_o, control_commit_o, issued_control_ops_o",
+            "phase": "commit_selected_control_slot",
+            "responsibility": "Commit the selected control slot."
+          }
+        ],
+        "name": "control_slot_engine",
+        "phase_signals": [
+          "cycle_phase_o"
+        ],
+        "probe_module": "e1_h1_full_checkpoint_module_dpi_control_slot_engine",
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "template": "control_op_4_cycle_cpu_template",
+        "top_module": "e1_h1_tinyllama_control_slot_engine"
+      },
       "cycle_notes": [
         "cycle 0 control valid",
         "cycle 2 execute",
@@ -1093,6 +1540,67 @@
       "top_module": "e1_h1_tinyllama_control_slot_engine"
     },
     {
+      "cycle_contract": {
+        "checks": [
+          {
+            "name": "cycle_indices_contiguous",
+            "status": "pass"
+          },
+          {
+            "name": "cycle_phase_signals_documented",
+            "status": "pass"
+          },
+          {
+            "name": "dpi_probe_reports_cycles",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_diagram_declared",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 4,
+        "cycles": [
+          {
+            "cycle": 0,
+            "dpi_check": "DPI records top slot issue.",
+            "observed_signals": "graph_cycle_phase_o, active_layer_o, active_slot_o",
+            "phase": "present_top_graph_slot",
+            "responsibility": "Present the next graph slot at the top boundary."
+          },
+          {
+            "cycle": 1,
+            "dpi_check": "DPI counts launch pulses.",
+            "observed_signals": "graph_cycle_phase_o, launch_linear_o, launch_control_o",
+            "phase": "start_selected_slot_engine",
+            "responsibility": "Pulse exactly one selected slot engine."
+          },
+          {
+            "cycle": 2,
+            "dpi_check": "DPI records selected engine progress.",
+            "observed_signals": "graph_cycle_phase_o, linear_cycle_phase_o, control_cycle_phase_o",
+            "phase": "run_selected_slot_engine",
+            "responsibility": "Run either the control slot or linear slot engine."
+          },
+          {
+            "cycle": 3,
+            "dpi_check": "DPI checks top committed slots.",
+            "observed_signals": "graph_cycle_phase_o, issued_graph_slots_o",
+            "phase": "commit_top_graph_slot",
+            "responsibility": "Return slot done to the graph sequencer."
+          }
+        ],
+        "name": "full_checkpoint_top",
+        "phase_signals": [
+          "graph_cycle_phase_o",
+          "linear_cycle_phase_o",
+          "control_cycle_phase_o"
+        ],
+        "probe_module": "e1_h1_full_checkpoint_module_dpi_full_checkpoint_top",
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "template": "top_dispatch_4_cycle_slot_engine_template",
+        "top_module": "e1_h1_tinyllama_full_checkpoint_top"
+      },
       "cycle_notes": [
         "cycle 0 graph slot",
         "cycle 1 slot start",

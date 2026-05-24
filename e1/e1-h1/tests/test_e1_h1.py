@@ -47,6 +47,7 @@ FULL_CHECKPOINT_MODULE_DPI_DIR = E1_H1 / "generated" / "full_checkpoint_dpi"
 FULL_CHECKPOINT_MODULE_DPI_MANIFEST = FULL_CHECKPOINT_MODULE_DPI_DIR / "manifest.json"
 FULL_CHECKPOINT_MODULE_INTERFACES = FULL_CHECKPOINT_MODULE_DPI_DIR / "module_interfaces.md"
 FULL_CHECKPOINT_MODULE_ISOLATION = FULL_CHECKPOINT_MODULE_DPI_DIR / "module_isolation.json"
+FULL_CHECKPOINT_CYCLE_CONTRACT = FULL_CHECKPOINT_MODULE_DPI_DIR / "cycle_contract.json"
 
 
 def load_generator():
@@ -515,12 +516,21 @@ class E1H1Tests(unittest.TestCase):
             manifest["module_isolation_proof"],
             "e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json",
         )
+        self.assertEqual(
+            manifest["cycle_contract"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json",
+        )
         self.assertTrue(FULL_CHECKPOINT_MODULE_INTERFACES.exists())
         self.assertTrue(FULL_CHECKPOINT_MODULE_ISOLATION.exists())
+        self.assertTrue(FULL_CHECKPOINT_CYCLE_CONTRACT.exists())
         interface_doc = FULL_CHECKPOINT_MODULE_INTERFACES.read_text(encoding="utf-8")
         isolation = json.loads(FULL_CHECKPOINT_MODULE_ISOLATION.read_text(encoding="utf-8"))
+        cycle_contract = json.loads(FULL_CHECKPOINT_CYCLE_CONTRACT.read_text(encoding="utf-8"))
         self.assertEqual(isolation["schema"], "e1-h1-full-checkpoint-module-isolation-v0")
+        self.assertEqual(cycle_contract["schema"], "e1-h1-full-checkpoint-cycle-contract-v0")
+        self.assertEqual(cycle_contract["readme_diagram"], "e1/e1-h1/docs/modules/README.md#cycle-diagram")
         isolation_by_name = {module["name"]: module for module in isolation["modules"]}
+        cycle_contract_by_name = {module["name"]: module for module in cycle_contract["modules"]}
         self.assertIn("# Generated Full-Checkpoint RTL Module Interfaces", interface_doc)
         self.assertIn("one_generated_probe_per_full_checkpoint_rtl_module", manifest["construction_rule"])
         modules = {module["name"]: module for module in manifest["modules"]}
@@ -540,9 +550,25 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual(module["scope"], "generated_full_checkpoint_module_only")
             self.assertIn("cpp_dpi", module["neighbors"])
             self.assertIn(module["name"], isolation_by_name)
+            self.assertIn(module["name"], cycle_contract_by_name)
             self.assertEqual(isolation_by_name[module["name"]]["dut_module"], module["top_module"])
             self.assertEqual(isolation_by_name[module["name"]]["rtl_files"], module["rtl"])
             self.assertEqual({check["status"] for check in isolation_by_name[module["name"]]["checks"]}, {"pass"})
+            self.assertEqual(module["cycle_contract"]["template"], cycle_contract_by_name[module["name"]]["template"])
+            self.assertEqual(
+                module["cycle_contract"]["phase_signals"],
+                cycle_contract_by_name[module["name"]]["phase_signals"],
+            )
+            self.assertEqual(
+                module["cycle_contract"]["cycles"],
+                cycle_contract_by_name[module["name"]]["cycles"],
+            )
+            self.assertEqual({check["status"] for check in cycle_contract_by_name[module["name"]]["checks"]}, {"pass"})
+            self.assertEqual(
+                [step["cycle"] for step in module["cycle_contract"]["cycles"]],
+                list(range(module["cycle_contract"]["cycle_period"])),
+            )
+            self.assertGreater(module["cycle_contract"]["cycle_period"], 0, module)
             self.assertGreater(len(module["cycle_notes"]), 0, module)
             self.assertGreater(len(module["input_signals"]), 0, module)
             self.assertGreater(len(module["output_signals"]), 0, module)
@@ -552,6 +578,15 @@ class E1H1Tests(unittest.TestCase):
             self.assertTrue((REPO_ROOT / module["probe"]).exists(), module)
             self.assertTrue((REPO_ROOT / module["main"]).exists(), module)
             self.assertTrue((REPO_ROOT / module["flist"]).exists(), module)
+            output_signal_names = {signal["name"] for signal in module["output_signals"]}
+            for phase_signal in module["cycle_contract"]["phase_signals"]:
+                self.assertIn(phase_signal, output_signal_names, module)
+            for step in module["cycle_contract"]["cycles"]:
+                self.assertEqual(
+                    set(step),
+                    {"cycle", "phase", "responsibility", "observed_signals", "dpi_check"},
+                )
+                self.assertIn(f"| {step['cycle']} | `{step['phase']}` |", interface_doc)
             flist = (REPO_ROOT / module["flist"]).read_text(encoding="utf-8").splitlines()
             self.assertEqual(flist, [*module["rtl"], module["probe"]], module)
             probe_text = (REPO_ROOT / module["probe"]).read_text(encoding="utf-8")
@@ -1081,6 +1116,10 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(
             summary["full_checkpoint_module_isolation_proof"],
             "e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json",
+        )
+        self.assertEqual(
+            summary["full_checkpoint_module_cycle_contract"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json",
         )
         self.assertEqual(summary["full_checkpoint_module_dpi_status"], "pass")
         self.assertEqual(summary["full_checkpoint_module_dpi_count"], 7)
@@ -1658,6 +1697,10 @@ class E1H1Tests(unittest.TestCase):
             "e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json",
         )
         self.assertEqual(
+            full_checkpoint_module_dpi["cycle_contract"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json",
+        )
+        self.assertEqual(
             full_checkpoint_module_dpi["scoreboard"],
             "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
         )
@@ -1681,6 +1724,12 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual(module["isolation"]["dut_module"], module["top_module"])
             self.assertEqual(module["isolation"]["rtl_files"], module["rtl"])
             self.assertEqual({check["status"] for check in module["isolation"]["checks"]}, {"pass"})
+            self.assertEqual(module["cycle_contract"]["top_module"], module["top_module"])
+            self.assertEqual({check["status"] for check in module["cycle_contract"]["checks"]}, {"pass"})
+            self.assertEqual(
+                [step["cycle"] for step in module["cycle_contract"]["cycles"]],
+                list(range(module["cycle_contract"]["cycle_period"])),
+            )
             for signal in [*module["input_signals"], *module["output_signals"]]:
                 self.assertEqual(set(signal), {"name", "width", "description"})
             for path in [module["probe"], module["main"], module["flist"], *module["rtl"]]:
@@ -1760,6 +1809,10 @@ class E1H1Tests(unittest.TestCase):
             e2e["full_checkpoint_module_isolation_proof"],
             "e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json",
         )
+        self.assertEqual(
+            e2e["full_checkpoint_module_cycle_contract"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json",
+        )
         self.assertEqual(e2e["full_checkpoint_module_dpi_status"], "pass")
         self.assertEqual(e2e["full_checkpoint_module_dpi_count"], 7)
         self.assertEqual(e2e["target_package"], "e1/e1-h1/generated/targets/manifest.json")
@@ -1821,6 +1874,7 @@ class E1H1Tests(unittest.TestCase):
             e2e["full_checkpoint_module_dpi_manifest"],
             e2e["full_checkpoint_module_interfaces_doc"],
             e2e["full_checkpoint_module_isolation_proof"],
+            e2e["full_checkpoint_module_cycle_contract"],
             e2e["systemverilog_plan"],
             e2e["target_package_plan"],
             e2e["target_package"],

@@ -182,8 +182,10 @@ shared C++ scoreboard, and
 `e1/e1-h1/generated/full_checkpoint_dpi/module_interfaces.md` with generated
 input/output signal tables. It also emits
 `e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json`, which records
-the allowed and forbidden RTL child modules for each generated DUT. This extends
-the module-only construction rule from the base E1-H1 IPs to the generated
+the allowed and forbidden RTL child modules for each generated DUT, and
+`e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json`, which names every
+cycle phase and phase signal for each generated module. This extends the
+module-only construction rule from the base E1-H1 IPs to the generated
 TinyLlama RTL modules.
 
 ## Full Checkpoint Execution
