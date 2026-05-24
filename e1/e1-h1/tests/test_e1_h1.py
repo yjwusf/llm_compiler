@@ -1142,17 +1142,17 @@ class E1H1Tests(unittest.TestCase):
 
     def test_e1_pipeline_generates_e1_h1_artifacts(self) -> None:
         result = run(["python3", str(E1_PIPELINE.relative_to(REPO_ROOT)), "--clean"])
-        self.assertIn("PASS e1_pipeline 26 passes", result.stdout)
+        self.assertIn("PASS e1_pipeline 27 passes", result.stdout)
 
         summary = json.loads((E1_PIPELINE_OUT / "summary.json").read_text(encoding="utf-8"))
         self.assertEqual(summary["schema"], "e1-pipeline-summary-v0")
         self.assertEqual(summary["model_id"], "tinyllama-1.1b-chat-v1.0")
         self.assertEqual(summary["architecture_id"], "e1-h1")
-        self.assertEqual(summary["pass_count"], 26)
+        self.assertEqual(summary["pass_count"], 27)
         self.assertEqual(summary["operation_counts"]["dot_general"], 6)
         self.assertTrue(summary["all_current_modules_have_l1_5_harnesses"])
         self.assertEqual(summary["generated_top"], "e1/e1-h1/generated/e1_h1_soc_top.sv")
-        self.assertEqual(summary["end_to_end_smoke"], "e1/generated/pipeline/26_end_to_end_smoke.json")
+        self.assertEqual(summary["end_to_end_smoke"], "e1/generated/pipeline/27_end_to_end_smoke.json")
         self.assertEqual(summary["end_to_end_status"], "pass")
         self.assertEqual(summary["module_dpi_generation"], "e1/generated/pipeline/12_module_dpi_generation.json")
         self.assertEqual(summary["module_dpi_manifest"], "e1/e1-h1/generated/module_dpi/manifest.json")
@@ -1170,7 +1170,14 @@ class E1H1Tests(unittest.TestCase):
             "e1/generated/pipeline/18_full_checkpoint_rtl_lowering_plan.json",
         )
         self.assertEqual(summary["full_checkpoint_rtl_lowering_status"], "planned")
-        self.assertFalse(summary["full_checkpoint_graph_lowered_to_rtl"])
+        self.assertTrue(summary["full_checkpoint_graph_lowered_to_rtl"])
+        self.assertEqual(
+            summary["full_checkpoint_graph_rtl_lowering_proof"],
+            "e1/generated/pipeline/25_full_checkpoint_graph_rtl_lowering_proof.json",
+        )
+        self.assertEqual(summary["full_checkpoint_graph_rtl_lowering_status"], "pass")
+        self.assertTrue(summary["full_checkpoint_command_stream_rtl_execution"])
+        self.assertFalse(summary["full_checkpoint_numeric_output_equivalence"])
         self.assertEqual(summary["full_checkpoint_command_stream"], "e1/generated/pipeline/19_full_checkpoint_command_stream.json")
         self.assertEqual(summary["full_checkpoint_command_stream_status"], "pass")
         self.assertEqual(summary["full_checkpoint_total_tile_commands"], 3784704)
@@ -1204,7 +1211,7 @@ class E1H1Tests(unittest.TestCase):
         self.assertTrue(summary["full_checkpoint_rtl_top_full_command_cycle_phase_check"])
         self.assertEqual(
             summary["full_checkpoint_module_dpi_generation"],
-            "e1/generated/pipeline/25_full_checkpoint_module_dpi_generation.json",
+            "e1/generated/pipeline/26_full_checkpoint_module_dpi_generation.json",
         )
         self.assertEqual(summary["full_checkpoint_module_dpi_manifest"], "e1/e1-h1/generated/full_checkpoint_dpi/manifest.json")
         self.assertEqual(
@@ -1267,6 +1274,7 @@ class E1H1Tests(unittest.TestCase):
             "e1_lower_full_checkpoint_control_ops_to_rtl",
             "e1_sequence_full_checkpoint_graph_slots",
             "e1_integrate_full_checkpoint_rtl_top",
+            "e1_prove_full_checkpoint_graph_rtl_lowering",
             "e1_generate_full_checkpoint_module_dpi",
             "e1_end_to_end_smoke",
         ]
@@ -1759,8 +1767,10 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(rtl_top["status"], "pass")
         self.assertEqual(rtl_top["truth_boundary"], "ordered_graph_slot_dispatch_to_slot_scoped_rtl_engines")
         self.assertTrue(rtl_top["full_checkpoint_ordered_graph_integrated_rtl"])
-        self.assertFalse(rtl_top["full_checkpoint_graph_lowering"])
+        self.assertTrue(rtl_top["full_checkpoint_graph_lowering"])
         self.assertFalse(rtl_top["full_checkpoint_rtl_execution"])
+        self.assertTrue(rtl_top["full_checkpoint_command_stream_rtl_execution"])
+        self.assertFalse(rtl_top["full_checkpoint_numeric_output_equivalence"])
         self.assertEqual(rtl_top["top_rtl"], "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.sv")
         self.assertEqual(
             rtl_top["linear_slot_engine_rtl"],
@@ -1811,8 +1821,55 @@ class E1H1Tests(unittest.TestCase):
         ]:
             self.assertTrue((REPO_ROOT / path).exists(), path)
 
+        graph_rtl_proof = json.loads(
+            (E1_PIPELINE_OUT / "25_full_checkpoint_graph_rtl_lowering_proof.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(graph_rtl_proof["schema"], "e1-full-checkpoint-graph-rtl-lowering-proof-v0")
+        self.assertEqual(graph_rtl_proof["status"], "pass")
+        self.assertEqual(
+            graph_rtl_proof["truth_boundary"],
+            "full_graph_slot_dispatch_and_linear_command_stream_rtl_lowering",
+        )
+        self.assertTrue(graph_rtl_proof["full_checkpoint_graph_lowering"])
+        self.assertFalse(graph_rtl_proof["full_checkpoint_rtl_execution"])
+        self.assertTrue(graph_rtl_proof["full_checkpoint_command_stream_rtl_execution"])
+        self.assertFalse(graph_rtl_proof["full_checkpoint_numeric_output_equivalence"])
+        self.assertEqual(graph_rtl_proof["graph"]["layers"], 22)
+        self.assertEqual(graph_rtl_proof["graph"]["slots_per_layer"], 14)
+        self.assertEqual(graph_rtl_proof["graph"]["total_graph_slots"], 308)
+        self.assertEqual(graph_rtl_proof["graph"]["total_linear_slots"], 154)
+        self.assertEqual(graph_rtl_proof["graph"]["total_control_slots"], 154)
+        self.assertEqual(graph_rtl_proof["command_stream"]["total_tile_commands"], 3784704)
+        self.assertEqual(graph_rtl_proof["command_stream"]["total_rtl_cycles"], 30277632)
+        self.assertEqual(graph_rtl_proof["rtl_artifacts"]["top"], rtl_top["top_rtl"])
+        self.assertEqual(graph_rtl_proof["rtl_artifacts"]["latch_buffer"], rtl_top["latch_buffer_rtl"])
+        self.assertEqual(graph_rtl_proof["rtl_artifacts"]["systolic_array"], rtl_top["systolic_array_rtl"])
+        self.assertEqual({check["status"] for check in graph_rtl_proof["checks"]}, {"pass"})
+        self.assertEqual(len(graph_rtl_proof["slot_bindings"]), 14)
+        self.assertEqual(
+            [binding["name"] for binding in graph_rtl_proof["slot_bindings"]],
+            [op["name"] for op in first_layer["ops"]],
+        )
+        self.assertEqual(
+            {
+                binding["rtl_engine"]
+                for binding in graph_rtl_proof["slot_bindings"]
+                if binding["kind"] == "linear"
+            },
+            {"e1_h1_tinyllama_linear_slot_engine"},
+        )
+        self.assertEqual(
+            {
+                binding["rtl_engine"]
+                for binding in graph_rtl_proof["slot_bindings"]
+                if binding["kind"] != "linear"
+            },
+            {"e1_h1_tinyllama_control_slot_engine"},
+        )
+        self.assertIn("No TinyLlama numeric output equivalence", graph_rtl_proof["non_claims"][0])
+
         full_checkpoint_module_dpi = json.loads(
-            (E1_PIPELINE_OUT / "25_full_checkpoint_module_dpi_generation.json").read_text(encoding="utf-8")
+            (E1_PIPELINE_OUT / "26_full_checkpoint_module_dpi_generation.json").read_text(encoding="utf-8")
         )
         self.assertEqual(full_checkpoint_module_dpi["schema"], "e1-full-checkpoint-module-dpi-generation-report-v0")
         self.assertEqual(full_checkpoint_module_dpi["status"], "pass")
@@ -1882,7 +1939,7 @@ class E1H1Tests(unittest.TestCase):
             for path in [module["probe"], module["main"], module["flist"], *module["rtl"]]:
                 self.assertTrue((REPO_ROOT / path).exists(), path)
 
-        e2e = json.loads((E1_PIPELINE_OUT / "26_end_to_end_smoke.json").read_text(encoding="utf-8"))
+        e2e = json.loads((E1_PIPELINE_OUT / "27_end_to_end_smoke.json").read_text(encoding="utf-8"))
         self.assertEqual(e2e["schema"], "e1-end-to-end-smoke-v0")
         self.assertEqual(e2e["status"], "pass")
         self.assertEqual(e2e["model_id"], summary["model_id"])
@@ -1924,7 +1981,14 @@ class E1H1Tests(unittest.TestCase):
             "e1/generated/pipeline/18_full_checkpoint_rtl_lowering_plan.json",
         )
         self.assertEqual(e2e["full_checkpoint_rtl_lowering_status"], "planned")
-        self.assertFalse(e2e["full_checkpoint_graph_lowered_to_rtl"])
+        self.assertTrue(e2e["full_checkpoint_graph_lowered_to_rtl"])
+        self.assertEqual(
+            e2e["full_checkpoint_graph_rtl_lowering_proof"],
+            "e1/generated/pipeline/25_full_checkpoint_graph_rtl_lowering_proof.json",
+        )
+        self.assertEqual(e2e["full_checkpoint_graph_rtl_lowering_status"], "pass")
+        self.assertTrue(e2e["full_checkpoint_command_stream_rtl_execution"])
+        self.assertFalse(e2e["full_checkpoint_numeric_output_equivalence"])
         self.assertEqual(e2e["full_checkpoint_command_stream"], "e1/generated/pipeline/19_full_checkpoint_command_stream.json")
         self.assertEqual(e2e["full_checkpoint_command_stream_status"], "pass")
         self.assertEqual(e2e["full_checkpoint_total_tile_commands"], 3784704)
@@ -1952,7 +2016,7 @@ class E1H1Tests(unittest.TestCase):
         self.assertTrue(e2e["full_checkpoint_rtl_top_full_command_cycle_phase_check"])
         self.assertEqual(
             e2e["full_checkpoint_module_dpi_generation"],
-            "e1/generated/pipeline/25_full_checkpoint_module_dpi_generation.json",
+            "e1/generated/pipeline/26_full_checkpoint_module_dpi_generation.json",
         )
         self.assertEqual(e2e["full_checkpoint_module_dpi_manifest"], "e1/e1-h1/generated/full_checkpoint_dpi/manifest.json")
         self.assertEqual(
@@ -2000,6 +2064,7 @@ class E1H1Tests(unittest.TestCase):
                 "full_checkpoint_control_scheduler",
                 "full_checkpoint_graph_sequencer",
                 "full_checkpoint_rtl_top",
+                "full_checkpoint_graph_rtl_lowering_proof",
                 "full_checkpoint_module_dpi_generation",
                 "target_package",
             },
@@ -2036,6 +2101,7 @@ class E1H1Tests(unittest.TestCase):
             e2e["full_checkpoint_graph_sequencer"],
             e2e["full_checkpoint_rtl_top"],
             e2e["full_checkpoint_rtl_top_full_verilator_tb"],
+            e2e["full_checkpoint_graph_rtl_lowering_proof"],
             e2e["full_checkpoint_module_dpi_generation"],
             e2e["full_checkpoint_module_dpi_manifest"],
             e2e["full_checkpoint_module_interfaces_doc"],

@@ -223,6 +223,11 @@ systolic-array handshake path. It checks every accepted command payload against
 scheduler-valid, phase 2 array-handshake, and phase 6 array-done sequence for
 every command. This is full command-stream RTL execution evidence; it still
 does not claim TinyLlama numeric output equivalence.
+The pipeline also emits
+`e1/generated/pipeline/25_full_checkpoint_graph_rtl_lowering_proof.json`, which
+ties the layer plan, generated graph sequencer, slot engines, latch buffer,
+systolic array, and full-command harness into one construction proof that the
+ordered TinyLlama graph slots are lowered to RTL slot-engine dispatch.
 
 The generated full-checkpoint module-DPI collateral applies the same
 module-only rule to generated RTL modules. The C++ generator emits one probe

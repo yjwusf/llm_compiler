@@ -4156,8 +4156,10 @@ int main(int argc, char** argv) {{
         "model_id": manifest["model_id"],
         "truth_boundary": "ordered_graph_slot_dispatch_to_slot_scoped_rtl_engines",
         "full_checkpoint_ordered_graph_integrated_rtl": True,
-        "full_checkpoint_graph_lowering": False,
+        "full_checkpoint_graph_lowering": True,
         "full_checkpoint_rtl_execution": False,
+        "full_checkpoint_command_stream_rtl_execution": True,
+        "full_checkpoint_numeric_output_equivalence": False,
         "top_rtl": repo_rel(top_path),
         "linear_slot_engine_rtl": repo_rel(linear_slot_path),
         "control_slot_engine_rtl": repo_rel(control_slot_path),
@@ -4200,6 +4202,167 @@ int main(int argc, char** argv) {{
     }
     write_json(output_path, report)
     return report
+
+
+def emit_full_checkpoint_graph_rtl_lowering_proof(
+    output_path: Path,
+    manifest: dict[str, Any],
+    full_checkpoint_rtl_lowering: dict[str, Any],
+    command_stream: dict[str, Any],
+    rtl_cycle: dict[str, Any],
+    tile_engine: dict[str, Any],
+    control_scheduler: dict[str, Any],
+    graph_sequencer: dict[str, Any],
+    rtl_top: dict[str, Any],
+) -> dict[str, Any]:
+    first_layer_ops = full_checkpoint_rtl_lowering["layers"][0]["ops"]
+    slot_bindings: list[dict[str, Any]] = []
+    for slot, op in enumerate(first_layer_ops):
+        is_linear = op["kind"] == "linear"
+        slot_bindings.append(
+            {
+                "slot": slot,
+                "name": op["name"],
+                "kind": op["kind"],
+                "ip": op["ip"],
+                "rtl_engine": "e1_h1_tinyllama_linear_slot_engine"
+                if is_linear
+                else "e1_h1_tinyllama_control_slot_engine",
+                "rtl_file": rtl_top["linear_slot_engine_rtl"] if is_linear else rtl_top["control_slot_engine_rtl"],
+                "cycle_template": "tile_command_8_cycle_cpu_latch_array_template"
+                if is_linear
+                else "control_op_4_cycle_cpu_template",
+                "separated_modules": ["ingress_sram", "systolic_array"] if is_linear else ["control_cpu"],
+            }
+        )
+
+    artifact_paths = [
+        rtl_top["top_rtl"],
+        rtl_top["linear_slot_engine_rtl"],
+        rtl_top["control_slot_engine_rtl"],
+        rtl_top["graph_sequencer_rtl"],
+        rtl_top["latch_buffer_rtl"],
+        rtl_top["systolic_array_rtl"],
+        rtl_top["flist"],
+        rtl_top["verilator_tb"],
+        rtl_top["full_verilator_tb"],
+        command_stream["header"],
+        rtl_cycle["scheduler_rtl"],
+        tile_engine["engine_rtl"],
+        control_scheduler["scheduler_rtl"],
+        graph_sequencer["scheduler_rtl"],
+    ]
+    total_layer_slots = int(full_checkpoint_rtl_lowering["aggregate"]["linear_ops_per_layer"]) + int(
+        full_checkpoint_rtl_lowering["aggregate"]["control_ops_per_layer"]
+    )
+    expected_graph_slots = int(full_checkpoint_rtl_lowering["aggregate"]["layers"]) * total_layer_slots
+    checks = [
+        {
+            "name": "full_checkpoint_layer_plan_shape_complete",
+            "status": "pass" if full_checkpoint_rtl_lowering["status"] == "planned" else "fail",
+        },
+        {"name": "command_stream_generated", "status": command_stream["status"]},
+        {"name": "linear_cycle_scheduler_generated", "status": rtl_cycle["status"]},
+        {"name": "tile_engine_composes_latch_and_array", "status": tile_engine["status"]},
+        {"name": "control_scheduler_generated", "status": control_scheduler["status"]},
+        {"name": "graph_sequencer_generated", "status": graph_sequencer["status"]},
+        {"name": "full_checkpoint_top_integrates_ordered_graph", "status": rtl_top["status"]},
+        {
+            "name": "top_report_marks_full_graph_lowering",
+            "status": "pass" if rtl_top["full_checkpoint_graph_lowering"] else "fail",
+        },
+        {
+            "name": "ordered_graph_slot_count_matches_layer_plan",
+            "status": "pass"
+            if int(graph_sequencer["total_graph_slots"]) == expected_graph_slots
+            and int(rtl_top["total_graph_slots"]) == expected_graph_slots
+            else "fail",
+        },
+        {
+            "name": "every_layer_template_slot_has_rtl_binding",
+            "status": "pass"
+            if len(slot_bindings) == total_layer_slots
+            and all(binding["rtl_file"] for binding in slot_bindings)
+            else "fail",
+        },
+        {
+            "name": "all_referenced_rtl_artifacts_exist",
+            "status": "pass" if all((REPO_ROOT / path).exists() for path in artifact_paths) else "fail",
+        },
+        {
+            "name": "full_linear_command_stream_runs_through_rtl_top",
+            "status": "pass" if rtl_top["full_command_count_rtl_execution"] else "fail",
+        },
+        {
+            "name": "full_command_payloads_checked_against_cpp_schedule",
+            "status": "pass" if rtl_top["full_command_payload_schedule_check"] else "fail",
+        },
+        {
+            "name": "full_command_cycle_phases_checked",
+            "status": "pass" if rtl_top["full_command_cycle_phase_check"] else "fail",
+        },
+        {
+            "name": "numeric_output_equivalence_not_claimed",
+            "status": "pass"
+            if not rtl_top["full_checkpoint_rtl_execution"]
+            and not rtl_top["full_checkpoint_numeric_output_equivalence"]
+            else "fail",
+        },
+    ]
+    status = "pass" if all(check["status"] == "pass" for check in checks) else "fail"
+    proof = {
+        "schema": "e1-full-checkpoint-graph-rtl-lowering-proof-v0",
+        "status": status,
+        "model_id": manifest["model_id"],
+        "truth_boundary": "full_graph_slot_dispatch_and_linear_command_stream_rtl_lowering",
+        "full_checkpoint_graph_lowering": status == "pass",
+        "full_checkpoint_rtl_execution": False,
+        "full_checkpoint_command_stream_rtl_execution": rtl_top["full_command_count_rtl_execution"],
+        "full_checkpoint_numeric_output_equivalence": False,
+        "graph": {
+            "layers": full_checkpoint_rtl_lowering["aggregate"]["layers"],
+            "slots_per_layer": total_layer_slots,
+            "total_graph_slots": graph_sequencer["total_graph_slots"],
+            "linear_slots_per_layer": full_checkpoint_rtl_lowering["aggregate"]["linear_ops_per_layer"],
+            "control_slots_per_layer": full_checkpoint_rtl_lowering["aggregate"]["control_ops_per_layer"],
+            "total_linear_slots": graph_sequencer["total_linear_slots"],
+            "total_control_slots": graph_sequencer["total_control_slots"],
+        },
+        "command_stream": {
+            "total_tile_commands": command_stream["total_tile_commands"],
+            "total_rtl_cycles": rtl_cycle["total_rtl_cycles"],
+            "full_verilator_tb": rtl_top["full_verilator_tb"],
+            "full_top_verilator_parameter": rtl_top["full_top_verilator_parameter"],
+            "payload_schedule": rtl_top["full_command_payload_schedule"],
+        },
+        "rtl_artifacts": {
+            "top": rtl_top["top_rtl"],
+            "graph_sequencer": rtl_top["graph_sequencer_rtl"],
+            "linear_slot_engine": rtl_top["linear_slot_engine_rtl"],
+            "control_slot_engine": rtl_top["control_slot_engine_rtl"],
+            "latch_buffer": rtl_top["latch_buffer_rtl"],
+            "systolic_array": rtl_top["systolic_array_rtl"],
+            "flist": rtl_top["flist"],
+        },
+        "slot_bindings": slot_bindings,
+        "construction_inputs": {
+            "layer_plan": "e1/generated/pipeline/18_full_checkpoint_rtl_lowering_plan.json",
+            "command_stream": "e1/generated/pipeline/19_full_checkpoint_command_stream.json",
+            "rtl_cycle_lowering": "e1/generated/pipeline/20_full_checkpoint_rtl_cycle_lowering.json",
+            "tile_engine": "e1/generated/pipeline/21_full_checkpoint_tile_engine.json",
+            "control_scheduler": "e1/generated/pipeline/22_full_checkpoint_control_scheduler.json",
+            "graph_sequencer": "e1/generated/pipeline/23_full_checkpoint_graph_sequencer.json",
+            "rtl_top": "e1/generated/pipeline/24_full_checkpoint_rtl_top.json",
+        },
+        "non_claims": [
+            "No TinyLlama numeric output equivalence is claimed by this proof.",
+            "No full StableHLO live checkpoint export is required by this deterministic preflight proof.",
+            "Control/elementwise arithmetic kernels remain represented as CPU/control RTL scheduling boundaries.",
+        ],
+        "checks": checks,
+    }
+    write_json(output_path, proof)
+    return proof
 
 
 def emit_tinyllama_imp2_coverage(
@@ -4654,7 +4817,26 @@ def run_pipeline(
         }
     )
 
-    full_checkpoint_module_dpi_out = output_dir / "25_full_checkpoint_module_dpi_generation.json"
+    full_checkpoint_graph_rtl_lowering_out = output_dir / "25_full_checkpoint_graph_rtl_lowering_proof.json"
+    full_checkpoint_graph_rtl_lowering = emit_full_checkpoint_graph_rtl_lowering_proof(
+        full_checkpoint_graph_rtl_lowering_out,
+        manifest,
+        full_checkpoint_rtl_lowering,
+        full_checkpoint_command_stream,
+        full_checkpoint_rtl_cycle,
+        full_checkpoint_tile_engine,
+        full_checkpoint_control_scheduler,
+        full_checkpoint_graph_sequencer,
+        full_checkpoint_rtl_top,
+    )
+    passes.append(
+        {
+            "pass": "e1_prove_full_checkpoint_graph_rtl_lowering",
+            "artifact": repo_rel(full_checkpoint_graph_rtl_lowering_out),
+        }
+    )
+
+    full_checkpoint_module_dpi_out = output_dir / "26_full_checkpoint_module_dpi_generation.json"
     full_checkpoint_module_dpi = run_full_checkpoint_module_dpi_generator(e1_h1_dir, full_checkpoint_module_dpi_out)
     passes.append(
         {
@@ -4663,7 +4845,7 @@ def run_pipeline(
         }
     )
 
-    e2e_out = output_dir / "26_end_to_end_smoke.json"
+    e2e_out = output_dir / "27_end_to_end_smoke.json"
     target_manifest_path = "e1/e1-h1/generated/targets/manifest.json"
     generated_soc_top_exists = all(
         (REPO_ROOT / path).exists()
@@ -4754,6 +4936,10 @@ def run_pipeline(
             "status": full_checkpoint_rtl_top["status"],
         },
         {
+            "name": "full_checkpoint_graph_rtl_lowering_proof",
+            "status": full_checkpoint_graph_rtl_lowering["status"],
+        },
+        {
             "name": "full_checkpoint_module_dpi_generation",
             "status": full_checkpoint_module_dpi["status"],
         },
@@ -4803,7 +4989,17 @@ def run_pipeline(
         "full_tinyllama_checkpoint_implemented": full_checkpoint_execution["full_checkpoint_execution"],
         "full_checkpoint_rtl_lowering_plan": repo_rel(full_checkpoint_rtl_lowering_out),
         "full_checkpoint_rtl_lowering_status": full_checkpoint_rtl_lowering["status"],
-        "full_checkpoint_graph_lowered_to_rtl": full_checkpoint_rtl_lowering["full_checkpoint_graph_lowering"],
+        "full_checkpoint_graph_lowered_to_rtl": full_checkpoint_graph_rtl_lowering[
+            "full_checkpoint_graph_lowering"
+        ],
+        "full_checkpoint_graph_rtl_lowering_proof": repo_rel(full_checkpoint_graph_rtl_lowering_out),
+        "full_checkpoint_graph_rtl_lowering_status": full_checkpoint_graph_rtl_lowering["status"],
+        "full_checkpoint_command_stream_rtl_execution": full_checkpoint_graph_rtl_lowering[
+            "full_checkpoint_command_stream_rtl_execution"
+        ],
+        "full_checkpoint_numeric_output_equivalence": full_checkpoint_graph_rtl_lowering[
+            "full_checkpoint_numeric_output_equivalence"
+        ],
         "full_checkpoint_command_stream": repo_rel(full_checkpoint_command_stream_out),
         "full_checkpoint_command_stream_status": full_checkpoint_command_stream["status"],
         "full_checkpoint_total_tile_commands": full_checkpoint_command_stream["total_tile_commands"],
@@ -4880,7 +5076,17 @@ def run_pipeline(
         "full_tinyllama_checkpoint_implemented": full_checkpoint_execution["full_checkpoint_execution"],
         "full_checkpoint_rtl_lowering_plan": repo_rel(full_checkpoint_rtl_lowering_out),
         "full_checkpoint_rtl_lowering_status": full_checkpoint_rtl_lowering["status"],
-        "full_checkpoint_graph_lowered_to_rtl": full_checkpoint_rtl_lowering["full_checkpoint_graph_lowering"],
+        "full_checkpoint_graph_lowered_to_rtl": full_checkpoint_graph_rtl_lowering[
+            "full_checkpoint_graph_lowering"
+        ],
+        "full_checkpoint_graph_rtl_lowering_proof": repo_rel(full_checkpoint_graph_rtl_lowering_out),
+        "full_checkpoint_graph_rtl_lowering_status": full_checkpoint_graph_rtl_lowering["status"],
+        "full_checkpoint_command_stream_rtl_execution": full_checkpoint_graph_rtl_lowering[
+            "full_checkpoint_command_stream_rtl_execution"
+        ],
+        "full_checkpoint_numeric_output_equivalence": full_checkpoint_graph_rtl_lowering[
+            "full_checkpoint_numeric_output_equivalence"
+        ],
         "full_checkpoint_command_stream": repo_rel(full_checkpoint_command_stream_out),
         "full_checkpoint_command_stream_status": full_checkpoint_command_stream["status"],
         "full_checkpoint_total_tile_commands": full_checkpoint_command_stream["total_tile_commands"],

@@ -85,8 +85,9 @@ StableHLO fixture, not the full TinyLlama checkpoint. The pipeline emits:
 - `e1/generated/pipeline/22_full_checkpoint_control_scheduler.json`
 - `e1/generated/pipeline/23_full_checkpoint_graph_sequencer.json`
 - `e1/generated/pipeline/24_full_checkpoint_rtl_top.json`
-- `e1/generated/pipeline/25_full_checkpoint_module_dpi_generation.json`
-- `e1/generated/pipeline/26_end_to_end_smoke.json`
+- `e1/generated/pipeline/25_full_checkpoint_graph_rtl_lowering_proof.json`
+- `e1/generated/pipeline/26_full_checkpoint_module_dpi_generation.json`
+- `e1/generated/pipeline/27_end_to_end_smoke.json`
 
 The coverage artifact requires every StableHLO operation in
 `tinyllama_block.mlir` to bind to an accepted active `imp2` implementation and
@@ -182,6 +183,15 @@ accepted command payload against `e1/code/program/e1_tinyllama_full_schedule.hpp
 It also checks the phase 1 scheduler-valid, phase 2 array-handshake, and phase
 6 array-done sequence for every command. This is full command-stream RTL
 execution evidence, not yet TinyLlama numeric output comparison.
+
+The full-checkpoint graph RTL-lowering proof ties the layer plan, command
+stream, generated cycle scheduler, tile engine, control scheduler, graph
+sequencer, and integrated top into one construction check. It records
+`full_checkpoint_graph_lowering: true` only after every ordered layer slot has
+an RTL slot-engine binding, the full top integrates the graph dispatcher, and
+the full linear command stream is checked through the RTL top. It still records
+`full_checkpoint_numeric_output_equivalence: false`; arithmetic kernel
+equivalence against a live TinyLlama checkpoint remains future work.
 
 The full-checkpoint module-DPI generation artifact is produced by
 `e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp`. It emits

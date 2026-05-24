@@ -1,0 +1,288 @@
+{
+  "checks": [
+    {
+      "name": "full_checkpoint_layer_plan_shape_complete",
+      "status": "pass"
+    },
+    {
+      "name": "command_stream_generated",
+      "status": "pass"
+    },
+    {
+      "name": "linear_cycle_scheduler_generated",
+      "status": "pass"
+    },
+    {
+      "name": "tile_engine_composes_latch_and_array",
+      "status": "pass"
+    },
+    {
+      "name": "control_scheduler_generated",
+      "status": "pass"
+    },
+    {
+      "name": "graph_sequencer_generated",
+      "status": "pass"
+    },
+    {
+      "name": "full_checkpoint_top_integrates_ordered_graph",
+      "status": "pass"
+    },
+    {
+      "name": "top_report_marks_full_graph_lowering",
+      "status": "pass"
+    },
+    {
+      "name": "ordered_graph_slot_count_matches_layer_plan",
+      "status": "pass"
+    },
+    {
+      "name": "every_layer_template_slot_has_rtl_binding",
+      "status": "pass"
+    },
+    {
+      "name": "all_referenced_rtl_artifacts_exist",
+      "status": "pass"
+    },
+    {
+      "name": "full_linear_command_stream_runs_through_rtl_top",
+      "status": "pass"
+    },
+    {
+      "name": "full_command_payloads_checked_against_cpp_schedule",
+      "status": "pass"
+    },
+    {
+      "name": "full_command_cycle_phases_checked",
+      "status": "pass"
+    },
+    {
+      "name": "numeric_output_equivalence_not_claimed",
+      "status": "pass"
+    }
+  ],
+  "command_stream": {
+    "full_top_verilator_parameter": "-GSmokeMaxTilesPerLinearSlot=0",
+    "full_verilator_tb": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top_full_tb.cpp",
+    "payload_schedule": "e1/code/program/e1_tinyllama_full_schedule.hpp",
+    "total_rtl_cycles": 30277632,
+    "total_tile_commands": 3784704
+  },
+  "construction_inputs": {
+    "command_stream": "e1/generated/pipeline/19_full_checkpoint_command_stream.json",
+    "control_scheduler": "e1/generated/pipeline/22_full_checkpoint_control_scheduler.json",
+    "graph_sequencer": "e1/generated/pipeline/23_full_checkpoint_graph_sequencer.json",
+    "layer_plan": "e1/generated/pipeline/18_full_checkpoint_rtl_lowering_plan.json",
+    "rtl_cycle_lowering": "e1/generated/pipeline/20_full_checkpoint_rtl_cycle_lowering.json",
+    "rtl_top": "e1/generated/pipeline/24_full_checkpoint_rtl_top.json",
+    "tile_engine": "e1/generated/pipeline/21_full_checkpoint_tile_engine.json"
+  },
+  "full_checkpoint_command_stream_rtl_execution": true,
+  "full_checkpoint_graph_lowering": true,
+  "full_checkpoint_numeric_output_equivalence": false,
+  "full_checkpoint_rtl_execution": false,
+  "graph": {
+    "control_slots_per_layer": 7,
+    "layers": 22,
+    "linear_slots_per_layer": 7,
+    "slots_per_layer": 14,
+    "total_control_slots": 154,
+    "total_graph_slots": 308,
+    "total_linear_slots": 154
+  },
+  "model_id": "tinyllama-1.1b-chat-v1.0",
+  "non_claims": [
+    "No TinyLlama numeric output equivalence is claimed by this proof.",
+    "No full StableHLO live checkpoint export is required by this deterministic preflight proof.",
+    "Control/elementwise arithmetic kernels remain represented as CPU/control RTL scheduling boundaries."
+  ],
+  "rtl_artifacts": {
+    "control_slot_engine": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv",
+    "flist": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.f",
+    "graph_sequencer": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.sv",
+    "latch_buffer": "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv",
+    "linear_slot_engine": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv",
+    "systolic_array": "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
+    "top": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.sv"
+  },
+  "schema": "e1-full-checkpoint-graph-rtl-lowering-proof-v0",
+  "slot_bindings": [
+    {
+      "cycle_template": "control_op_4_cycle_cpu_template",
+      "ip": "control_cpu",
+      "kind": "rms_norm",
+      "name": "input_rms_norm",
+      "rtl_engine": "e1_h1_tinyllama_control_slot_engine",
+      "rtl_file": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv",
+      "separated_modules": [
+        "control_cpu"
+      ],
+      "slot": 0
+    },
+    {
+      "cycle_template": "tile_command_8_cycle_cpu_latch_array_template",
+      "ip": "systolic_array",
+      "kind": "linear",
+      "name": "q_proj",
+      "rtl_engine": "e1_h1_tinyllama_linear_slot_engine",
+      "rtl_file": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv",
+      "separated_modules": [
+        "ingress_sram",
+        "systolic_array"
+      ],
+      "slot": 1
+    },
+    {
+      "cycle_template": "tile_command_8_cycle_cpu_latch_array_template",
+      "ip": "systolic_array",
+      "kind": "linear",
+      "name": "k_proj",
+      "rtl_engine": "e1_h1_tinyllama_linear_slot_engine",
+      "rtl_file": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv",
+      "separated_modules": [
+        "ingress_sram",
+        "systolic_array"
+      ],
+      "slot": 2
+    },
+    {
+      "cycle_template": "tile_command_8_cycle_cpu_latch_array_template",
+      "ip": "systolic_array",
+      "kind": "linear",
+      "name": "v_proj",
+      "rtl_engine": "e1_h1_tinyllama_linear_slot_engine",
+      "rtl_file": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv",
+      "separated_modules": [
+        "ingress_sram",
+        "systolic_array"
+      ],
+      "slot": 3
+    },
+    {
+      "cycle_template": "control_op_4_cycle_cpu_template",
+      "ip": "control_cpu",
+      "kind": "rope",
+      "name": "rope_qk",
+      "rtl_engine": "e1_h1_tinyllama_control_slot_engine",
+      "rtl_file": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv",
+      "separated_modules": [
+        "control_cpu"
+      ],
+      "slot": 4
+    },
+    {
+      "cycle_template": "control_op_4_cycle_cpu_template",
+      "ip": "control_cpu",
+      "kind": "attention_control",
+      "name": "attention_scores_softmax",
+      "rtl_engine": "e1_h1_tinyllama_control_slot_engine",
+      "rtl_file": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv",
+      "separated_modules": [
+        "control_cpu"
+      ],
+      "slot": 5
+    },
+    {
+      "cycle_template": "tile_command_8_cycle_cpu_latch_array_template",
+      "ip": "systolic_array",
+      "kind": "linear",
+      "name": "o_proj",
+      "rtl_engine": "e1_h1_tinyllama_linear_slot_engine",
+      "rtl_file": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv",
+      "separated_modules": [
+        "ingress_sram",
+        "systolic_array"
+      ],
+      "slot": 6
+    },
+    {
+      "cycle_template": "control_op_4_cycle_cpu_template",
+      "ip": "control_cpu",
+      "kind": "residual_add",
+      "name": "post_attention_residual",
+      "rtl_engine": "e1_h1_tinyllama_control_slot_engine",
+      "rtl_file": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv",
+      "separated_modules": [
+        "control_cpu"
+      ],
+      "slot": 7
+    },
+    {
+      "cycle_template": "control_op_4_cycle_cpu_template",
+      "ip": "control_cpu",
+      "kind": "rms_norm",
+      "name": "post_attention_rms_norm",
+      "rtl_engine": "e1_h1_tinyllama_control_slot_engine",
+      "rtl_file": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv",
+      "separated_modules": [
+        "control_cpu"
+      ],
+      "slot": 8
+    },
+    {
+      "cycle_template": "tile_command_8_cycle_cpu_latch_array_template",
+      "ip": "systolic_array",
+      "kind": "linear",
+      "name": "gate_proj",
+      "rtl_engine": "e1_h1_tinyllama_linear_slot_engine",
+      "rtl_file": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv",
+      "separated_modules": [
+        "ingress_sram",
+        "systolic_array"
+      ],
+      "slot": 9
+    },
+    {
+      "cycle_template": "tile_command_8_cycle_cpu_latch_array_template",
+      "ip": "systolic_array",
+      "kind": "linear",
+      "name": "up_proj",
+      "rtl_engine": "e1_h1_tinyllama_linear_slot_engine",
+      "rtl_file": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv",
+      "separated_modules": [
+        "ingress_sram",
+        "systolic_array"
+      ],
+      "slot": 10
+    },
+    {
+      "cycle_template": "control_op_4_cycle_cpu_template",
+      "ip": "control_cpu",
+      "kind": "activation_control",
+      "name": "silu_gate_multiply",
+      "rtl_engine": "e1_h1_tinyllama_control_slot_engine",
+      "rtl_file": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv",
+      "separated_modules": [
+        "control_cpu"
+      ],
+      "slot": 11
+    },
+    {
+      "cycle_template": "tile_command_8_cycle_cpu_latch_array_template",
+      "ip": "systolic_array",
+      "kind": "linear",
+      "name": "down_proj",
+      "rtl_engine": "e1_h1_tinyllama_linear_slot_engine",
+      "rtl_file": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv",
+      "separated_modules": [
+        "ingress_sram",
+        "systolic_array"
+      ],
+      "slot": 12
+    },
+    {
+      "cycle_template": "control_op_4_cycle_cpu_template",
+      "ip": "control_cpu",
+      "kind": "residual_add",
+      "name": "post_mlp_residual",
+      "rtl_engine": "e1_h1_tinyllama_control_slot_engine",
+      "rtl_file": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv",
+      "separated_modules": [
+        "control_cpu"
+      ],
+      "slot": 13
+    }
+  ],
+  "status": "pass",
+  "truth_boundary": "full_graph_slot_dispatch_and_linear_command_stream_rtl_lowering"
+}

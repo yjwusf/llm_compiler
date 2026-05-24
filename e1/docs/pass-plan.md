@@ -122,13 +122,22 @@ hardware and device code.
       runs the same top for all 3,784,704 planned linear tile commands and
       checks every accepted command payload and documented command phase
       sequence against the generated C++ schedule.
-25. `e1_generate_full_checkpoint_module_dpi`
+25. `e1_prove_full_checkpoint_graph_rtl_lowering`
+    - Input: the full-checkpoint layer plan, command stream, cycle scheduler,
+      tile engine, control scheduler, graph sequencer, and integrated RTL top
+      reports.
+    - Output: a construction proof that every ordered TinyLlama graph slot is
+      bound to a generated slot-scoped RTL engine, that the full linear command
+      stream runs through the integrated RTL top, and that command payloads and
+      documented phases are checked. This proves graph-slot RTL lowering and
+      still does not claim TinyLlama numeric output equivalence.
+26. `e1_generate_full_checkpoint_module_dpi`
     - Input: generated full-checkpoint RTL modules.
     - Output: C++-generated module-DPI probes, flists, C++ mains, scoreboard,
       manifest, generated input/output signal documentation, and generated
       isolation, cycle-contract, and Verilator test-plan proof for each
       generated full-checkpoint RTL module.
-26. `e1_end_to_end_smoke`
+27. `e1_end_to_end_smoke`
     - Input: all prior pass artifacts.
     - Output: one evidence report tying StableHLO, E1-H1 binding, device code,
       C++ chip model, generated SystemVerilog top, and target packages together.
