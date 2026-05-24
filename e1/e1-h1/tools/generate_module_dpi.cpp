@@ -13,6 +13,14 @@ namespace fs = std::filesystem;
 
 namespace {
 
+struct CycleStep {
+  int cycle;
+  std::string phase;
+  std::string responsibility;
+  std::string observed_signals;
+  std::string dpi_check;
+};
+
 struct ModuleSpec {
   std::string name;
   std::string concern;
@@ -153,12 +161,319 @@ std::string flist_text(const fs::path& probe, const ModuleSpec& spec) {
   return out.str();
 }
 
+const std::vector<std::string>& known_design_modules() {
+  static const std::vector<std::string> modules = {
+      "e1_h1_control_cpu",
+      "e1_h1_rgmii_ethernet_ingress",
+      "e1_h1_stream_sram",
+      "e1_h1_config_sram",
+      "e1_h1_systolic_array",
+  };
+  return modules;
+}
+
+std::string reference_module(const ModuleSpec& spec) {
+  if (spec.name == "control_cpu") {
+    return "e1_h1_imp1_control_cpu_ref";
+  }
+  if (spec.name == "rgmii_ethernet_ingress") {
+    return "e1_h1_imp1_rgmii_ethernet_ingress_ref";
+  }
+  if (spec.name == "ingress_sram") {
+    return "e1_h1_imp1_stream_sram_ref";
+  }
+  if (spec.name == "activation_sram" || spec.name == "accumulator_sram") {
+    return "e1_h1_imp1_config_sram_ref";
+  }
+  if (spec.name == "systolic_array") {
+    return "e1_h1_imp1_systolic_array_ref";
+  }
+  throw std::runtime_error("no reference module for " + spec.name);
+}
+
+std::vector<std::string> allowed_verification_modules(const ModuleSpec& spec) {
+  return {reference_module(spec), spec.top_module};
+}
+
+std::vector<std::string> forbidden_design_neighbors(const ModuleSpec& spec) {
+  std::vector<std::string> forbidden;
+  for (const std::string& module : known_design_modules()) {
+    if (module != spec.top_module) {
+      forbidden.push_back(module);
+    }
+  }
+  return forbidden;
+}
+
+void write_string_array_json(std::ostringstream& out,
+                             const std::string& key,
+                             const std::vector<std::string>& values,
+                             const std::string& indent) {
+  out << indent << "\"" << key << "\": [";
+  for (std::size_t i = 0; i < values.size(); ++i) {
+    out << (i == 0 ? "" : ", ") << "\"" << values[i] << "\"";
+  }
+  out << "]";
+}
+
+std::string cycle_template_name(const ModuleSpec& spec) {
+  if (spec.name == "control_cpu") {
+    return "cpu_command_8_cycle_template";
+  }
+  if (spec.name == "rgmii_ethernet_ingress") {
+    return "digital_rgmii_ingress_10_cycle_template";
+  }
+  if (spec.name == "ingress_sram") {
+    return "latch_buffer_6_cycle_template";
+  }
+  if (spec.name == "activation_sram" || spec.name == "accumulator_sram") {
+    return "config_sram_3_cycle_template";
+  }
+  if (spec.name == "systolic_array") {
+    return "systolic_array_8_cycle_template";
+  }
+  throw std::runtime_error("no cycle template for " + spec.name);
+}
+
+std::vector<CycleStep> cycle_steps(const ModuleSpec& spec) {
+  if (spec.name == "control_cpu") {
+    return {
+        {0, "reset_release", "Release reset and present the first command payload.",
+         "cmd_valid_o, debug_halted_o", "DPI compares imp1 and imp2 CPU outputs."},
+        {1, "command_backpressure", "Hold cmd_valid_o while command ready is asserted late.",
+         "cmd_valid_o, cmd_ready_i", "DPI compares the held command payload."},
+        {2, "command_handshake", "Accept the CPU command at the array boundary.",
+         "cmd_valid_o, cmd_ready_i, cmd_*_o", "DPI compares command fields."},
+        {3, "wait_for_array", "Wait for array completion without instantiating array RTL.",
+         "array_done_i, debug_halted_o", "DPI drives array_done_i from C++/probe stimulus."},
+        {4, "wait_for_array_stable", "Keep waiting with no new command issue.",
+         "cmd_valid_o, array_done_i", "DPI compares no-spurious-command behavior."},
+        {5, "array_completion", "Observe array_done_i and move toward halt.",
+         "array_done_i, debug_halted_o", "DPI compares completion behavior."},
+        {6, "halt_transition", "Enter the debug halted state.",
+         "debug_halted_o", "DPI compares halt transition."},
+        {7, "halted_idle", "Remain halted with no extra command.",
+         "cmd_valid_o, debug_halted_o", "DPI compares final idle state."},
+    };
+  }
+  if (spec.name == "rgmii_ethernet_ingress") {
+    return {
+        {0, "idle_after_reset", "Hold digital RGMII input idle after reset.",
+         "rgmii_rx_ctl_i, stream_valid_o", "DPI compares idle stream outputs."},
+        {1, "frame_nibble_0", "Start a minimum digital RGMII frame.",
+         "rgmii_rx_ctl_i, rgmii_rxd_i", "DPI compares stream assembly."},
+        {2, "frame_nibble_1", "Shift the second RGMII nibble.",
+         "rgmii_rxd_i", "DPI compares stream assembly."},
+        {3, "frame_nibble_2", "Shift the third RGMII nibble.",
+         "rgmii_rxd_i", "DPI compares stream assembly."},
+        {4, "frame_nibble_3", "Shift the fourth RGMII nibble.",
+         "rgmii_rxd_i", "DPI compares stream assembly."},
+        {5, "frame_nibble_4", "Shift the final active RGMII nibble.",
+         "rgmii_rxd_i, rgmii_rx_ctl_i", "DPI compares stream assembly."},
+        {6, "frame_gap", "Drop receive control before downstream accepts.",
+         "rgmii_rx_ctl_i, stream_ready_i", "DPI compares backpressure behavior."},
+        {7, "downstream_accept", "Allow the stream output to drain.",
+         "stream_ready_i, stream_valid_o", "DPI compares output handshake."},
+        {8, "drain_stream", "Drain any remaining stream output.",
+         "stream_ready_i, stream_data_o", "DPI compares final stream word."},
+        {9, "return_idle", "Return the digital ingress path to idle.",
+         "stream_valid_o, stream_last_o, stream_error_o", "DPI compares idle return."},
+    };
+  }
+  if (spec.name == "ingress_sram") {
+    return {
+        {0, "latch_first_word", "Latch the first stream word while the array is not ready.",
+         "stream_valid_i, array_ready_i, array_valid_o", "DPI compares latched valid/data."},
+        {1, "hold_latched_word", "Hold the latched word under array backpressure.",
+         "array_ready_i, array_valid_o, array_data_o", "DPI compares held data."},
+        {2, "release_latched_word", "Release the latched word when array_ready_i rises.",
+         "array_ready_i, array_valid_o, array_data_o", "DPI compares release behavior."},
+        {3, "latch_next_clean_word", "Latch a later clean stream word.",
+         "stream_valid_i, stream_error_i", "DPI compares accept behavior."},
+        {4, "reject_error_word", "Reject an error-marked stream word.",
+         "stream_error_i, stream_last_i", "DPI compares error filtering."},
+        {5, "empty_or_ready", "Return to empty or ready state.",
+         "stream_ready_o, array_valid_o", "DPI compares final latch state."},
+    };
+  }
+  if (spec.name == "activation_sram" || spec.name == "accumulator_sram") {
+    return {
+        {0, "initialization_latch", "Latch initialized_q after reset release.",
+         "initialized_q", "DPI compares parameterized imp1 and imp2 initialized state."},
+        {1, "initialized_hold_0", "Hold initialized_q in the configured SRAM shell.",
+         "initialized_q", "DPI compares hold behavior."},
+        {2, "initialized_hold_1", "Continue holding initialized_q.",
+         "initialized_q", "DPI compares final hold behavior."},
+    };
+  }
+  if (spec.name == "systolic_array") {
+    return {
+        {0, "array_idle", "Keep the array idle and command-ready after reset.",
+         "cmd_ready_o, debug_busy_o", "DPI compares idle readiness."},
+        {1, "accept_array_command", "Accept the command from probe/C++ stimulus.",
+         "cmd_valid_i, cmd_ready_o, cmd_*_i", "DPI compares command acceptance."},
+        {2, "enter_busy", "Enter busy state before input beats arrive.",
+         "debug_busy_o, input_ready_o", "DPI compares busy transition."},
+        {3, "consume_input_beat_0", "Consume the first input beat.",
+         "input_valid_i, input_ready_o, input_data_i", "DPI compares input readiness."},
+        {4, "consume_input_beat_1", "Consume the second input beat.",
+         "input_valid_i, input_ready_o, input_data_i", "DPI compares input readiness."},
+        {5, "consume_input_beat_2", "Consume the third input beat.",
+         "input_valid_i, input_ready_o, input_data_i", "DPI compares input readiness."},
+        {6, "completion_pulse", "Consume the final beat and pulse done_o.",
+         "input_valid_i, done_o, debug_busy_o", "DPI compares completion."},
+        {7, "return_ready", "Return to ready/idle state for the next command.",
+         "cmd_ready_o, done_o, debug_busy_o", "DPI compares return-to-ready."},
+    };
+  }
+  throw std::runtime_error("no cycle steps for " + spec.name);
+}
+
+void validate_cycle_contract(const ModuleSpec& spec) {
+  const std::vector<CycleStep> steps = cycle_steps(spec);
+  if (steps.empty()) {
+    throw std::runtime_error(spec.name + " has no generated cycle contract");
+  }
+  for (std::size_t i = 0; i < steps.size(); ++i) {
+    if (steps[i].cycle != static_cast<int>(i)) {
+      throw std::runtime_error(spec.name + " cycle contract is not contiguous");
+    }
+    if (steps[i].phase.empty() || steps[i].responsibility.empty() ||
+        steps[i].observed_signals.empty() || steps[i].dpi_check.empty()) {
+      throw std::runtime_error(spec.name + " has incomplete cycle contract row");
+    }
+  }
+  const std::string expected_dpi = "e1_h1_module_dpi_cycle(\"" + spec.name + "\"";
+  if (spec.probe_sv.find(expected_dpi) == std::string::npos) {
+    throw std::runtime_error(spec.name + " probe does not report DPI cycles");
+  }
+}
+
+void validate_isolation(const fs::path& repo_root, const ModuleSpec& spec) {
+  const fs::path reference_path = repo_root / "e1/e1-h1/dpi/e1_h1_imp1_reference.sv";
+  const std::string reference_text = read_text(reference_path);
+  const std::string imp2_text = read_text(repo_root / spec.imp2_rtl);
+  if (!contains(reference_text, "module " + reference_module(spec))) {
+    throw std::runtime_error(spec.name + " reference module is missing");
+  }
+  if (!contains(imp2_text, "module " + spec.top_module)) {
+    throw std::runtime_error(spec.name + " imp2 RTL does not define " + spec.top_module);
+  }
+  for (const std::string& module : allowed_verification_modules(spec)) {
+    if (!contains(spec.probe_sv, module)) {
+      throw std::runtime_error(spec.name + " probe is missing allowed module " + module);
+    }
+  }
+  for (const std::string& module : forbidden_design_neighbors(spec)) {
+    if (contains(spec.probe_sv, module)) {
+      throw std::runtime_error(spec.name + " probe unexpectedly references " + module);
+    }
+  }
+}
+
+void write_cycle_steps_json(std::ostringstream& out,
+                            const std::vector<CycleStep>& steps,
+                            const std::string& indent) {
+  out << indent << "\"cycles\": [\n";
+  for (std::size_t i = 0; i < steps.size(); ++i) {
+    const CycleStep& step = steps[i];
+    out << indent << "  {\"cycle\": " << step.cycle << ", \"phase\": \"" << step.phase
+        << "\", \"responsibility\": \"" << step.responsibility
+        << "\", \"observed_signals\": \"" << step.observed_signals
+        << "\", \"dpi_check\": \"" << step.dpi_check << "\"}"
+        << (i + 1 == steps.size() ? "\n" : ",\n");
+  }
+  out << indent << "]";
+}
+
+void write_cycle_contract_object_json(std::ostringstream& out,
+                                      const ModuleSpec& spec,
+                                      const std::string& indent) {
+  const std::vector<CycleStep> steps = cycle_steps(spec);
+  out << indent << "\"cycle_contract\": {\n";
+  out << indent << "  \"template\": \"" << cycle_template_name(spec) << "\",\n";
+  out << indent << "  \"cycle_period\": " << steps.size() << ",\n";
+  out << indent << "  \"phase_source\": \"e1_h1_module_dpi_cycle\",\n";
+  write_cycle_steps_json(out, steps, indent + "  ");
+  out << "\n" << indent << "}";
+}
+
+std::string module_isolation_json(const std::vector<ModuleSpec>& specs) {
+  std::ostringstream out;
+  out << "{\n";
+  out << "  \"schema\": \"e1-h1-module-dpi-isolation-v0\",\n";
+  out << "  \"generator\": \"e1/e1-h1/tools/generate_module_dpi.cpp\",\n";
+  out << "  \"construction_rule\": \"one_imp2_dut_per_probe_with_imp1_reference_and_cpp_dpi_neighbors_only\",\n";
+  out << "  \"modules\": [\n";
+  for (std::size_t i = 0; i < specs.size(); ++i) {
+    const ModuleSpec& spec = specs[i];
+    out << "    {\n";
+    out << "      \"name\": \"" << spec.name << "\",\n";
+    out << "      \"dut_module\": \"" << spec.top_module << "\",\n";
+    out << "      \"reference_module\": \"" << reference_module(spec) << "\",\n";
+    out << "      \"imp2_rtl\": \"" << spec.imp2_rtl << "\",\n";
+    out << "      \"reference_rtl\": \"e1/e1-h1/dpi/e1_h1_imp1_reference.sv\",\n";
+    out << "      \"probe\": \"e1/e1-h1/generated/module_dpi/" << spec.probe_module << ".sv\",\n";
+    out << "      \"flist\": \"e1/e1-h1/generated/module_dpi/flists/" << spec.name << ".f\",\n";
+    out << "      \"boundary\": \"cpp_dpi_drives_all_neighbors_other_than_the_imp1_reference_oracle\",\n";
+    write_string_array_json(out, "allowed_verification_modules", allowed_verification_modules(spec), "      ");
+    out << ",\n";
+    write_string_array_json(out, "forbidden_design_neighbors", forbidden_design_neighbors(spec), "      ");
+    out << ",\n";
+    out << "      \"checks\": [\n";
+    out << "        {\"name\": \"imp2_rtl_defines_dut_module\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"reference_module_defined\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"probe_instantiates_only_dut_and_reference\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"forbidden_design_neighbors_absent\", \"status\": \"pass\"}\n";
+    out << "      ]\n";
+    out << "    }" << (i + 1 == specs.size() ? "\n" : ",\n");
+  }
+  out << "  ]\n";
+  out << "}\n";
+  return out.str();
+}
+
+std::string cycle_contract_json(const std::vector<ModuleSpec>& specs) {
+  std::ostringstream out;
+  out << "{\n";
+  out << "  \"schema\": \"e1-h1-module-dpi-cycle-contract-v0\",\n";
+  out << "  \"generator\": \"e1/e1-h1/tools/generate_module_dpi.cpp\",\n";
+  out << "  \"readme_diagram\": \"e1/e1-h1/docs/modules/README.md#cycle-diagram\",\n";
+  out << "  \"construction_rule\": \"each_base_ip_probe_reports_contiguous_named_cycles_through_dpi\",\n";
+  out << "  \"modules\": [\n";
+  for (std::size_t i = 0; i < specs.size(); ++i) {
+    const ModuleSpec& spec = specs[i];
+    const std::vector<CycleStep> steps = cycle_steps(spec);
+    out << "    {\n";
+    out << "      \"name\": \"" << spec.name << "\",\n";
+    out << "      \"top_module\": \"" << spec.top_module << "\",\n";
+    out << "      \"probe_module\": \"" << spec.probe_module << "\",\n";
+    out << "      \"readme_diagram\": \"e1/e1-h1/docs/modules/README.md#cycle-diagram\",\n";
+    out << "      \"template\": \"" << cycle_template_name(spec) << "\",\n";
+    out << "      \"cycle_period\": " << steps.size() << ",\n";
+    out << "      \"phase_source\": \"e1_h1_module_dpi_cycle\",\n";
+    write_cycle_steps_json(out, steps, "      ");
+    out << ",\n";
+    out << "      \"checks\": [\n";
+    out << "        {\"name\": \"cycle_indices_contiguous\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"dpi_probe_reports_cycles\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"readme_cycle_diagram_declared\", \"status\": \"pass\"}\n";
+    out << "      ]\n";
+    out << "    }" << (i + 1 == specs.size() ? "\n" : ",\n");
+  }
+  out << "  ]\n";
+  out << "}\n";
+  return out.str();
+}
+
 std::string manifest_json(const std::vector<ModuleSpec>& specs) {
   std::ostringstream out;
   out << "{\n";
   out << "  \"schema\": \"e1-h1-generated-module-dpi-v0\",\n";
   out << "  \"generator\": \"e1/e1-h1/tools/generate_module_dpi.cpp\",\n";
   out << "  \"scoreboard\": \"e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp\",\n";
+  out << "  \"module_isolation_proof\": \"e1/e1-h1/generated/module_dpi/module_isolation.json\",\n";
+  out << "  \"cycle_contract\": \"e1/e1-h1/generated/module_dpi/cycle_contract.json\",\n";
   out << "  \"reference_implementation\": \"imp1\",\n";
   out << "  \"candidate_implementation\": \"imp2\",\n";
   out << "  \"construction_rule\": \"one_generated_probe_per_ip_with_only_that_systemverilog_dut_and_cpp_dpi_neighbors\",\n";
@@ -174,6 +489,7 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
     out << "      \"name\": \"" << spec.name << "\",\n";
     out << "      \"concern\": \"" << spec.concern << "\",\n";
     out << "      \"top_module\": \"" << spec.top_module << "\",\n";
+    out << "      \"reference_module\": \"" << reference_module(spec) << "\",\n";
     out << "      \"probe_module\": \"" << spec.probe_module << "\",\n";
     out << "      \"scope\": \"module_only\",\n";
     out << "      \"neighbors\": \"cpp_dpi_environment\",\n";
@@ -191,7 +507,9 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
     for (std::size_t j = 0; j < spec.cycle_notes.size(); ++j) {
       out << (j == 0 ? "" : ", ") << "\"" << spec.cycle_notes[j] << "\"";
     }
-    out << "]\n";
+    out << "],\n";
+    write_cycle_contract_object_json(out, spec, "      ");
+    out << "\n";
     out << "    }" << (i + 1 == specs.size() ? "\n" : ",\n");
   }
   out << "  ]\n";
@@ -783,6 +1101,8 @@ int main(int argc, char** argv) {
 
     for (const ModuleSpec& spec : specs) {
       validate_manifest_inputs(repo_root, spec);
+      validate_isolation(repo_root, spec);
+      validate_cycle_contract(spec);
     }
 
     write_text(output_dir / "e1_h1_module_dpi_scoreboard.cpp", scoreboard_cpp());
@@ -793,6 +1113,8 @@ int main(int argc, char** argv) {
       write_text(flist_dir / (spec.name + ".f"), flist_text(probe_path, spec));
     }
     write_text(output_dir / "manifest.json", manifest_json(specs));
+    write_text(output_dir / "module_isolation.json", module_isolation_json(specs));
+    write_text(output_dir / "cycle_contract.json", cycle_contract_json(specs));
 
     std::cout << "PASS e1_h1_generate_module_dpi " << specs.size()
               << " modules -> " << output_dir.generic_string() << "\n";

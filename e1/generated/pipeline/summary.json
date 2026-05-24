@@ -40,7 +40,10 @@
   "full_tinyllama_checkpoint_implemented": false,
   "generated_top": "e1/e1-h1/generated/e1_h1_soc_top.sv",
   "model_id": "tinyllama-1.1b-chat-v1.0",
+  "module_dpi_cycle_contract": "e1/e1-h1/generated/module_dpi/cycle_contract.json",
   "module_dpi_generation": "e1/generated/pipeline/12_module_dpi_generation.json",
+  "module_dpi_isolation_proof": "e1/e1-h1/generated/module_dpi/module_isolation.json",
+  "module_dpi_manifest": "e1/e1-h1/generated/module_dpi/manifest.json",
   "operation_counts": {
     "add": 2,
     "constant": 1,

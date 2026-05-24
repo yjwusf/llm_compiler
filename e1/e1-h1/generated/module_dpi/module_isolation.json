@@ -1,0 +1,115 @@
+{
+  "schema": "e1-h1-module-dpi-isolation-v0",
+  "generator": "e1/e1-h1/tools/generate_module_dpi.cpp",
+  "construction_rule": "one_imp2_dut_per_probe_with_imp1_reference_and_cpp_dpi_neighbors_only",
+  "modules": [
+    {
+      "name": "control_cpu",
+      "dut_module": "e1_h1_control_cpu",
+      "reference_module": "e1_h1_imp1_control_cpu_ref",
+      "imp2_rtl": "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv",
+      "reference_rtl": "e1/e1-h1/dpi/e1_h1_imp1_reference.sv",
+      "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+      "flist": "e1/e1-h1/generated/module_dpi/flists/control_cpu.f",
+      "boundary": "cpp_dpi_drives_all_neighbors_other_than_the_imp1_reference_oracle",
+      "allowed_verification_modules": ["e1_h1_imp1_control_cpu_ref", "e1_h1_control_cpu"],
+      "forbidden_design_neighbors": ["e1_h1_rgmii_ethernet_ingress", "e1_h1_stream_sram", "e1_h1_config_sram", "e1_h1_systolic_array"],
+      "checks": [
+        {"name": "imp2_rtl_defines_dut_module", "status": "pass"},
+        {"name": "reference_module_defined", "status": "pass"},
+        {"name": "probe_instantiates_only_dut_and_reference", "status": "pass"},
+        {"name": "forbidden_design_neighbors_absent", "status": "pass"}
+      ]
+    },
+    {
+      "name": "rgmii_ethernet_ingress",
+      "dut_module": "e1_h1_rgmii_ethernet_ingress",
+      "reference_module": "e1_h1_imp1_rgmii_ethernet_ingress_ref",
+      "imp2_rtl": "e1/e1-h1/rtl/imp2/e1_h1_rgmii_ethernet_ingress.sv",
+      "reference_rtl": "e1/e1-h1/dpi/e1_h1_imp1_reference.sv",
+      "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_rgmii_ethernet_ingress.sv",
+      "flist": "e1/e1-h1/generated/module_dpi/flists/rgmii_ethernet_ingress.f",
+      "boundary": "cpp_dpi_drives_all_neighbors_other_than_the_imp1_reference_oracle",
+      "allowed_verification_modules": ["e1_h1_imp1_rgmii_ethernet_ingress_ref", "e1_h1_rgmii_ethernet_ingress"],
+      "forbidden_design_neighbors": ["e1_h1_control_cpu", "e1_h1_stream_sram", "e1_h1_config_sram", "e1_h1_systolic_array"],
+      "checks": [
+        {"name": "imp2_rtl_defines_dut_module", "status": "pass"},
+        {"name": "reference_module_defined", "status": "pass"},
+        {"name": "probe_instantiates_only_dut_and_reference", "status": "pass"},
+        {"name": "forbidden_design_neighbors_absent", "status": "pass"}
+      ]
+    },
+    {
+      "name": "ingress_sram",
+      "dut_module": "e1_h1_stream_sram",
+      "reference_module": "e1_h1_imp1_stream_sram_ref",
+      "imp2_rtl": "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv",
+      "reference_rtl": "e1/e1-h1/dpi/e1_h1_imp1_reference.sv",
+      "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram.sv",
+      "flist": "e1/e1-h1/generated/module_dpi/flists/ingress_sram.f",
+      "boundary": "cpp_dpi_drives_all_neighbors_other_than_the_imp1_reference_oracle",
+      "allowed_verification_modules": ["e1_h1_imp1_stream_sram_ref", "e1_h1_stream_sram"],
+      "forbidden_design_neighbors": ["e1_h1_control_cpu", "e1_h1_rgmii_ethernet_ingress", "e1_h1_config_sram", "e1_h1_systolic_array"],
+      "checks": [
+        {"name": "imp2_rtl_defines_dut_module", "status": "pass"},
+        {"name": "reference_module_defined", "status": "pass"},
+        {"name": "probe_instantiates_only_dut_and_reference", "status": "pass"},
+        {"name": "forbidden_design_neighbors_absent", "status": "pass"}
+      ]
+    },
+    {
+      "name": "activation_sram",
+      "dut_module": "e1_h1_config_sram",
+      "reference_module": "e1_h1_imp1_config_sram_ref",
+      "imp2_rtl": "e1/e1-h1/rtl/imp2/e1_h1_config_sram.sv",
+      "reference_rtl": "e1/e1-h1/dpi/e1_h1_imp1_reference.sv",
+      "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_activation_sram.sv",
+      "flist": "e1/e1-h1/generated/module_dpi/flists/activation_sram.f",
+      "boundary": "cpp_dpi_drives_all_neighbors_other_than_the_imp1_reference_oracle",
+      "allowed_verification_modules": ["e1_h1_imp1_config_sram_ref", "e1_h1_config_sram"],
+      "forbidden_design_neighbors": ["e1_h1_control_cpu", "e1_h1_rgmii_ethernet_ingress", "e1_h1_stream_sram", "e1_h1_systolic_array"],
+      "checks": [
+        {"name": "imp2_rtl_defines_dut_module", "status": "pass"},
+        {"name": "reference_module_defined", "status": "pass"},
+        {"name": "probe_instantiates_only_dut_and_reference", "status": "pass"},
+        {"name": "forbidden_design_neighbors_absent", "status": "pass"}
+      ]
+    },
+    {
+      "name": "accumulator_sram",
+      "dut_module": "e1_h1_config_sram",
+      "reference_module": "e1_h1_imp1_config_sram_ref",
+      "imp2_rtl": "e1/e1-h1/rtl/imp2/e1_h1_config_sram.sv",
+      "reference_rtl": "e1/e1-h1/dpi/e1_h1_imp1_reference.sv",
+      "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_accumulator_sram.sv",
+      "flist": "e1/e1-h1/generated/module_dpi/flists/accumulator_sram.f",
+      "boundary": "cpp_dpi_drives_all_neighbors_other_than_the_imp1_reference_oracle",
+      "allowed_verification_modules": ["e1_h1_imp1_config_sram_ref", "e1_h1_config_sram"],
+      "forbidden_design_neighbors": ["e1_h1_control_cpu", "e1_h1_rgmii_ethernet_ingress", "e1_h1_stream_sram", "e1_h1_systolic_array"],
+      "checks": [
+        {"name": "imp2_rtl_defines_dut_module", "status": "pass"},
+        {"name": "reference_module_defined", "status": "pass"},
+        {"name": "probe_instantiates_only_dut_and_reference", "status": "pass"},
+        {"name": "forbidden_design_neighbors_absent", "status": "pass"}
+      ]
+    },
+    {
+      "name": "systolic_array",
+      "dut_module": "e1_h1_systolic_array",
+      "reference_module": "e1_h1_imp1_systolic_array_ref",
+      "imp2_rtl": "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
+      "reference_rtl": "e1/e1-h1/dpi/e1_h1_imp1_reference.sv",
+      "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+      "flist": "e1/e1-h1/generated/module_dpi/flists/systolic_array.f",
+      "boundary": "cpp_dpi_drives_all_neighbors_other_than_the_imp1_reference_oracle",
+      "allowed_verification_modules": ["e1_h1_imp1_systolic_array_ref", "e1_h1_systolic_array"],
+      "forbidden_design_neighbors": ["e1_h1_control_cpu", "e1_h1_rgmii_ethernet_ingress", "e1_h1_stream_sram", "e1_h1_config_sram"],
+      "checks": [
+        {"name": "imp2_rtl_defines_dut_module", "status": "pass"},
+        {"name": "reference_module_defined", "status": "pass"},
+        {"name": "probe_instantiates_only_dut_and_reference", "status": "pass"},
+        {"name": "forbidden_design_neighbors_absent", "status": "pass"}
+      ]
+    }
+  ]
+}

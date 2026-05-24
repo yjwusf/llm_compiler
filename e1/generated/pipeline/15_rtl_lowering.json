@@ -91,91 +91,759 @@
         "status": "pass"
       },
       {
+        "name": "module_dpi_isolation_proof_exists",
+        "status": "pass"
+      },
+      {
+        "name": "module_dpi_cycle_contract_exists",
+        "status": "pass"
+      },
+      {
+        "name": "all_module_dpi_modules_have_isolation_proofs",
+        "status": "pass"
+      },
+      {
+        "name": "all_module_dpi_modules_have_cycle_contracts",
+        "status": "pass"
+      },
+      {
         "name": "ingress_sram_is_latch_buffer",
         "status": "pass"
       }
     ],
     "construction_rule": "one_generated_probe_per_ip_with_only_that_systemverilog_dut_and_cpp_dpi_neighbors",
+    "cycle_contract": "e1/e1-h1/generated/module_dpi/cycle_contract.json",
     "generator": "e1/e1-h1/tools/generate_module_dpi.cpp",
     "manifest": "e1/e1-h1/generated/module_dpi/manifest.json",
     "module_count": 6,
+    "module_isolation_proof": "e1/e1-h1/generated/module_dpi/module_isolation.json",
     "modules": [
       {
+        "cycle_contract": {
+          "checks": [
+            {
+              "name": "cycle_indices_contiguous",
+              "status": "pass"
+            },
+            {
+              "name": "dpi_probe_reports_cycles",
+              "status": "pass"
+            },
+            {
+              "name": "readme_cycle_diagram_declared",
+              "status": "pass"
+            }
+          ],
+          "cycle_period": 8,
+          "cycles": [
+            {
+              "cycle": 0,
+              "dpi_check": "DPI compares imp1 and imp2 CPU outputs.",
+              "observed_signals": "cmd_valid_o, debug_halted_o",
+              "phase": "reset_release",
+              "responsibility": "Release reset and present the first command payload."
+            },
+            {
+              "cycle": 1,
+              "dpi_check": "DPI compares the held command payload.",
+              "observed_signals": "cmd_valid_o, cmd_ready_i",
+              "phase": "command_backpressure",
+              "responsibility": "Hold cmd_valid_o while command ready is asserted late."
+            },
+            {
+              "cycle": 2,
+              "dpi_check": "DPI compares command fields.",
+              "observed_signals": "cmd_valid_o, cmd_ready_i, cmd_*_o",
+              "phase": "command_handshake",
+              "responsibility": "Accept the CPU command at the array boundary."
+            },
+            {
+              "cycle": 3,
+              "dpi_check": "DPI drives array_done_i from C++/probe stimulus.",
+              "observed_signals": "array_done_i, debug_halted_o",
+              "phase": "wait_for_array",
+              "responsibility": "Wait for array completion without instantiating array RTL."
+            },
+            {
+              "cycle": 4,
+              "dpi_check": "DPI compares no-spurious-command behavior.",
+              "observed_signals": "cmd_valid_o, array_done_i",
+              "phase": "wait_for_array_stable",
+              "responsibility": "Keep waiting with no new command issue."
+            },
+            {
+              "cycle": 5,
+              "dpi_check": "DPI compares completion behavior.",
+              "observed_signals": "array_done_i, debug_halted_o",
+              "phase": "array_completion",
+              "responsibility": "Observe array_done_i and move toward halt."
+            },
+            {
+              "cycle": 6,
+              "dpi_check": "DPI compares halt transition.",
+              "observed_signals": "debug_halted_o",
+              "phase": "halt_transition",
+              "responsibility": "Enter the debug halted state."
+            },
+            {
+              "cycle": 7,
+              "dpi_check": "DPI compares final idle state.",
+              "observed_signals": "cmd_valid_o, debug_halted_o",
+              "phase": "halted_idle",
+              "responsibility": "Remain halted with no extra command."
+            }
+          ],
+          "name": "control_cpu",
+          "phase_source": "e1_h1_module_dpi_cycle",
+          "probe_module": "e1_h1_module_dpi_control_cpu",
+          "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+          "template": "cpu_command_8_cycle_template",
+          "top_module": "e1_h1_control_cpu"
+        },
         "cycle_notes": [
           "cycle 0 reset release",
           "cycle 1 command valid with backpressure",
           "cycle 5 array completion"
         ],
         "flist": "e1/e1-h1/generated/module_dpi/flists/control_cpu.f",
+        "isolation": {
+          "allowed_verification_modules": [
+            "e1_h1_imp1_control_cpu_ref",
+            "e1_h1_control_cpu"
+          ],
+          "boundary": "cpp_dpi_drives_all_neighbors_other_than_the_imp1_reference_oracle",
+          "checks": [
+            {
+              "name": "imp2_rtl_defines_dut_module",
+              "status": "pass"
+            },
+            {
+              "name": "reference_module_defined",
+              "status": "pass"
+            },
+            {
+              "name": "probe_instantiates_only_dut_and_reference",
+              "status": "pass"
+            },
+            {
+              "name": "forbidden_design_neighbors_absent",
+              "status": "pass"
+            }
+          ],
+          "dut_module": "e1_h1_control_cpu",
+          "flist": "e1/e1-h1/generated/module_dpi/flists/control_cpu.f",
+          "forbidden_design_neighbors": [
+            "e1_h1_rgmii_ethernet_ingress",
+            "e1_h1_stream_sram",
+            "e1_h1_config_sram",
+            "e1_h1_systolic_array"
+          ],
+          "imp2_rtl": "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv",
+          "name": "control_cpu",
+          "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+          "reference_module": "e1_h1_imp1_control_cpu_ref",
+          "reference_rtl": "e1/e1-h1/dpi/e1_h1_imp1_reference.sv"
+        },
         "latch_buffer": false,
         "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu_main.cpp",
         "name": "control_cpu",
         "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+        "reference_module": "e1_h1_imp1_control_cpu_ref",
         "top_module": "e1_h1_control_cpu"
       },
       {
+        "cycle_contract": {
+          "checks": [
+            {
+              "name": "cycle_indices_contiguous",
+              "status": "pass"
+            },
+            {
+              "name": "dpi_probe_reports_cycles",
+              "status": "pass"
+            },
+            {
+              "name": "readme_cycle_diagram_declared",
+              "status": "pass"
+            }
+          ],
+          "cycle_period": 10,
+          "cycles": [
+            {
+              "cycle": 0,
+              "dpi_check": "DPI compares idle stream outputs.",
+              "observed_signals": "rgmii_rx_ctl_i, stream_valid_o",
+              "phase": "idle_after_reset",
+              "responsibility": "Hold digital RGMII input idle after reset."
+            },
+            {
+              "cycle": 1,
+              "dpi_check": "DPI compares stream assembly.",
+              "observed_signals": "rgmii_rx_ctl_i, rgmii_rxd_i",
+              "phase": "frame_nibble_0",
+              "responsibility": "Start a minimum digital RGMII frame."
+            },
+            {
+              "cycle": 2,
+              "dpi_check": "DPI compares stream assembly.",
+              "observed_signals": "rgmii_rxd_i",
+              "phase": "frame_nibble_1",
+              "responsibility": "Shift the second RGMII nibble."
+            },
+            {
+              "cycle": 3,
+              "dpi_check": "DPI compares stream assembly.",
+              "observed_signals": "rgmii_rxd_i",
+              "phase": "frame_nibble_2",
+              "responsibility": "Shift the third RGMII nibble."
+            },
+            {
+              "cycle": 4,
+              "dpi_check": "DPI compares stream assembly.",
+              "observed_signals": "rgmii_rxd_i",
+              "phase": "frame_nibble_3",
+              "responsibility": "Shift the fourth RGMII nibble."
+            },
+            {
+              "cycle": 5,
+              "dpi_check": "DPI compares stream assembly.",
+              "observed_signals": "rgmii_rxd_i, rgmii_rx_ctl_i",
+              "phase": "frame_nibble_4",
+              "responsibility": "Shift the final active RGMII nibble."
+            },
+            {
+              "cycle": 6,
+              "dpi_check": "DPI compares backpressure behavior.",
+              "observed_signals": "rgmii_rx_ctl_i, stream_ready_i",
+              "phase": "frame_gap",
+              "responsibility": "Drop receive control before downstream accepts."
+            },
+            {
+              "cycle": 7,
+              "dpi_check": "DPI compares output handshake.",
+              "observed_signals": "stream_ready_i, stream_valid_o",
+              "phase": "downstream_accept",
+              "responsibility": "Allow the stream output to drain."
+            },
+            {
+              "cycle": 8,
+              "dpi_check": "DPI compares final stream word.",
+              "observed_signals": "stream_ready_i, stream_data_o",
+              "phase": "drain_stream",
+              "responsibility": "Drain any remaining stream output."
+            },
+            {
+              "cycle": 9,
+              "dpi_check": "DPI compares idle return.",
+              "observed_signals": "stream_valid_o, stream_last_o, stream_error_o",
+              "phase": "return_idle",
+              "responsibility": "Return the digital ingress path to idle."
+            }
+          ],
+          "name": "rgmii_ethernet_ingress",
+          "phase_source": "e1_h1_module_dpi_cycle",
+          "probe_module": "e1_h1_module_dpi_rgmii_ethernet_ingress",
+          "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+          "template": "digital_rgmii_ingress_10_cycle_template",
+          "top_module": "e1_h1_rgmii_ethernet_ingress"
+        },
         "cycle_notes": [
           "cycle 1 frame starts",
           "cycles 1-5 nibbles shift",
           "cycle 7 downstream accepts"
         ],
         "flist": "e1/e1-h1/generated/module_dpi/flists/rgmii_ethernet_ingress.f",
+        "isolation": {
+          "allowed_verification_modules": [
+            "e1_h1_imp1_rgmii_ethernet_ingress_ref",
+            "e1_h1_rgmii_ethernet_ingress"
+          ],
+          "boundary": "cpp_dpi_drives_all_neighbors_other_than_the_imp1_reference_oracle",
+          "checks": [
+            {
+              "name": "imp2_rtl_defines_dut_module",
+              "status": "pass"
+            },
+            {
+              "name": "reference_module_defined",
+              "status": "pass"
+            },
+            {
+              "name": "probe_instantiates_only_dut_and_reference",
+              "status": "pass"
+            },
+            {
+              "name": "forbidden_design_neighbors_absent",
+              "status": "pass"
+            }
+          ],
+          "dut_module": "e1_h1_rgmii_ethernet_ingress",
+          "flist": "e1/e1-h1/generated/module_dpi/flists/rgmii_ethernet_ingress.f",
+          "forbidden_design_neighbors": [
+            "e1_h1_control_cpu",
+            "e1_h1_stream_sram",
+            "e1_h1_config_sram",
+            "e1_h1_systolic_array"
+          ],
+          "imp2_rtl": "e1/e1-h1/rtl/imp2/e1_h1_rgmii_ethernet_ingress.sv",
+          "name": "rgmii_ethernet_ingress",
+          "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_rgmii_ethernet_ingress.sv",
+          "reference_module": "e1_h1_imp1_rgmii_ethernet_ingress_ref",
+          "reference_rtl": "e1/e1-h1/dpi/e1_h1_imp1_reference.sv"
+        },
         "latch_buffer": false,
         "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_rgmii_ethernet_ingress_main.cpp",
         "name": "rgmii_ethernet_ingress",
         "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_rgmii_ethernet_ingress.sv",
+        "reference_module": "e1_h1_imp1_rgmii_ethernet_ingress_ref",
         "top_module": "e1_h1_rgmii_ethernet_ingress"
       },
       {
+        "cycle_contract": {
+          "checks": [
+            {
+              "name": "cycle_indices_contiguous",
+              "status": "pass"
+            },
+            {
+              "name": "dpi_probe_reports_cycles",
+              "status": "pass"
+            },
+            {
+              "name": "readme_cycle_diagram_declared",
+              "status": "pass"
+            }
+          ],
+          "cycle_period": 6,
+          "cycles": [
+            {
+              "cycle": 0,
+              "dpi_check": "DPI compares latched valid/data.",
+              "observed_signals": "stream_valid_i, array_ready_i, array_valid_o",
+              "phase": "latch_first_word",
+              "responsibility": "Latch the first stream word while the array is not ready."
+            },
+            {
+              "cycle": 1,
+              "dpi_check": "DPI compares held data.",
+              "observed_signals": "array_ready_i, array_valid_o, array_data_o",
+              "phase": "hold_latched_word",
+              "responsibility": "Hold the latched word under array backpressure."
+            },
+            {
+              "cycle": 2,
+              "dpi_check": "DPI compares release behavior.",
+              "observed_signals": "array_ready_i, array_valid_o, array_data_o",
+              "phase": "release_latched_word",
+              "responsibility": "Release the latched word when array_ready_i rises."
+            },
+            {
+              "cycle": 3,
+              "dpi_check": "DPI compares accept behavior.",
+              "observed_signals": "stream_valid_i, stream_error_i",
+              "phase": "latch_next_clean_word",
+              "responsibility": "Latch a later clean stream word."
+            },
+            {
+              "cycle": 4,
+              "dpi_check": "DPI compares error filtering.",
+              "observed_signals": "stream_error_i, stream_last_i",
+              "phase": "reject_error_word",
+              "responsibility": "Reject an error-marked stream word."
+            },
+            {
+              "cycle": 5,
+              "dpi_check": "DPI compares final latch state.",
+              "observed_signals": "stream_ready_o, array_valid_o",
+              "phase": "empty_or_ready",
+              "responsibility": "Return to empty or ready state."
+            }
+          ],
+          "name": "ingress_sram",
+          "phase_source": "e1_h1_module_dpi_cycle",
+          "probe_module": "e1_h1_module_dpi_ingress_sram",
+          "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+          "template": "latch_buffer_6_cycle_template",
+          "top_module": "e1_h1_stream_sram"
+        },
         "cycle_notes": [
           "cycle 0 latch first word",
           "cycle 1 hold while array_ready_i is low",
           "cycle 2 release latched word"
         ],
         "flist": "e1/e1-h1/generated/module_dpi/flists/ingress_sram.f",
+        "isolation": {
+          "allowed_verification_modules": [
+            "e1_h1_imp1_stream_sram_ref",
+            "e1_h1_stream_sram"
+          ],
+          "boundary": "cpp_dpi_drives_all_neighbors_other_than_the_imp1_reference_oracle",
+          "checks": [
+            {
+              "name": "imp2_rtl_defines_dut_module",
+              "status": "pass"
+            },
+            {
+              "name": "reference_module_defined",
+              "status": "pass"
+            },
+            {
+              "name": "probe_instantiates_only_dut_and_reference",
+              "status": "pass"
+            },
+            {
+              "name": "forbidden_design_neighbors_absent",
+              "status": "pass"
+            }
+          ],
+          "dut_module": "e1_h1_stream_sram",
+          "flist": "e1/e1-h1/generated/module_dpi/flists/ingress_sram.f",
+          "forbidden_design_neighbors": [
+            "e1_h1_control_cpu",
+            "e1_h1_rgmii_ethernet_ingress",
+            "e1_h1_config_sram",
+            "e1_h1_systolic_array"
+          ],
+          "imp2_rtl": "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv",
+          "name": "ingress_sram",
+          "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram.sv",
+          "reference_module": "e1_h1_imp1_stream_sram_ref",
+          "reference_rtl": "e1/e1-h1/dpi/e1_h1_imp1_reference.sv"
+        },
         "latch_buffer": true,
         "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram_main.cpp",
         "name": "ingress_sram",
         "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram.sv",
+        "reference_module": "e1_h1_imp1_stream_sram_ref",
         "top_module": "e1_h1_stream_sram"
       },
       {
+        "cycle_contract": {
+          "checks": [
+            {
+              "name": "cycle_indices_contiguous",
+              "status": "pass"
+            },
+            {
+              "name": "dpi_probe_reports_cycles",
+              "status": "pass"
+            },
+            {
+              "name": "readme_cycle_diagram_declared",
+              "status": "pass"
+            }
+          ],
+          "cycle_period": 3,
+          "cycles": [
+            {
+              "cycle": 0,
+              "dpi_check": "DPI compares parameterized imp1 and imp2 initialized state.",
+              "observed_signals": "initialized_q",
+              "phase": "initialization_latch",
+              "responsibility": "Latch initialized_q after reset release."
+            },
+            {
+              "cycle": 1,
+              "dpi_check": "DPI compares hold behavior.",
+              "observed_signals": "initialized_q",
+              "phase": "initialized_hold_0",
+              "responsibility": "Hold initialized_q in the configured SRAM shell."
+            },
+            {
+              "cycle": 2,
+              "dpi_check": "DPI compares final hold behavior.",
+              "observed_signals": "initialized_q",
+              "phase": "initialized_hold_1",
+              "responsibility": "Continue holding initialized_q."
+            }
+          ],
+          "name": "activation_sram",
+          "phase_source": "e1_h1_module_dpi_cycle",
+          "probe_module": "e1_h1_module_dpi_activation_sram",
+          "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+          "template": "config_sram_3_cycle_template",
+          "top_module": "e1_h1_config_sram"
+        },
         "cycle_notes": [
           "cycle -1 reset clears initialized_q",
           "cycle 0 initialization latch sets",
           "cycle 1 initialized_q holds"
         ],
         "flist": "e1/e1-h1/generated/module_dpi/flists/activation_sram.f",
+        "isolation": {
+          "allowed_verification_modules": [
+            "e1_h1_imp1_config_sram_ref",
+            "e1_h1_config_sram"
+          ],
+          "boundary": "cpp_dpi_drives_all_neighbors_other_than_the_imp1_reference_oracle",
+          "checks": [
+            {
+              "name": "imp2_rtl_defines_dut_module",
+              "status": "pass"
+            },
+            {
+              "name": "reference_module_defined",
+              "status": "pass"
+            },
+            {
+              "name": "probe_instantiates_only_dut_and_reference",
+              "status": "pass"
+            },
+            {
+              "name": "forbidden_design_neighbors_absent",
+              "status": "pass"
+            }
+          ],
+          "dut_module": "e1_h1_config_sram",
+          "flist": "e1/e1-h1/generated/module_dpi/flists/activation_sram.f",
+          "forbidden_design_neighbors": [
+            "e1_h1_control_cpu",
+            "e1_h1_rgmii_ethernet_ingress",
+            "e1_h1_stream_sram",
+            "e1_h1_systolic_array"
+          ],
+          "imp2_rtl": "e1/e1-h1/rtl/imp2/e1_h1_config_sram.sv",
+          "name": "activation_sram",
+          "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_activation_sram.sv",
+          "reference_module": "e1_h1_imp1_config_sram_ref",
+          "reference_rtl": "e1/e1-h1/dpi/e1_h1_imp1_reference.sv"
+        },
         "latch_buffer": false,
         "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_activation_sram_main.cpp",
         "name": "activation_sram",
         "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_activation_sram.sv",
+        "reference_module": "e1_h1_imp1_config_sram_ref",
         "top_module": "e1_h1_config_sram"
       },
       {
+        "cycle_contract": {
+          "checks": [
+            {
+              "name": "cycle_indices_contiguous",
+              "status": "pass"
+            },
+            {
+              "name": "dpi_probe_reports_cycles",
+              "status": "pass"
+            },
+            {
+              "name": "readme_cycle_diagram_declared",
+              "status": "pass"
+            }
+          ],
+          "cycle_period": 3,
+          "cycles": [
+            {
+              "cycle": 0,
+              "dpi_check": "DPI compares parameterized imp1 and imp2 initialized state.",
+              "observed_signals": "initialized_q",
+              "phase": "initialization_latch",
+              "responsibility": "Latch initialized_q after reset release."
+            },
+            {
+              "cycle": 1,
+              "dpi_check": "DPI compares hold behavior.",
+              "observed_signals": "initialized_q",
+              "phase": "initialized_hold_0",
+              "responsibility": "Hold initialized_q in the configured SRAM shell."
+            },
+            {
+              "cycle": 2,
+              "dpi_check": "DPI compares final hold behavior.",
+              "observed_signals": "initialized_q",
+              "phase": "initialized_hold_1",
+              "responsibility": "Continue holding initialized_q."
+            }
+          ],
+          "name": "accumulator_sram",
+          "phase_source": "e1_h1_module_dpi_cycle",
+          "probe_module": "e1_h1_module_dpi_accumulator_sram",
+          "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+          "template": "config_sram_3_cycle_template",
+          "top_module": "e1_h1_config_sram"
+        },
         "cycle_notes": [
           "cycle -1 reset clears initialized_q",
           "cycle 0 initialization latch sets",
           "cycle 1 initialized_q holds"
         ],
         "flist": "e1/e1-h1/generated/module_dpi/flists/accumulator_sram.f",
+        "isolation": {
+          "allowed_verification_modules": [
+            "e1_h1_imp1_config_sram_ref",
+            "e1_h1_config_sram"
+          ],
+          "boundary": "cpp_dpi_drives_all_neighbors_other_than_the_imp1_reference_oracle",
+          "checks": [
+            {
+              "name": "imp2_rtl_defines_dut_module",
+              "status": "pass"
+            },
+            {
+              "name": "reference_module_defined",
+              "status": "pass"
+            },
+            {
+              "name": "probe_instantiates_only_dut_and_reference",
+              "status": "pass"
+            },
+            {
+              "name": "forbidden_design_neighbors_absent",
+              "status": "pass"
+            }
+          ],
+          "dut_module": "e1_h1_config_sram",
+          "flist": "e1/e1-h1/generated/module_dpi/flists/accumulator_sram.f",
+          "forbidden_design_neighbors": [
+            "e1_h1_control_cpu",
+            "e1_h1_rgmii_ethernet_ingress",
+            "e1_h1_stream_sram",
+            "e1_h1_systolic_array"
+          ],
+          "imp2_rtl": "e1/e1-h1/rtl/imp2/e1_h1_config_sram.sv",
+          "name": "accumulator_sram",
+          "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_accumulator_sram.sv",
+          "reference_module": "e1_h1_imp1_config_sram_ref",
+          "reference_rtl": "e1/e1-h1/dpi/e1_h1_imp1_reference.sv"
+        },
         "latch_buffer": false,
         "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_accumulator_sram_main.cpp",
         "name": "accumulator_sram",
         "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_accumulator_sram.sv",
+        "reference_module": "e1_h1_imp1_config_sram_ref",
         "top_module": "e1_h1_config_sram"
       },
       {
+        "cycle_contract": {
+          "checks": [
+            {
+              "name": "cycle_indices_contiguous",
+              "status": "pass"
+            },
+            {
+              "name": "dpi_probe_reports_cycles",
+              "status": "pass"
+            },
+            {
+              "name": "readme_cycle_diagram_declared",
+              "status": "pass"
+            }
+          ],
+          "cycle_period": 8,
+          "cycles": [
+            {
+              "cycle": 0,
+              "dpi_check": "DPI compares idle readiness.",
+              "observed_signals": "cmd_ready_o, debug_busy_o",
+              "phase": "array_idle",
+              "responsibility": "Keep the array idle and command-ready after reset."
+            },
+            {
+              "cycle": 1,
+              "dpi_check": "DPI compares command acceptance.",
+              "observed_signals": "cmd_valid_i, cmd_ready_o, cmd_*_i",
+              "phase": "accept_array_command",
+              "responsibility": "Accept the command from probe/C++ stimulus."
+            },
+            {
+              "cycle": 2,
+              "dpi_check": "DPI compares busy transition.",
+              "observed_signals": "debug_busy_o, input_ready_o",
+              "phase": "enter_busy",
+              "responsibility": "Enter busy state before input beats arrive."
+            },
+            {
+              "cycle": 3,
+              "dpi_check": "DPI compares input readiness.",
+              "observed_signals": "input_valid_i, input_ready_o, input_data_i",
+              "phase": "consume_input_beat_0",
+              "responsibility": "Consume the first input beat."
+            },
+            {
+              "cycle": 4,
+              "dpi_check": "DPI compares input readiness.",
+              "observed_signals": "input_valid_i, input_ready_o, input_data_i",
+              "phase": "consume_input_beat_1",
+              "responsibility": "Consume the second input beat."
+            },
+            {
+              "cycle": 5,
+              "dpi_check": "DPI compares input readiness.",
+              "observed_signals": "input_valid_i, input_ready_o, input_data_i",
+              "phase": "consume_input_beat_2",
+              "responsibility": "Consume the third input beat."
+            },
+            {
+              "cycle": 6,
+              "dpi_check": "DPI compares completion.",
+              "observed_signals": "input_valid_i, done_o, debug_busy_o",
+              "phase": "completion_pulse",
+              "responsibility": "Consume the final beat and pulse done_o."
+            },
+            {
+              "cycle": 7,
+              "dpi_check": "DPI compares return-to-ready.",
+              "observed_signals": "cmd_ready_o, done_o, debug_busy_o",
+              "phase": "return_ready",
+              "responsibility": "Return to ready/idle state for the next command."
+            }
+          ],
+          "name": "systolic_array",
+          "phase_source": "e1_h1_module_dpi_cycle",
+          "probe_module": "e1_h1_module_dpi_systolic_array",
+          "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+          "template": "systolic_array_8_cycle_template",
+          "top_module": "e1_h1_systolic_array"
+        },
         "cycle_notes": [
           "cycle 1 command accepted",
           "cycles 3-6 input burst drains",
           "cycle 6 completion pulse"
         ],
         "flist": "e1/e1-h1/generated/module_dpi/flists/systolic_array.f",
+        "isolation": {
+          "allowed_verification_modules": [
+            "e1_h1_imp1_systolic_array_ref",
+            "e1_h1_systolic_array"
+          ],
+          "boundary": "cpp_dpi_drives_all_neighbors_other_than_the_imp1_reference_oracle",
+          "checks": [
+            {
+              "name": "imp2_rtl_defines_dut_module",
+              "status": "pass"
+            },
+            {
+              "name": "reference_module_defined",
+              "status": "pass"
+            },
+            {
+              "name": "probe_instantiates_only_dut_and_reference",
+              "status": "pass"
+            },
+            {
+              "name": "forbidden_design_neighbors_absent",
+              "status": "pass"
+            }
+          ],
+          "dut_module": "e1_h1_systolic_array",
+          "flist": "e1/e1-h1/generated/module_dpi/flists/systolic_array.f",
+          "forbidden_design_neighbors": [
+            "e1_h1_control_cpu",
+            "e1_h1_rgmii_ethernet_ingress",
+            "e1_h1_stream_sram",
+            "e1_h1_config_sram"
+          ],
+          "imp2_rtl": "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
+          "name": "systolic_array",
+          "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+          "reference_module": "e1_h1_imp1_systolic_array_ref",
+          "reference_rtl": "e1/e1-h1/dpi/e1_h1_imp1_reference.sv"
+        },
         "latch_buffer": false,
         "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array_main.cpp",
         "name": "systolic_array",
         "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+        "reference_module": "e1_h1_imp1_systolic_array_ref",
         "top_module": "e1_h1_systolic_array"
       }
     ],

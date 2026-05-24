@@ -46,7 +46,8 @@ hardware and device code.
 12. `e1_generate_module_dpi`
     - Input: implementation matrix, IP manifests, and module VIPs.
     - Output: C++-generated module-DPI probes, per-module flists, and a
-      construction report proving one generated probe per replaceable module.
+      construction report proving one generated probe per replaceable module,
+      plus generated base-IP isolation and cycle-contract artifacts.
 13. `e1_emit_systemverilog`
     - Input: hardware graph.
     - Output: mocked or real SystemVerilog modules and generated top-level
@@ -145,6 +146,8 @@ E1 is complete when TinyLlama-derived reduced workloads can run through:
 - L1.5 hybrid runs for every module.
 - Module-local VIP manifests that target exactly one SystemVerilog module.
 - C++-generated module-DPI probes and per-module Verilator runs.
+- Generated base-IP module isolation and cycle-contract artifacts for CPU,
+  RGMII ingress, latch buffer, SRAM shells, and systolic array.
 - RTL lowering evidence that maps StableHLO fixture operations to active `imp2`
   RTL and the documented cycle/latch schedule.
 - Full-checkpoint RTL lowering plan for the pinned TinyLlama layer inventory,

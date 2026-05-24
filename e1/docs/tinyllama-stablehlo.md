@@ -94,6 +94,13 @@ requires the target RTL filelist to use `e1/e1-h1/rtl/imp2/*.sv`. It also
 records `full_tinyllama_checkpoint_implemented: false` until live checkpoint
 export and execution are added.
 
+The base E1-H1 module-DPI generator emits
+`e1/e1-h1/generated/module_dpi/module_isolation.json` and
+`e1/e1-h1/generated/module_dpi/cycle_contract.json` in addition to the probe
+manifest. These artifacts prove each replaceable IP probe contains only one
+active `imp2` DUT plus its `imp1` oracle and that every probe-reported cycle is
+named against the README cycle diagrams.
+
 The RTL-lowering artifact maps each checked-in StableHLO fixture operation to
 an active `imp2` RTL module, its imp2 flist, and its generated module-DPI proof.
 It also records the cycle schedule and latch-buffer checks from

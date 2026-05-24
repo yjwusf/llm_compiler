@@ -41,6 +41,8 @@ DPI_MAIN = E1_H1 / "dpi" / "e1_h1_imp_equiv_main.cpp"
 MODULE_DPI_GENERATOR = E1_H1 / "tools" / "generate_module_dpi.cpp"
 MODULE_DPI_DIR = E1_H1 / "generated" / "module_dpi"
 MODULE_DPI_MANIFEST = MODULE_DPI_DIR / "manifest.json"
+MODULE_DPI_ISOLATION = MODULE_DPI_DIR / "module_isolation.json"
+MODULE_DPI_CYCLE_CONTRACT = MODULE_DPI_DIR / "cycle_contract.json"
 FULL_CHECKPOINT_GENERATED = E1_H1 / "generated" / "full_checkpoint"
 FULL_CHECKPOINT_MODULE_DPI_GENERATOR = E1_H1 / "tools" / "generate_full_checkpoint_module_dpi.cpp"
 FULL_CHECKPOINT_MODULE_DPI_DIR = E1_H1 / "generated" / "full_checkpoint_dpi"
@@ -413,19 +415,40 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(manifest["reference_implementation"], "imp1")
         self.assertEqual(manifest["candidate_implementation"], "imp2")
         self.assertEqual(manifest["scoreboard"], "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp")
+        self.assertEqual(manifest["module_isolation_proof"], "e1/e1-h1/generated/module_dpi/module_isolation.json")
+        self.assertEqual(manifest["cycle_contract"], "e1/e1-h1/generated/module_dpi/cycle_contract.json")
         self.assertIn("one_generated_probe_per_ip", manifest["construction_rule"])
         self.assertIn("CPU command issue is tested without the systolic array RTL", manifest["separation_of_concerns"]["control_cpu"])
         self.assertIn("The array is tested without CPU RTL", manifest["separation_of_concerns"]["systolic_array"])
         self.assertIn("latched boundary", manifest["separation_of_concerns"]["ingress_sram"])
+        self.assertTrue(MODULE_DPI_ISOLATION.exists())
+        self.assertTrue(MODULE_DPI_CYCLE_CONTRACT.exists())
+        isolation = json.loads(MODULE_DPI_ISOLATION.read_text(encoding="utf-8"))
+        cycle_contract = json.loads(MODULE_DPI_CYCLE_CONTRACT.read_text(encoding="utf-8"))
+        self.assertEqual(isolation["schema"], "e1-h1-module-dpi-isolation-v0")
+        self.assertEqual(cycle_contract["schema"], "e1-h1-module-dpi-cycle-contract-v0")
+        isolation_by_name = {module["name"]: module for module in isolation["modules"]}
+        cycle_contract_by_name = {module["name"]: module for module in cycle_contract["modules"]}
 
         modules = {module["name"]: module for module in manifest["modules"]}
         self.assertEqual(set(modules), {path.stem for path in IP_DIR.glob("*.json")})
+        self.assertEqual(set(isolation_by_name), set(modules))
+        self.assertEqual(set(cycle_contract_by_name), set(modules))
         self.assertEqual([name for name, module in modules.items() if module["latch_buffer"]], ["ingress_sram"])
         for name, module in modules.items():
             vip = json.loads((REPO_ROOT / f"e1/e1-h1/vip/{name}.json").read_text(encoding="utf-8"))
             dpi = vip["dpi_equivalence"]
             self.assertEqual(module["scope"], "module_only")
             self.assertEqual(module["neighbors"], "cpp_dpi_environment")
+            self.assertEqual(module["reference_module"], isolation_by_name[name]["reference_module"])
+            self.assertEqual(module["cycle_contract"]["template"], cycle_contract_by_name[name]["template"])
+            self.assertEqual(module["cycle_contract"]["phase_source"], "e1_h1_module_dpi_cycle")
+            self.assertEqual(
+                [step["cycle"] for step in module["cycle_contract"]["cycles"]],
+                list(range(module["cycle_contract"]["cycle_period"])),
+            )
+            self.assertEqual({check["status"] for check in isolation_by_name[name]["checks"]}, {"pass"})
+            self.assertEqual({check["status"] for check in cycle_contract_by_name[name]["checks"]}, {"pass"})
             self.assertEqual(module["probe"], dpi["module_probe"])
             self.assertEqual(module["main"], dpi["module_main"])
             self.assertEqual(module["flist"], dpi["module_flist"])
@@ -449,6 +472,10 @@ class E1H1Tests(unittest.TestCase):
             self.assertIn(f"module {module['probe_module']};", probe_text)
             self.assertIn("e1_h1_module_dpi_begin", probe_text)
             self.assertIn("e1_h1_module_dpi_cycle", probe_text)
+            self.assertIn(module["reference_module"], probe_text)
+            self.assertIn(module["top_module"], probe_text)
+            for forbidden in isolation_by_name[name]["forbidden_design_neighbors"]:
+                self.assertNotIn(forbidden, probe_text)
 
         control_probe = (REPO_ROOT / modules["control_cpu"]["probe"]).read_text(encoding="utf-8")
         array_probe = (REPO_ROOT / modules["systolic_array"]["probe"]).read_text(encoding="utf-8")
@@ -1065,6 +1092,9 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(summary["end_to_end_smoke"], "e1/generated/pipeline/26_end_to_end_smoke.json")
         self.assertEqual(summary["end_to_end_status"], "pass")
         self.assertEqual(summary["module_dpi_generation"], "e1/generated/pipeline/12_module_dpi_generation.json")
+        self.assertEqual(summary["module_dpi_manifest"], "e1/e1-h1/generated/module_dpi/manifest.json")
+        self.assertEqual(summary["module_dpi_isolation_proof"], "e1/e1-h1/generated/module_dpi/module_isolation.json")
+        self.assertEqual(summary["module_dpi_cycle_contract"], "e1/e1-h1/generated/module_dpi/cycle_contract.json")
         self.assertEqual(summary["rtl_lowering"], "e1/generated/pipeline/15_rtl_lowering.json")
         self.assertEqual(summary["rtl_lowering_status"], "pass")
         self.assertEqual(
@@ -1269,6 +1299,8 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(module_dpi_report["status"], "pass")
         self.assertEqual(module_dpi_report["generator"], "e1/e1-h1/tools/generate_module_dpi.cpp")
         self.assertEqual(module_dpi_report["manifest"], "e1/e1-h1/generated/module_dpi/manifest.json")
+        self.assertEqual(module_dpi_report["module_isolation_proof"], "e1/e1-h1/generated/module_dpi/module_isolation.json")
+        self.assertEqual(module_dpi_report["cycle_contract"], "e1/e1-h1/generated/module_dpi/cycle_contract.json")
         self.assertEqual(module_dpi_report["module_count"], len(list(IP_DIR.glob("*.json"))))
         self.assertIn("without the systolic array RTL", module_dpi_report["separation_of_concerns"]["control_cpu"])
         self.assertIn("without CPU RTL", module_dpi_report["separation_of_concerns"]["systolic_array"])
@@ -1279,6 +1311,14 @@ class E1H1Tests(unittest.TestCase):
             self.assertTrue((REPO_ROOT / module["main"]).exists(), module)
             self.assertTrue((REPO_ROOT / module["flist"]).exists(), module)
             self.assertGreater(len(module["cycle_notes"]), 0, module)
+            self.assertEqual(module["isolation"]["dut_module"], module["top_module"])
+            self.assertEqual(module["isolation"]["reference_module"], module["reference_module"])
+            self.assertEqual({check["status"] for check in module["isolation"]["checks"]}, {"pass"})
+            self.assertEqual({check["status"] for check in module["cycle_contract"]["checks"]}, {"pass"})
+            self.assertEqual(
+                [step["cycle"] for step in module["cycle_contract"]["cycles"]],
+                list(range(module["cycle_contract"]["cycle_period"])),
+            )
 
         target_plan = json.loads((E1_PIPELINE_OUT / "14_target_package_plan.json").read_text(encoding="utf-8"))
         self.assertEqual(target_plan["manifest"], "e1/e1-h1/generated/targets/manifest.json")
@@ -1753,6 +1793,8 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(e2e["implementation_flists"], implementation_matrix["flists"])
         self.assertEqual(e2e["module_dpi_generation"], "e1/generated/pipeline/12_module_dpi_generation.json")
         self.assertEqual(e2e["module_dpi_manifest"], "e1/e1-h1/generated/module_dpi/manifest.json")
+        self.assertEqual(e2e["module_dpi_isolation_proof"], "e1/e1-h1/generated/module_dpi/module_isolation.json")
+        self.assertEqual(e2e["module_dpi_cycle_contract"], "e1/e1-h1/generated/module_dpi/cycle_contract.json")
         self.assertEqual(e2e["rtl_lowering"], "e1/generated/pipeline/15_rtl_lowering.json")
         self.assertEqual(e2e["rtl_lowering_status"], "pass")
         self.assertEqual(e2e["tinyllama_imp2_coverage"], "e1/generated/pipeline/16_tinyllama_imp2_coverage.json")
@@ -1859,6 +1901,8 @@ class E1H1Tests(unittest.TestCase):
             e2e["implementation_flists"]["active"],
             e2e["module_dpi_generation"],
             e2e["module_dpi_manifest"],
+            e2e["module_dpi_isolation_proof"],
+            e2e["module_dpi_cycle_contract"],
             e2e["rtl_lowering"],
             e2e["tinyllama_imp2_coverage"],
             e2e["full_tinyllama_checkpoint_execution"],

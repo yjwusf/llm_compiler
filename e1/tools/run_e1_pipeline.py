@@ -576,6 +576,13 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
 
     module_dpi_manifest_path = module_dpi_dir / "manifest.json"
     module_dpi_manifest = load_json(module_dpi_manifest_path)
+    module_isolation_path = module_dpi_dir / "module_isolation.json"
+    cycle_contract_path = module_dpi_dir / "cycle_contract.json"
+    module_isolation = load_json(module_isolation_path)
+    cycle_contract = load_json(cycle_contract_path)
+    module_names = {module["name"] for module in module_dpi_manifest["modules"]}
+    isolation_by_name = {module["name"]: module for module in module_isolation["modules"]}
+    cycle_contract_by_name = {module["name"]: module for module in cycle_contract["modules"]}
     checks = [
         {
             "name": "module_dpi_manifest_exists",
@@ -584,13 +591,43 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
         {
             "name": "one_probe_per_module",
             "status": "pass"
-            if len({module["name"] for module in module_dpi_manifest["modules"]}) == len(module_dpi_manifest["modules"])
+            if len(module_names) == len(module_dpi_manifest["modules"])
             else "fail",
         },
         {
             "name": "all_probes_have_flists",
             "status": "pass"
             if all((REPO_ROOT / module["flist"]).exists() for module in module_dpi_manifest["modules"])
+            else "fail",
+        },
+        {
+            "name": "module_dpi_isolation_proof_exists",
+            "status": "pass" if module_isolation_path.exists() else "fail",
+        },
+        {
+            "name": "module_dpi_cycle_contract_exists",
+            "status": "pass" if cycle_contract_path.exists() else "fail",
+        },
+        {
+            "name": "all_module_dpi_modules_have_isolation_proofs",
+            "status": "pass"
+            if module_names == set(isolation_by_name)
+            and all(
+                all(check["status"] == "pass" for check in isolation_by_name[module["name"]]["checks"])
+                for module in module_dpi_manifest["modules"]
+            )
+            else "fail",
+        },
+        {
+            "name": "all_module_dpi_modules_have_cycle_contracts",
+            "status": "pass"
+            if module_names == set(cycle_contract_by_name)
+            and all(
+                all(check["status"] == "pass" for check in cycle_contract_by_name[module["name"]]["checks"])
+                and [step["cycle"] for step in cycle_contract_by_name[module["name"]]["cycles"]]
+                == list(range(cycle_contract_by_name[module["name"]]["cycle_period"]))
+                for module in module_dpi_manifest["modules"]
+            )
             else "fail",
         },
         {
@@ -606,16 +643,21 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
         "generator": repo_rel(generator),
         "manifest": repo_rel(module_dpi_manifest_path),
         "scoreboard": module_dpi_manifest["scoreboard"],
+        "module_isolation_proof": module_dpi_manifest["module_isolation_proof"],
+        "cycle_contract": module_dpi_manifest["cycle_contract"],
         "module_count": len(module_dpi_manifest["modules"]),
         "modules": [
             {
                 "name": module["name"],
                 "top_module": module["top_module"],
+                "reference_module": module["reference_module"],
                 "probe": module["probe"],
                 "main": module["main"],
                 "flist": module["flist"],
                 "latch_buffer": module["latch_buffer"],
                 "cycle_notes": module["cycle_notes"],
+                "isolation": isolation_by_name[module["name"]],
+                "cycle_contract": cycle_contract_by_name[module["name"]],
             }
             for module in module_dpi_manifest["modules"]
         ],
@@ -4546,6 +4588,8 @@ def run_pipeline(
         for path in [
             module_dpi_report["manifest"],
             module_dpi_report["scoreboard"],
+            module_dpi_report["module_isolation_proof"],
+            module_dpi_report["cycle_contract"],
             *[module["probe"] for module in module_dpi_report["modules"]],
             *[module["main"] for module in module_dpi_report["modules"]],
             *[module["flist"] for module in module_dpi_report["modules"]],
@@ -4655,6 +4699,8 @@ def run_pipeline(
         "implementation_flists": implementation_matrix["flists"],
         "module_dpi_generation": repo_rel(module_dpi_out),
         "module_dpi_manifest": module_dpi_report["manifest"],
+        "module_dpi_isolation_proof": module_dpi_report["module_isolation_proof"],
+        "module_dpi_cycle_contract": module_dpi_report["cycle_contract"],
         "rtl_lowering": repo_rel(rtl_lowering_out),
         "rtl_lowering_status": rtl_lowering["status"],
         "tinyllama_imp2_coverage": repo_rel(tinyllama_coverage_out),
@@ -4726,6 +4772,9 @@ def run_pipeline(
         "end_to_end_smoke": repo_rel(e2e_out),
         "end_to_end_status": e2e["status"],
         "module_dpi_generation": repo_rel(module_dpi_out),
+        "module_dpi_manifest": module_dpi_report["manifest"],
+        "module_dpi_isolation_proof": module_dpi_report["module_isolation_proof"],
+        "module_dpi_cycle_contract": module_dpi_report["cycle_contract"],
         "rtl_lowering": repo_rel(rtl_lowering_out),
         "rtl_lowering_status": rtl_lowering["status"],
         "full_tinyllama_checkpoint_execution": repo_rel(output_dir / "17_full_tinyllama_checkpoint_execution.json"),

@@ -31,13 +31,18 @@ The generated module-DPI artifacts are owned by:
 
 - `e1/e1-h1/tools/generate_module_dpi.cpp`
 - `e1/e1-h1/generated/module_dpi/manifest.json`
+- `e1/e1-h1/generated/module_dpi/module_isolation.json`
+- `e1/e1-h1/generated/module_dpi/cycle_contract.json`
 - `e1/e1-h1/generated/module_dpi/flists/*.f`
 
 The generator validates the existing IP and VIP manifests, then emits one
 SystemVerilog probe per module. Each generated probe instantiates exactly one
 candidate SystemVerilog DUT and supplies all neighboring behavior from the C++
 DPI environment. The older all-module DPI probe remains a smoke test, but it is
-not the replacement boundary.
+not the replacement boundary. The generator also emits machine-checkable
+isolation and cycle-contract artifacts so the CPU, RGMII ingress, latch buffer,
+SRAM shells, and systolic-array probes can be reviewed with the same
+construction-proof shape as generated full-checkpoint RTL modules.
 
 ## Cycle Diagram
 
