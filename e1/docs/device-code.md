@@ -17,6 +17,10 @@ Initial files:
 - `e1_tinyllama_program.cpp`: first readable program skeleton.
 - `e1_tinyllama_program_host_smoke.cpp`: host-side MMIO model used to execute
   and check the device program in tests.
+- `e1_tinyllama_full_schedule.hpp`: generated but compact descriptor for the
+  full-checkpoint linear tile command stream.
+- `e1_tinyllama_full_rtl_cycle_smoke.cpp`: host smoke that checks the total
+  RTL-cycle count implied by the full-checkpoint tile scheduler template.
 
 ## Style
 

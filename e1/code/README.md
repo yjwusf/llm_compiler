@@ -7,7 +7,9 @@ This directory contains the first C++ skeletons for E1.
 - `chip_model/`: generated or generator-shaped C++ chip model.
 - `program/`: legible code intended to run on the E1-H1 bare-metal CPU.
   `e1_tinyllama_full_schedule.hpp` is a compact generated descriptor for the
-  full-checkpoint systolic-array tile command stream.
+  full-checkpoint systolic-array tile command stream, and
+  `e1_tinyllama_full_rtl_cycle_smoke.cpp` checks the 8-cycle RTL lowering
+  template for that stream.
 
 ## Rules
 

@@ -70,3 +70,33 @@ Separation rules:
 - The ingress SRAM is the explicit latch buffer between Ethernet/RGMII ingress
   and the array stream. Its probe must show data held while downstream ready is
   low and released on a later cycle.
+
+## Full Checkpoint Tile-Cycle Template
+
+The generated full-checkpoint linear scheduler uses the same separation for
+every planned TinyLlama tile command. The command stream remains compact, but
+each command lowers to this 8-cycle review template:
+
+```text
+Tile cycle  control_cpu responsibility        ingress_sram latch buffer      systolic_array responsibility
+----------  --------------------------        -------------------------      -----------------------------
+0           setup next tile command           ready for staged input         idle or previous command done
+1           cmd_valid_o asserted              may hold staged input          observes valid command
+2           command handshake accepted        releases staged input          enters busy
+3           waits for array progress          beat 0 visible to array        consumes input beat 0
+4           waits for array progress          next beat may stage            consumes input beat 1
+5           waits for array progress          next beat may stage            consumes input beat 2
+6           observes array_done_i/error_i     last beat may stage            consumes beat 3 and pulses done
+7           advances layer/op/tile counters   returns to ready/empty         returns to ready
+```
+
+The generated artifacts are:
+
+- `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler.sv`
+- `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler.f`
+- `e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler_tb.cpp`
+
+The Verilator harness checks sampled RTL command payloads against
+`e1/code/program/e1_tinyllama_full_schedule.hpp`; the pipeline report records
+3,784,704 tile commands and 30,277,632 planned tile-template cycles. This is
+linear-command RTL lowering evidence, not yet full graph RTL execution.

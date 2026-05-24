@@ -1,0 +1,102 @@
+{
+  "checks": [
+    {
+      "name": "command_stream_status",
+      "status": "pass"
+    },
+    {
+      "name": "required_module_dpi_boundaries_present",
+      "status": "pass"
+    },
+    {
+      "name": "latch_buffer_boundary_preserved",
+      "status": "pass"
+    },
+    {
+      "name": "rtl_scheduler_generated",
+      "status": "pass"
+    },
+    {
+      "name": "cycle_smoke",
+      "status": "pass"
+    },
+    {
+      "name": "total_rtl_cycles_match_command_stream",
+      "status": "pass"
+    },
+    {
+      "name": "phase_template_names_each_cycle",
+      "status": "pass"
+    }
+  ],
+  "cycle_smoke": "e1/code/program/e1_tinyllama_full_rtl_cycle_smoke.cpp",
+  "cycle_smoke_report": {
+    "cycles_per_tile_command": 8,
+    "schema": "e1-full-checkpoint-rtl-cycle-smoke-v0",
+    "status": "pass",
+    "total_rtl_cycles": 30277632,
+    "total_tile_commands": 3784704
+  },
+  "cycles_per_tile_command": 8,
+  "flist": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler.f",
+  "full_checkpoint_graph_lowering": false,
+  "full_checkpoint_linear_command_rtl_lowering": true,
+  "full_checkpoint_rtl_execution": false,
+  "latch_buffer_module": "ingress_sram",
+  "model_id": "tinyllama-1.1b-chat-v1.0",
+  "module_dpi_manifest": "e1/e1-h1/generated/module_dpi/manifest.json",
+  "phase_template": [
+    {
+      "cycle": 0,
+      "module": "control_cpu",
+      "phase": "reset_release_or_next_command_setup"
+    },
+    {
+      "cycle": 1,
+      "module": "control_cpu",
+      "phase": "cmd_valid_o asserted under allowed backpressure"
+    },
+    {
+      "cycle": 2,
+      "module": "systolic_array",
+      "phase": "command handshake accepted"
+    },
+    {
+      "cycle": 3,
+      "module": "ingress_sram",
+      "phase": "latched input beat 0 visible to array"
+    },
+    {
+      "cycle": 4,
+      "module": "systolic_array",
+      "phase": "input beat 1 consumed"
+    },
+    {
+      "cycle": 5,
+      "module": "systolic_array",
+      "phase": "input beat 2 consumed"
+    },
+    {
+      "cycle": 6,
+      "module": "systolic_array",
+      "phase": "input beat 3 consumed and done observed"
+    },
+    {
+      "cycle": 7,
+      "module": "control_cpu",
+      "phase": "advance to next tile command"
+    }
+  ],
+  "scheduler_rtl": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler.sv",
+  "schema": "e1-full-checkpoint-rtl-cycle-lowering-v0",
+  "separated_modules": [
+    "control_cpu",
+    "ingress_sram",
+    "systolic_array"
+  ],
+  "status": "pass",
+  "total_rtl_cycles": 30277632,
+  "total_tile_commands": 3784704,
+  "truth_boundary": "linear_tile_command_scheduler_rtl",
+  "verilator_tb": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler_tb.cpp"
+}

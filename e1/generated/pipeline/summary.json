@@ -1,13 +1,16 @@
 {
   "all_current_modules_have_l1_5_harnesses": true,
   "architecture_id": "e1-h1",
-  "end_to_end_smoke": "e1/generated/pipeline/20_end_to_end_smoke.json",
+  "end_to_end_smoke": "e1/generated/pipeline/21_end_to_end_smoke.json",
   "end_to_end_status": "pass",
   "full_checkpoint_command_stream": "e1/generated/pipeline/19_full_checkpoint_command_stream.json",
   "full_checkpoint_command_stream_status": "pass",
   "full_checkpoint_graph_lowered_to_rtl": false,
+  "full_checkpoint_rtl_cycle_lowering": "e1/generated/pipeline/20_full_checkpoint_rtl_cycle_lowering.json",
+  "full_checkpoint_rtl_cycle_lowering_status": "pass",
   "full_checkpoint_rtl_lowering_plan": "e1/generated/pipeline/18_full_checkpoint_rtl_lowering_plan.json",
   "full_checkpoint_rtl_lowering_status": "planned",
+  "full_checkpoint_total_rtl_cycles": 30277632,
   "full_checkpoint_total_tile_commands": 3784704,
   "full_tinyllama_checkpoint_execution": "e1/generated/pipeline/17_full_tinyllama_checkpoint_execution.json",
   "full_tinyllama_checkpoint_execution_status": "missing_python_dependencies",
@@ -23,7 +26,7 @@
     "multiply": 2,
     "tanh": 1
   },
-  "pass_count": 20,
+  "pass_count": 21,
   "passes": [
     {
       "artifact": "e1/generated/pipeline/01_fetch_model.json",
@@ -102,7 +105,11 @@
       "pass": "e1_emit_full_checkpoint_command_stream"
     },
     {
-      "artifact": "e1/generated/pipeline/20_end_to_end_smoke.json",
+      "artifact": "e1/generated/pipeline/20_full_checkpoint_rtl_cycle_lowering.json",
+      "pass": "e1_lower_full_checkpoint_command_stream_to_rtl_cycles"
+    },
+    {
+      "artifact": "e1/generated/pipeline/21_end_to_end_smoke.json",
       "pass": "e1_end_to_end_smoke"
     }
   ],

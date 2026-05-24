@@ -1188,6 +1188,524 @@ int main() {{
     return report
 
 
+def emit_full_checkpoint_rtl_cycle_lowering(
+    output_path: Path,
+    manifest: dict[str, Any],
+    command_stream: dict[str, Any],
+    module_dpi_report: dict[str, Any],
+) -> dict[str, Any]:
+    linear_ops = command_stream["linear_ops"]
+    layers = int(command_stream["layers"])
+    total_commands = int(command_stream["total_tile_commands"])
+    cycles_per_tile_command = 8
+    total_rtl_cycles = total_commands * cycles_per_tile_command
+
+    generated_dir = REPO_ROOT / "e1/e1-h1/generated/full_checkpoint"
+    scheduler_path = generated_dir / "e1_h1_tinyllama_linear_scheduler.sv"
+    tb_path = generated_dir / "e1_h1_tinyllama_linear_scheduler_tb.cpp"
+    flist_path = generated_dir / "e1_h1_tinyllama_linear_scheduler.f"
+    cycle_smoke_path = REPO_ROOT / "e1/code/program/e1_tinyllama_full_rtl_cycle_smoke.cpp"
+
+    input_tile_cases = "\n".join(
+        f"      3'd{index}: input_tiles_for = 9'd{op['input_tiles']};"
+        for index, op in enumerate(linear_ops)
+    )
+    output_tile_cases = "\n".join(
+        f"      3'd{index}: output_tiles_for = 9'd{op['output_tiles']};"
+        for index, op in enumerate(linear_ops)
+    )
+    last_op_index = len(linear_ops) - 1
+    rows = int(linear_ops[0]["rows"])
+    cols = int(linear_ops[0]["cols"])
+    depth = int(linear_ops[0]["depth"])
+
+    write_text(
+        scheduler_path,
+        f"""`default_nettype none
+
+module e1_h1_tinyllama_linear_scheduler (
+  input  logic        clk_i,
+  input  logic        rst_ni,
+  input  logic        start_i,
+  output logic        busy_o,
+  output logic        done_o,
+  output logic        error_o,
+  output logic        cmd_valid_o,
+  input  logic        cmd_ready_i,
+  output logic [31:0] cmd_input_addr_o,
+  output logic [31:0] cmd_weight_addr_o,
+  output logic [31:0] cmd_output_addr_o,
+  output logic [15:0] cmd_rows_o,
+  output logic [15:0] cmd_cols_o,
+  output logic [15:0] cmd_depth_o,
+  input  logic        array_done_i,
+  input  logic        array_error_i,
+  output logic [31:0] layer_o,
+  output logic [2:0]  op_index_o,
+  output logic [8:0]  input_tile_o,
+  output logic [8:0]  output_tile_o,
+  output logic [31:0] issued_commands_o,
+  output logic [2:0]  cycle_phase_o
+);
+
+  localparam int unsigned LayerCount = {layers};
+  localparam int unsigned LinearOpCount = {len(linear_ops)};
+  localparam logic [31:0] TotalTileCommands = 32'd{total_commands};
+  localparam logic [31:0] InputBase = 32'h0100_0000;
+  localparam logic [31:0] WeightBase = 32'h1000_0000;
+  localparam logic [31:0] OutputBase = 32'h3000_0000;
+  localparam logic [31:0] LayerInputStride = 32'h0010_0000;
+  localparam logic [31:0] LayerWeightStride = 32'h0100_0000;
+  localparam logic [31:0] LayerOutputStride = 32'h0010_0000;
+  localparam logic [31:0] OpInputStride = 32'h0001_0000;
+  localparam logic [31:0] OpWeightStride = 32'h0010_0000;
+  localparam logic [31:0] OpOutputStride = 32'h0001_0000;
+  localparam logic [31:0] TileBytes = 32'd64;
+
+  typedef enum logic [1:0] {{
+    StateIdle,
+    StateRun,
+    StateDone,
+    StateError
+  }} state_e;
+
+  state_e state_q;
+  logic [2:0]  phase_q;
+  logic [31:0] layer_q;
+  logic [2:0]  op_index_q;
+  logic [8:0]  input_tile_q;
+  logic [8:0]  output_tile_q;
+  logic [31:0] issued_commands_q;
+
+  function automatic logic [31:0] zext3(input logic [2:0] value);
+    zext3 = {{29'd0, value}};
+  endfunction
+
+  function automatic logic [31:0] zext9(input logic [8:0] value);
+    zext9 = {{23'd0, value}};
+  endfunction
+
+  function automatic logic [8:0] input_tiles_for(input logic [2:0] op_index);
+    unique case (op_index)
+{input_tile_cases}
+      default: input_tiles_for = 9'd0;
+    endcase
+  endfunction
+
+  function automatic logic [8:0] output_tiles_for(input logic [2:0] op_index);
+    unique case (op_index)
+{output_tile_cases}
+      default: output_tiles_for = 9'd0;
+    endcase
+  endfunction
+
+  function automatic logic is_last_command(
+      input logic [31:0] layer,
+      input logic [2:0] op_index,
+      input logic [8:0] input_tile,
+      input logic [8:0] output_tile);
+    is_last_command =
+        layer == (LayerCount - 1) &&
+        op_index == 3'd{last_op_index} &&
+        input_tile == (input_tiles_for(op_index) - 9'd1) &&
+        output_tile == (output_tiles_for(op_index) - 9'd1);
+  endfunction
+
+  assign cmd_input_addr_o =
+      InputBase + layer_q * LayerInputStride + zext3(op_index_q) * OpInputStride +
+      zext9(input_tile_q) * TileBytes;
+  assign cmd_weight_addr_o =
+      WeightBase + layer_q * LayerWeightStride + zext3(op_index_q) * OpWeightStride +
+      ((zext9(output_tile_q) * zext9(input_tiles_for(op_index_q))) + zext9(input_tile_q)) *
+      TileBytes;
+  assign cmd_output_addr_o =
+      OutputBase + layer_q * LayerOutputStride + zext3(op_index_q) * OpOutputStride +
+      zext9(output_tile_q) * TileBytes;
+  assign cmd_rows_o = 16'd{rows};
+  assign cmd_cols_o = 16'd{cols};
+  assign cmd_depth_o = 16'd{depth};
+
+  assign busy_o = state_q == StateRun;
+  assign done_o = state_q == StateDone;
+  assign error_o = state_q == StateError;
+  assign cmd_valid_o = state_q == StateRun && (phase_q == 3'd1 || phase_q == 3'd2);
+  assign layer_o = layer_q;
+  assign op_index_o = op_index_q;
+  assign input_tile_o = input_tile_q;
+  assign output_tile_o = output_tile_q;
+  assign issued_commands_o = issued_commands_q;
+  assign cycle_phase_o = phase_q;
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      state_q <= StateIdle;
+      phase_q <= 3'd0;
+      layer_q <= 32'd0;
+      op_index_q <= 3'd0;
+      input_tile_q <= 9'd0;
+      output_tile_q <= 9'd0;
+      issued_commands_q <= 32'd0;
+    end else begin
+      unique case (state_q)
+        StateIdle: begin
+          if (start_i) begin
+            state_q <= StateRun;
+            phase_q <= 3'd0;
+            layer_q <= 32'd0;
+            op_index_q <= 3'd0;
+            input_tile_q <= 9'd0;
+            output_tile_q <= 9'd0;
+            issued_commands_q <= 32'd0;
+          end
+        end
+        StateRun: begin
+          if (phase_q == 3'd2 && !cmd_ready_i) begin
+            phase_q <= 3'd2;
+          end else if (phase_q == 3'd6 && array_error_i) begin
+            state_q <= StateError;
+          end else if (phase_q == 3'd6 && !array_done_i) begin
+            phase_q <= 3'd6;
+          end else if (phase_q == 3'd7) begin
+            if (is_last_command(layer_q, op_index_q, input_tile_q, output_tile_q)) begin
+              state_q <= StateDone;
+            end else begin
+              phase_q <= 3'd0;
+              if (zext9(input_tile_q) + 32'd1 < zext9(input_tiles_for(op_index_q))) begin
+                input_tile_q <= input_tile_q + 9'd1;
+              end else begin
+                input_tile_q <= 9'd0;
+                if (zext9(output_tile_q) + 32'd1 < zext9(output_tiles_for(op_index_q))) begin
+                  output_tile_q <= output_tile_q + 9'd1;
+                end else begin
+                  output_tile_q <= 9'd0;
+                  if (zext3(op_index_q) + 32'd1 < LinearOpCount) begin
+                    op_index_q <= op_index_q + 3'd1;
+                  end else begin
+                    op_index_q <= 3'd0;
+                    layer_q <= layer_q + 32'd1;
+                  end
+                end
+              end
+            end
+          end else begin
+            if (phase_q == 3'd2 && cmd_ready_i) begin
+              issued_commands_q <= issued_commands_q + 32'd1;
+            end
+            phase_q <= phase_q + 3'd1;
+          end
+        end
+        StateDone: begin
+          if (!start_i) begin
+            state_q <= StateIdle;
+          end
+        end
+        StateError: begin
+          if (!start_i) begin
+            state_q <= StateIdle;
+          end
+        end
+        default: begin
+          state_q <= StateIdle;
+        end
+      endcase
+    end
+  end
+
+  logic unused_total_commands;
+  assign unused_total_commands = TotalTileCommands[0];
+
+endmodule
+
+`default_nettype wire
+""",
+    )
+
+    write_text(
+        tb_path,
+        f"""// Generated by e1/tools/run_e1_pipeline.py.
+
+#include "Ve1_h1_tinyllama_linear_scheduler.h"
+#include "../../../code/program/e1_tinyllama_full_schedule.hpp"
+#include "verilated.h"
+
+#include <cstdint>
+#include <iostream>
+
+namespace {{
+
+void tick(VerilatedContext& context, Ve1_h1_tinyllama_linear_scheduler& top) {{
+  top.clk_i = 0;
+  top.eval();
+  context.timeInc(1);
+  top.clk_i = 1;
+  top.eval();
+  context.timeInc(1);
+  top.clk_i = 0;
+  top.eval();
+}}
+
+}}  // namespace
+
+int main(int argc, char** argv) {{
+  VerilatedContext context;
+  context.commandArgs(argc, argv);
+  Ve1_h1_tinyllama_linear_scheduler top{{&context}};
+
+  bool pass = true;
+  auto fail = [&](const char* message) {{
+    std::cerr << "E1_FULL_RTL_SCHEDULER_FAIL " << message << "\\n";
+    pass = false;
+  }};
+  auto expect_phase = [&](std::uint8_t phase) {{
+    top.eval();
+    if (top.cycle_phase_o != phase) {{
+      fail("unexpected cycle phase");
+    }}
+  }};
+  auto expect_command = [&](std::uint32_t layer,
+                            std::uint32_t op_index,
+                            std::uint32_t input_tile,
+                            std::uint32_t output_tile) {{
+    using namespace e1_device::tinyllama_full;
+    const TileCommand expected = command_for(layer, op_index, input_tile, output_tile);
+    top.eval();
+    if (!top.cmd_valid_o) {{
+      fail("cmd_valid_o deasserted during command phase");
+    }}
+    if (top.cmd_input_addr_o != expected.input_addr ||
+        top.cmd_weight_addr_o != expected.weight_addr ||
+        top.cmd_output_addr_o != expected.output_addr ||
+        top.cmd_rows_o != expected.rows ||
+        top.cmd_cols_o != expected.cols ||
+        top.cmd_depth_o != expected.depth ||
+        top.layer_o != layer ||
+        top.op_index_o != op_index ||
+        top.input_tile_o != input_tile ||
+        top.output_tile_o != output_tile) {{
+      fail("command payload does not match generated C++ schedule");
+    }}
+  }};
+  auto advance = [](std::uint32_t& layer,
+                    std::uint32_t& op_index,
+                    std::uint32_t& input_tile,
+                    std::uint32_t& output_tile) {{
+    using namespace e1_device::tinyllama_full;
+    const LinearOpPlan& op = kLinearOps[op_index];
+    if (input_tile + 1 < op.input_tiles) {{
+      ++input_tile;
+      return;
+    }}
+    input_tile = 0;
+    if (output_tile + 1 < op.output_tiles) {{
+      ++output_tile;
+      return;
+    }}
+    output_tile = 0;
+    if (op_index + 1 < kLinearOpCount) {{
+      ++op_index;
+      return;
+    }}
+    op_index = 0;
+    ++layer;
+  }};
+
+  top.clk_i = 0;
+  top.rst_ni = 0;
+  top.start_i = 0;
+  top.cmd_ready_i = 0;
+  top.array_done_i = 0;
+  top.array_error_i = 0;
+  tick(context, top);
+  tick(context, top);
+  top.rst_ni = 1;
+  top.start_i = 1;
+  tick(context, top);
+
+  constexpr std::uint32_t kCheckedCommands = 16;
+  std::uint32_t layer = 0;
+  std::uint32_t op_index = 0;
+  std::uint32_t input_tile = 0;
+  std::uint32_t output_tile = 0;
+
+  for (std::uint32_t checked = 0; checked < kCheckedCommands; ++checked) {{
+    expect_phase(0);
+    if (top.cmd_valid_o) {{
+      fail("cmd_valid_o asserted before issue phase");
+    }}
+    tick(context, top);
+
+    expect_phase(1);
+    expect_command(layer, op_index, input_tile, output_tile);
+    tick(context, top);
+
+    top.cmd_ready_i = 1;
+    expect_phase(2);
+    expect_command(layer, op_index, input_tile, output_tile);
+    tick(context, top);
+    top.cmd_ready_i = 0;
+
+    for (std::uint8_t phase = 3; phase <= 5; ++phase) {{
+      expect_phase(phase);
+      tick(context, top);
+    }}
+
+    top.array_done_i = 1;
+    expect_phase(6);
+    tick(context, top);
+    top.array_done_i = 0;
+
+    expect_phase(7);
+    tick(context, top);
+    advance(layer, op_index, input_tile, output_tile);
+  }}
+
+  top.eval();
+  if (top.issued_commands_o != kCheckedCommands) {{
+    fail("issued command counter mismatch");
+  }}
+
+  std::cout
+      << "{{\\n"
+      << "  \\"schema\\": \\"e1-full-checkpoint-rtl-scheduler-smoke-v0\\",\\n"
+      << "  \\"status\\": \\"" << (pass ? "pass" : "fail") << "\\",\\n"
+      << "  \\"checked_commands\\": " << kCheckedCommands << ",\\n"
+      << "  \\"cycles_per_tile_command\\": {cycles_per_tile_command},\\n"
+      << "  \\"total_tile_commands\\": " << e1_device::tinyllama_full::total_tile_commands() << ",\\n"
+      << "  \\"issued_commands\\": " << top.issued_commands_o << "\\n"
+      << "}}\\n";
+
+  return pass ? 0 : 1;
+}}
+""",
+    )
+
+    write_text(flist_path, f"{repo_rel(scheduler_path)}\n")
+    write_text(
+        cycle_smoke_path,
+        f"""#include "e1_tinyllama_full_schedule.hpp"
+
+#include <cstdint>
+#include <iostream>
+
+int main() {{
+  using namespace e1_device::tinyllama_full;
+
+  constexpr std::uint32_t kCyclesPerTileCommand = {cycles_per_tile_command}u;
+  constexpr std::uint64_t kExpectedTotalCycles = {total_rtl_cycles}ull;
+  const std::uint64_t total_cycles = total_tile_commands() * kCyclesPerTileCommand;
+  const bool pass =
+      total_tile_commands() == {total_commands}ull &&
+      total_cycles == kExpectedTotalCycles &&
+      kTileRows == {rows}u &&
+      kTileCols == {cols}u &&
+      kTileDepth == {depth}u;
+
+  std::cout
+      << "{{\\n"
+      << "  \\"schema\\": \\"e1-full-checkpoint-rtl-cycle-smoke-v0\\",\\n"
+      << "  \\"status\\": \\"" << (pass ? "pass" : "fail") << "\\",\\n"
+      << "  \\"cycles_per_tile_command\\": " << kCyclesPerTileCommand << ",\\n"
+      << "  \\"total_tile_commands\\": " << total_tile_commands() << ",\\n"
+      << "  \\"total_rtl_cycles\\": " << total_cycles << "\\n"
+      << "}}\\n";
+
+  return pass ? 0 : 1;
+}}
+""",
+    )
+
+    with tempfile.TemporaryDirectory() as tmp:
+        exe = Path(tmp) / "e1_tinyllama_full_rtl_cycle_smoke"
+        subprocess.run(
+            [
+                "c++",
+                "-std=c++17",
+                "-I",
+                "e1/code/program",
+                repo_rel(cycle_smoke_path),
+                "-o",
+                str(exe),
+            ],
+            cwd=REPO_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=True,
+        )
+        result = subprocess.run(
+            [str(exe)],
+            cwd=REPO_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=True,
+        )
+    smoke = json.loads(result.stdout)
+    module_dpi_by_name = {module["name"]: module for module in module_dpi_report["modules"]}
+    required_modules = ["control_cpu", "ingress_sram", "systolic_array"]
+    phase_template = [
+        {"cycle": 0, "module": "control_cpu", "phase": "reset_release_or_next_command_setup"},
+        {"cycle": 1, "module": "control_cpu", "phase": "cmd_valid_o asserted under allowed backpressure"},
+        {"cycle": 2, "module": "systolic_array", "phase": "command handshake accepted"},
+        {"cycle": 3, "module": "ingress_sram", "phase": "latched input beat 0 visible to array"},
+        {"cycle": 4, "module": "systolic_array", "phase": "input beat 1 consumed"},
+        {"cycle": 5, "module": "systolic_array", "phase": "input beat 2 consumed"},
+        {"cycle": 6, "module": "systolic_array", "phase": "input beat 3 consumed and done observed"},
+        {"cycle": 7, "module": "control_cpu", "phase": "advance to next tile command"},
+    ]
+    checks = [
+        {"name": "command_stream_status", "status": command_stream["status"]},
+        {
+            "name": "required_module_dpi_boundaries_present",
+            "status": "pass" if all(name in module_dpi_by_name for name in required_modules) else "fail",
+        },
+        {
+            "name": "latch_buffer_boundary_preserved",
+            "status": "pass" if module_dpi_by_name.get("ingress_sram", {}).get("latch_buffer") else "fail",
+        },
+        {
+            "name": "rtl_scheduler_generated",
+            "status": "pass" if scheduler_path.exists() and tb_path.exists() and flist_path.exists() else "fail",
+        },
+        {
+            "name": "cycle_smoke",
+            "status": smoke["status"],
+        },
+        {
+            "name": "total_rtl_cycles_match_command_stream",
+            "status": "pass" if smoke["total_rtl_cycles"] == total_rtl_cycles else "fail",
+        },
+        {
+            "name": "phase_template_names_each_cycle",
+            "status": "pass" if [entry["cycle"] for entry in phase_template] == list(range(cycles_per_tile_command)) else "fail",
+        },
+    ]
+    report = {
+        "schema": "e1-full-checkpoint-rtl-cycle-lowering-v0",
+        "status": "pass" if all(check["status"] == "pass" for check in checks) else "fail",
+        "model_id": manifest["model_id"],
+        "truth_boundary": "linear_tile_command_scheduler_rtl",
+        "full_checkpoint_linear_command_rtl_lowering": True,
+        "full_checkpoint_graph_lowering": False,
+        "full_checkpoint_rtl_execution": False,
+        "scheduler_rtl": repo_rel(scheduler_path),
+        "verilator_tb": repo_rel(tb_path),
+        "flist": repo_rel(flist_path),
+        "cycle_smoke": repo_rel(cycle_smoke_path),
+        "cycle_smoke_report": smoke,
+        "module_dpi_manifest": module_dpi_report["manifest"],
+        "separated_modules": required_modules,
+        "latch_buffer_module": "ingress_sram",
+        "cycles_per_tile_command": cycles_per_tile_command,
+        "total_tile_commands": total_commands,
+        "total_rtl_cycles": total_rtl_cycles,
+        "phase_template": phase_template,
+        "checks": checks,
+    }
+    write_json(output_path, report)
+    return report
+
+
 def emit_tinyllama_imp2_coverage(
     output_path: Path,
     manifest: dict[str, Any],
@@ -1569,7 +2087,21 @@ def run_pipeline(
         }
     )
 
-    e2e_out = output_dir / "20_end_to_end_smoke.json"
+    full_checkpoint_rtl_cycle_out = output_dir / "20_full_checkpoint_rtl_cycle_lowering.json"
+    full_checkpoint_rtl_cycle = emit_full_checkpoint_rtl_cycle_lowering(
+        full_checkpoint_rtl_cycle_out,
+        manifest,
+        full_checkpoint_command_stream,
+        module_dpi_report,
+    )
+    passes.append(
+        {
+            "pass": "e1_lower_full_checkpoint_command_stream_to_rtl_cycles",
+            "artifact": repo_rel(full_checkpoint_rtl_cycle_out),
+        }
+    )
+
+    e2e_out = output_dir / "21_end_to_end_smoke.json"
     target_manifest_path = "e1/e1-h1/generated/targets/manifest.json"
     generated_soc_top_exists = all(
         (REPO_ROOT / path).exists()
@@ -1635,6 +2167,10 @@ def run_pipeline(
             "name": "full_checkpoint_command_stream",
             "status": full_checkpoint_command_stream["status"],
         },
+        {
+            "name": "full_checkpoint_rtl_cycle_lowering",
+            "status": full_checkpoint_rtl_cycle["status"],
+        },
         {"name": "target_package", "status": "pass" if target_package_exists else "fail"},
     ]
     e2e = {
@@ -1681,6 +2217,9 @@ def run_pipeline(
         "full_checkpoint_command_stream": repo_rel(full_checkpoint_command_stream_out),
         "full_checkpoint_command_stream_status": full_checkpoint_command_stream["status"],
         "full_checkpoint_total_tile_commands": full_checkpoint_command_stream["total_tile_commands"],
+        "full_checkpoint_rtl_cycle_lowering": repo_rel(full_checkpoint_rtl_cycle_out),
+        "full_checkpoint_rtl_cycle_lowering_status": full_checkpoint_rtl_cycle["status"],
+        "full_checkpoint_total_rtl_cycles": full_checkpoint_rtl_cycle["total_rtl_cycles"],
         "systemverilog_plan": repo_rel(sv_out),
         "generated_soc_top": soc_top_artifacts,
         "target_package_plan": repo_rel(target_out),
@@ -1715,6 +2254,9 @@ def run_pipeline(
         "full_checkpoint_command_stream": repo_rel(full_checkpoint_command_stream_out),
         "full_checkpoint_command_stream_status": full_checkpoint_command_stream["status"],
         "full_checkpoint_total_tile_commands": full_checkpoint_command_stream["total_tile_commands"],
+        "full_checkpoint_rtl_cycle_lowering": repo_rel(full_checkpoint_rtl_cycle_out),
+        "full_checkpoint_rtl_cycle_lowering_status": full_checkpoint_rtl_cycle["status"],
+        "full_checkpoint_total_rtl_cycles": full_checkpoint_rtl_cycle["total_rtl_cycles"],
         "pipeline": architecture["pipeline"],
     }
     write_json(summary_out, summary)

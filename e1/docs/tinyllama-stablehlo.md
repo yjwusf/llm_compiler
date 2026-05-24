@@ -80,7 +80,8 @@ StableHLO fixture, not the full TinyLlama checkpoint. The pipeline emits:
 - `e1/generated/pipeline/17_full_tinyllama_checkpoint_execution.json`
 - `e1/generated/pipeline/18_full_checkpoint_rtl_lowering_plan.json`
 - `e1/generated/pipeline/19_full_checkpoint_command_stream.json`
-- `e1/generated/pipeline/20_end_to_end_smoke.json`
+- `e1/generated/pipeline/20_full_checkpoint_rtl_cycle_lowering.json`
+- `e1/generated/pipeline/21_end_to_end_smoke.json`
 
 The coverage artifact requires every StableHLO operation in
 `tinyllama_block.mlir` to bind to an accepted active `imp2` implementation and
@@ -110,6 +111,17 @@ The full-checkpoint command-stream artifact emits
 compressed descriptor for 3,784,704 planned systolic-array tile commands across
 22 layers; the smoke compiles and verifies the command count and first/last
 command boundaries.
+
+The full-checkpoint RTL-cycle lowering artifact emits
+`e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler.sv`, a
+matching flist, a Verilator C++ harness, and
+`e1/code/program/e1_tinyllama_full_rtl_cycle_smoke.cpp`. This is the first RTL
+lowering of the full linear tile stream: every tile command is assigned to the
+documented 8-cycle CPU/latch-buffer/systolic-array template for 30,277,632
+planned RTL cycles. It still records `full_checkpoint_graph_lowering: false`
+and `full_checkpoint_rtl_execution: false` because RMSNorm, RoPE, attention
+softmax, KV/cache updates, and end-to-end checkpoint comparison are not yet RTL
+executed.
 
 ## Full Checkpoint Execution
 

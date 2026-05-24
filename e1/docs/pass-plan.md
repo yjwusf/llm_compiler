@@ -87,7 +87,14 @@ hardware and device code.
     - Output: compact C++ tile-command stream descriptors for all planned
       TinyLlama linear ops, plus a host smoke proving the command count and
       boundary commands without unrolling millions of commands into source.
-20. `e1_end_to_end_smoke`
+20. `e1_lower_full_checkpoint_command_stream_to_rtl_cycles`
+    - Input: full-checkpoint command stream and generated module-DPI boundary
+      report.
+    - Output: a generated SystemVerilog linear tile scheduler, flist,
+      Verilator C++ harness, and C++ cycle smoke. This lowers the full
+      linear-tile command stream into an 8-cycle CPU/latch/array template, but
+      still records a non-claim for full TinyLlama graph RTL execution.
+21. `e1_end_to_end_smoke`
     - Input: all prior pass artifacts.
     - Output: one evidence report tying StableHLO, E1-H1 binding, device code,
       C++ chip model, generated SystemVerilog top, and target packages together.
@@ -113,6 +120,9 @@ E1 is complete when TinyLlama-derived reduced workloads can run through:
   proven.
 - Full-checkpoint compressed tile-command stream code that can enumerate the
   planned systolic-array commands and pass a host smoke.
+- Full-checkpoint linear tile scheduler RTL, its flist, and a Verilator harness
+  that checks emitted RTL commands against the generated C++ schedule while
+  naming every cycle in the CPU/latch/array template.
 - Implementation matrix showing active `imp2` candidates and `imp1` mock
   references.
 - Generated SystemVerilog mocks.
