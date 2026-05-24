@@ -498,6 +498,7 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
   out << "  \"module_isolation_proof\": \"e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json\",\n";
   out << "  \"cycle_contract\": \"e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json\",\n";
   out << "  \"module_test_plan\": \"e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json\",\n";
+  out << "  \"verilator_execution_report\": \"e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_report.json\",\n";
   out << "  \"readme_cycle_coverage\": \"e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json\",\n";
   out << "  \"construction_rule\": \"one_generated_probe_per_full_checkpoint_rtl_module_with_cpp_dpi_driven_neighbors\",\n";
   out << "  \"modules\": [\n";
@@ -513,6 +514,7 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
     out << "      \"main\": \"e1/e1-h1/generated/full_checkpoint_dpi/" << spec.probe_module << "_main.cpp\",\n";
     out << "      \"flist\": \"e1/e1-h1/generated/full_checkpoint_dpi/flists/" << spec.name << ".f\",\n";
     out << "      \"module_test_plan\": \"e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json\",\n";
+    out << "      \"verilator_execution_report\": \"e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_report.json\",\n";
     out << "      \"readme_cycle_coverage\": \"e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json\",\n";
     out << "      \"rtl\": [";
     for (std::size_t j = 0; j < spec.rtl.size(); ++j) {

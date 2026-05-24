@@ -1,0 +1,294 @@
+{
+  "build_root": "<build-root>",
+  "checks": [
+    {
+      "name": "verilator_available",
+      "status": "pass"
+    },
+    {
+      "name": "all_modules_built",
+      "status": "pass"
+    },
+    {
+      "name": "all_modules_ran",
+      "status": "pass"
+    },
+    {
+      "name": "all_expected_stdout_markers_observed",
+      "status": "pass"
+    }
+  ],
+  "module_count": 6,
+  "modules": [
+    {
+      "build_command": [
+        "verilator",
+        "--cc",
+        "--exe",
+        "--build",
+        "--sv",
+        "-Wall",
+        "-Wno-DECLFILENAME",
+        "-Wno-UNUSEDSIGNAL",
+        "-Wno-UNUSEDPARAM",
+        "-Wno-WIDTHEXPAND",
+        "--timing",
+        "--top-module",
+        "e1_h1_module_dpi_control_cpu",
+        "-Mdir",
+        "<build-root>/obj_module_dpi_control_cpu",
+        "-f",
+        "e1/e1-h1/generated/module_dpi/flists/control_cpu.f",
+        "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+        "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu_main.cpp"
+      ],
+      "build_returncode": 0,
+      "build_stdout_tail": [],
+      "dut_module": "e1_h1_control_cpu",
+      "expected_stdout_markers": [
+        "module=control_cpu",
+        "E1_H1_MODULE_DPI_CYCLE"
+      ],
+      "flist": "e1/e1-h1/generated/module_dpi/flists/control_cpu.f",
+      "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu_main.cpp",
+      "name": "control_cpu",
+      "observed_stdout_markers": [
+        "module=control_cpu",
+        "E1_H1_MODULE_DPI_CYCLE"
+      ],
+      "run_executable": "<build-root>/obj_module_dpi_control_cpu/Ve1_h1_module_dpi_control_cpu",
+      "run_returncode": 0,
+      "run_stdout_tail": [],
+      "scope": "module_only",
+      "scoreboard": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+      "status": "pass",
+      "top_module": "e1_h1_module_dpi_control_cpu"
+    },
+    {
+      "build_command": [
+        "verilator",
+        "--cc",
+        "--exe",
+        "--build",
+        "--sv",
+        "-Wall",
+        "-Wno-DECLFILENAME",
+        "-Wno-UNUSEDSIGNAL",
+        "-Wno-UNUSEDPARAM",
+        "-Wno-WIDTHEXPAND",
+        "--timing",
+        "--top-module",
+        "e1_h1_module_dpi_rgmii_ethernet_ingress",
+        "-Mdir",
+        "<build-root>/obj_module_dpi_rgmii_ethernet_ingress",
+        "-f",
+        "e1/e1-h1/generated/module_dpi/flists/rgmii_ethernet_ingress.f",
+        "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+        "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_rgmii_ethernet_ingress_main.cpp"
+      ],
+      "build_returncode": 0,
+      "build_stdout_tail": [],
+      "dut_module": "e1_h1_rgmii_ethernet_ingress",
+      "expected_stdout_markers": [
+        "module=rgmii_ethernet_ingress",
+        "E1_H1_MODULE_DPI_CYCLE"
+      ],
+      "flist": "e1/e1-h1/generated/module_dpi/flists/rgmii_ethernet_ingress.f",
+      "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_rgmii_ethernet_ingress_main.cpp",
+      "name": "rgmii_ethernet_ingress",
+      "observed_stdout_markers": [
+        "module=rgmii_ethernet_ingress",
+        "E1_H1_MODULE_DPI_CYCLE"
+      ],
+      "run_executable": "<build-root>/obj_module_dpi_rgmii_ethernet_ingress/Ve1_h1_module_dpi_rgmii_ethernet_ingress",
+      "run_returncode": 0,
+      "run_stdout_tail": [],
+      "scope": "module_only",
+      "scoreboard": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+      "status": "pass",
+      "top_module": "e1_h1_module_dpi_rgmii_ethernet_ingress"
+    },
+    {
+      "build_command": [
+        "verilator",
+        "--cc",
+        "--exe",
+        "--build",
+        "--sv",
+        "-Wall",
+        "-Wno-DECLFILENAME",
+        "-Wno-UNUSEDSIGNAL",
+        "-Wno-UNUSEDPARAM",
+        "-Wno-WIDTHEXPAND",
+        "--timing",
+        "--top-module",
+        "e1_h1_module_dpi_ingress_sram",
+        "-Mdir",
+        "<build-root>/obj_module_dpi_ingress_sram",
+        "-f",
+        "e1/e1-h1/generated/module_dpi/flists/ingress_sram.f",
+        "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+        "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram_main.cpp"
+      ],
+      "build_returncode": 0,
+      "build_stdout_tail": [],
+      "dut_module": "e1_h1_stream_sram",
+      "expected_stdout_markers": [
+        "module=ingress_sram",
+        "E1_H1_MODULE_DPI_CYCLE"
+      ],
+      "flist": "e1/e1-h1/generated/module_dpi/flists/ingress_sram.f",
+      "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram_main.cpp",
+      "name": "ingress_sram",
+      "observed_stdout_markers": [
+        "module=ingress_sram",
+        "E1_H1_MODULE_DPI_CYCLE"
+      ],
+      "run_executable": "<build-root>/obj_module_dpi_ingress_sram/Ve1_h1_module_dpi_ingress_sram",
+      "run_returncode": 0,
+      "run_stdout_tail": [],
+      "scope": "module_only",
+      "scoreboard": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+      "status": "pass",
+      "top_module": "e1_h1_module_dpi_ingress_sram"
+    },
+    {
+      "build_command": [
+        "verilator",
+        "--cc",
+        "--exe",
+        "--build",
+        "--sv",
+        "-Wall",
+        "-Wno-DECLFILENAME",
+        "-Wno-UNUSEDSIGNAL",
+        "-Wno-UNUSEDPARAM",
+        "-Wno-WIDTHEXPAND",
+        "--timing",
+        "--top-module",
+        "e1_h1_module_dpi_activation_sram",
+        "-Mdir",
+        "<build-root>/obj_module_dpi_activation_sram",
+        "-f",
+        "e1/e1-h1/generated/module_dpi/flists/activation_sram.f",
+        "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+        "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_activation_sram_main.cpp"
+      ],
+      "build_returncode": 0,
+      "build_stdout_tail": [],
+      "dut_module": "e1_h1_config_sram",
+      "expected_stdout_markers": [
+        "module=activation_sram",
+        "E1_H1_MODULE_DPI_CYCLE"
+      ],
+      "flist": "e1/e1-h1/generated/module_dpi/flists/activation_sram.f",
+      "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_activation_sram_main.cpp",
+      "name": "activation_sram",
+      "observed_stdout_markers": [
+        "module=activation_sram",
+        "E1_H1_MODULE_DPI_CYCLE"
+      ],
+      "run_executable": "<build-root>/obj_module_dpi_activation_sram/Ve1_h1_module_dpi_activation_sram",
+      "run_returncode": 0,
+      "run_stdout_tail": [],
+      "scope": "module_only",
+      "scoreboard": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+      "status": "pass",
+      "top_module": "e1_h1_module_dpi_activation_sram"
+    },
+    {
+      "build_command": [
+        "verilator",
+        "--cc",
+        "--exe",
+        "--build",
+        "--sv",
+        "-Wall",
+        "-Wno-DECLFILENAME",
+        "-Wno-UNUSEDSIGNAL",
+        "-Wno-UNUSEDPARAM",
+        "-Wno-WIDTHEXPAND",
+        "--timing",
+        "--top-module",
+        "e1_h1_module_dpi_accumulator_sram",
+        "-Mdir",
+        "<build-root>/obj_module_dpi_accumulator_sram",
+        "-f",
+        "e1/e1-h1/generated/module_dpi/flists/accumulator_sram.f",
+        "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+        "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_accumulator_sram_main.cpp"
+      ],
+      "build_returncode": 0,
+      "build_stdout_tail": [],
+      "dut_module": "e1_h1_config_sram",
+      "expected_stdout_markers": [
+        "module=accumulator_sram",
+        "E1_H1_MODULE_DPI_CYCLE"
+      ],
+      "flist": "e1/e1-h1/generated/module_dpi/flists/accumulator_sram.f",
+      "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_accumulator_sram_main.cpp",
+      "name": "accumulator_sram",
+      "observed_stdout_markers": [
+        "module=accumulator_sram",
+        "E1_H1_MODULE_DPI_CYCLE"
+      ],
+      "run_executable": "<build-root>/obj_module_dpi_accumulator_sram/Ve1_h1_module_dpi_accumulator_sram",
+      "run_returncode": 0,
+      "run_stdout_tail": [],
+      "scope": "module_only",
+      "scoreboard": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+      "status": "pass",
+      "top_module": "e1_h1_module_dpi_accumulator_sram"
+    },
+    {
+      "build_command": [
+        "verilator",
+        "--cc",
+        "--exe",
+        "--build",
+        "--sv",
+        "-Wall",
+        "-Wno-DECLFILENAME",
+        "-Wno-UNUSEDSIGNAL",
+        "-Wno-UNUSEDPARAM",
+        "-Wno-WIDTHEXPAND",
+        "--timing",
+        "--top-module",
+        "e1_h1_module_dpi_systolic_array",
+        "-Mdir",
+        "<build-root>/obj_module_dpi_systolic_array",
+        "-f",
+        "e1/e1-h1/generated/module_dpi/flists/systolic_array.f",
+        "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+        "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array_main.cpp"
+      ],
+      "build_returncode": 0,
+      "build_stdout_tail": [],
+      "dut_module": "e1_h1_systolic_array",
+      "expected_stdout_markers": [
+        "module=systolic_array",
+        "E1_H1_MODULE_DPI_CYCLE"
+      ],
+      "flist": "e1/e1-h1/generated/module_dpi/flists/systolic_array.f",
+      "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array_main.cpp",
+      "name": "systolic_array",
+      "observed_stdout_markers": [
+        "module=systolic_array",
+        "E1_H1_MODULE_DPI_CYCLE"
+      ],
+      "run_executable": "<build-root>/obj_module_dpi_systolic_array/Ve1_h1_module_dpi_systolic_array",
+      "run_returncode": 0,
+      "run_stdout_tail": [],
+      "scope": "module_only",
+      "scoreboard": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
+      "status": "pass",
+      "top_module": "e1_h1_module_dpi_systolic_array"
+    }
+  ],
+  "runner": "e1/tools/run_module_dpi_verilator.py",
+  "runner_kind": "actual_verilator_build_and_run",
+  "schema": "e1-module-dpi-verilator-execution-report-v0",
+  "status": "pass",
+  "suite": "module_dpi",
+  "test_plan": "e1/e1-h1/generated/module_dpi/module_test_plan.json"
+}

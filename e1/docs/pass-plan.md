@@ -135,8 +135,8 @@ hardware and device code.
     - Input: generated full-checkpoint RTL modules.
     - Output: C++-generated module-DPI probes, flists, C++ mains, scoreboard,
       manifest, generated input/output signal documentation, and generated
-      isolation, cycle-contract, and Verilator test-plan proof for each
-      generated full-checkpoint RTL module.
+      isolation, cycle-contract, Verilator test-plan, and Verilator execution
+      proof for each generated full-checkpoint RTL module.
 27. `e1_end_to_end_smoke`
     - Input: all prior pass artifacts.
     - Output: one evidence report tying StableHLO, E1-H1 binding, device code,

@@ -1,0 +1,338 @@
+{
+  "build_root": "<build-root>",
+  "checks": [
+    {
+      "name": "verilator_available",
+      "status": "pass"
+    },
+    {
+      "name": "all_modules_built",
+      "status": "pass"
+    },
+    {
+      "name": "all_modules_ran",
+      "status": "pass"
+    },
+    {
+      "name": "all_expected_stdout_markers_observed",
+      "status": "pass"
+    }
+  ],
+  "module_count": 7,
+  "modules": [
+    {
+      "build_command": [
+        "verilator",
+        "--cc",
+        "--exe",
+        "--build",
+        "--sv",
+        "-Wall",
+        "-Wno-DECLFILENAME",
+        "-Wno-UNUSEDSIGNAL",
+        "-Wno-UNUSEDPARAM",
+        "-Wno-WIDTHEXPAND",
+        "--timing",
+        "--top-module",
+        "e1_h1_full_checkpoint_module_dpi_linear_scheduler",
+        "-Mdir",
+        "<build-root>/obj_full_checkpoint_module_dpi_linear_scheduler",
+        "-f",
+        "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_scheduler.f",
+        "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_scheduler_main.cpp"
+      ],
+      "build_returncode": 0,
+      "build_stdout_tail": [],
+      "dut_module": "e1_h1_tinyllama_linear_scheduler",
+      "expected_stdout_markers": [
+        "module=linear_scheduler",
+        "E1_H1_FULL_MODULE_DPI_CYCLE"
+      ],
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_scheduler.f",
+      "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_scheduler_main.cpp",
+      "name": "linear_scheduler",
+      "observed_stdout_markers": [
+        "module=linear_scheduler",
+        "E1_H1_FULL_MODULE_DPI_CYCLE"
+      ],
+      "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_linear_scheduler/Ve1_h1_full_checkpoint_module_dpi_linear_scheduler",
+      "run_returncode": 0,
+      "run_stdout_tail": [],
+      "scope": "generated_full_checkpoint_module_only",
+      "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+      "status": "pass",
+      "top_module": "e1_h1_full_checkpoint_module_dpi_linear_scheduler"
+    },
+    {
+      "build_command": [
+        "verilator",
+        "--cc",
+        "--exe",
+        "--build",
+        "--sv",
+        "-Wall",
+        "-Wno-DECLFILENAME",
+        "-Wno-UNUSEDSIGNAL",
+        "-Wno-UNUSEDPARAM",
+        "-Wno-WIDTHEXPAND",
+        "--timing",
+        "--top-module",
+        "e1_h1_full_checkpoint_module_dpi_linear_tile_engine",
+        "-Mdir",
+        "<build-root>/obj_full_checkpoint_module_dpi_linear_tile_engine",
+        "-f",
+        "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_tile_engine.f",
+        "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine_main.cpp"
+      ],
+      "build_returncode": 0,
+      "build_stdout_tail": [],
+      "dut_module": "e1_h1_tinyllama_linear_tile_engine",
+      "expected_stdout_markers": [
+        "module=linear_tile_engine",
+        "E1_H1_FULL_MODULE_DPI_CYCLE"
+      ],
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_tile_engine.f",
+      "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine_main.cpp",
+      "name": "linear_tile_engine",
+      "observed_stdout_markers": [
+        "module=linear_tile_engine",
+        "E1_H1_FULL_MODULE_DPI_CYCLE"
+      ],
+      "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_linear_tile_engine/Ve1_h1_full_checkpoint_module_dpi_linear_tile_engine",
+      "run_returncode": 0,
+      "run_stdout_tail": [],
+      "scope": "generated_full_checkpoint_module_only",
+      "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+      "status": "pass",
+      "top_module": "e1_h1_full_checkpoint_module_dpi_linear_tile_engine"
+    },
+    {
+      "build_command": [
+        "verilator",
+        "--cc",
+        "--exe",
+        "--build",
+        "--sv",
+        "-Wall",
+        "-Wno-DECLFILENAME",
+        "-Wno-UNUSEDSIGNAL",
+        "-Wno-UNUSEDPARAM",
+        "-Wno-WIDTHEXPAND",
+        "--timing",
+        "--top-module",
+        "e1_h1_full_checkpoint_module_dpi_control_scheduler",
+        "-Mdir",
+        "<build-root>/obj_full_checkpoint_module_dpi_control_scheduler",
+        "-f",
+        "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_scheduler.f",
+        "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_scheduler_main.cpp"
+      ],
+      "build_returncode": 0,
+      "build_stdout_tail": [],
+      "dut_module": "e1_h1_tinyllama_control_scheduler",
+      "expected_stdout_markers": [
+        "module=control_scheduler",
+        "E1_H1_FULL_MODULE_DPI_CYCLE"
+      ],
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_scheduler.f",
+      "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_scheduler_main.cpp",
+      "name": "control_scheduler",
+      "observed_stdout_markers": [
+        "module=control_scheduler",
+        "E1_H1_FULL_MODULE_DPI_CYCLE"
+      ],
+      "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_control_scheduler/Ve1_h1_full_checkpoint_module_dpi_control_scheduler",
+      "run_returncode": 0,
+      "run_stdout_tail": [],
+      "scope": "generated_full_checkpoint_module_only",
+      "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+      "status": "pass",
+      "top_module": "e1_h1_full_checkpoint_module_dpi_control_scheduler"
+    },
+    {
+      "build_command": [
+        "verilator",
+        "--cc",
+        "--exe",
+        "--build",
+        "--sv",
+        "-Wall",
+        "-Wno-DECLFILENAME",
+        "-Wno-UNUSEDSIGNAL",
+        "-Wno-UNUSEDPARAM",
+        "-Wno-WIDTHEXPAND",
+        "--timing",
+        "--top-module",
+        "e1_h1_full_checkpoint_module_dpi_graph_sequencer",
+        "-Mdir",
+        "<build-root>/obj_full_checkpoint_module_dpi_graph_sequencer",
+        "-f",
+        "e1/e1-h1/generated/full_checkpoint_dpi/flists/graph_sequencer.f",
+        "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_graph_sequencer_main.cpp"
+      ],
+      "build_returncode": 0,
+      "build_stdout_tail": [],
+      "dut_module": "e1_h1_tinyllama_graph_sequencer",
+      "expected_stdout_markers": [
+        "module=graph_sequencer",
+        "E1_H1_FULL_MODULE_DPI_CYCLE"
+      ],
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/graph_sequencer.f",
+      "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_graph_sequencer_main.cpp",
+      "name": "graph_sequencer",
+      "observed_stdout_markers": [
+        "module=graph_sequencer",
+        "E1_H1_FULL_MODULE_DPI_CYCLE"
+      ],
+      "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_graph_sequencer/Ve1_h1_full_checkpoint_module_dpi_graph_sequencer",
+      "run_returncode": 0,
+      "run_stdout_tail": [],
+      "scope": "generated_full_checkpoint_module_only",
+      "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+      "status": "pass",
+      "top_module": "e1_h1_full_checkpoint_module_dpi_graph_sequencer"
+    },
+    {
+      "build_command": [
+        "verilator",
+        "--cc",
+        "--exe",
+        "--build",
+        "--sv",
+        "-Wall",
+        "-Wno-DECLFILENAME",
+        "-Wno-UNUSEDSIGNAL",
+        "-Wno-UNUSEDPARAM",
+        "-Wno-WIDTHEXPAND",
+        "--timing",
+        "--top-module",
+        "e1_h1_full_checkpoint_module_dpi_linear_slot_engine",
+        "-Mdir",
+        "<build-root>/obj_full_checkpoint_module_dpi_linear_slot_engine",
+        "-f",
+        "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_slot_engine.f",
+        "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine_main.cpp"
+      ],
+      "build_returncode": 0,
+      "build_stdout_tail": [],
+      "dut_module": "e1_h1_tinyllama_linear_slot_engine",
+      "expected_stdout_markers": [
+        "module=linear_slot_engine",
+        "E1_H1_FULL_MODULE_DPI_CYCLE"
+      ],
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_slot_engine.f",
+      "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine_main.cpp",
+      "name": "linear_slot_engine",
+      "observed_stdout_markers": [
+        "module=linear_slot_engine",
+        "E1_H1_FULL_MODULE_DPI_CYCLE"
+      ],
+      "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_linear_slot_engine/Ve1_h1_full_checkpoint_module_dpi_linear_slot_engine",
+      "run_returncode": 0,
+      "run_stdout_tail": [],
+      "scope": "generated_full_checkpoint_module_only",
+      "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+      "status": "pass",
+      "top_module": "e1_h1_full_checkpoint_module_dpi_linear_slot_engine"
+    },
+    {
+      "build_command": [
+        "verilator",
+        "--cc",
+        "--exe",
+        "--build",
+        "--sv",
+        "-Wall",
+        "-Wno-DECLFILENAME",
+        "-Wno-UNUSEDSIGNAL",
+        "-Wno-UNUSEDPARAM",
+        "-Wno-WIDTHEXPAND",
+        "--timing",
+        "--top-module",
+        "e1_h1_full_checkpoint_module_dpi_control_slot_engine",
+        "-Mdir",
+        "<build-root>/obj_full_checkpoint_module_dpi_control_slot_engine",
+        "-f",
+        "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_slot_engine.f",
+        "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine_main.cpp"
+      ],
+      "build_returncode": 0,
+      "build_stdout_tail": [],
+      "dut_module": "e1_h1_tinyllama_control_slot_engine",
+      "expected_stdout_markers": [
+        "module=control_slot_engine",
+        "E1_H1_FULL_MODULE_DPI_CYCLE"
+      ],
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_slot_engine.f",
+      "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine_main.cpp",
+      "name": "control_slot_engine",
+      "observed_stdout_markers": [
+        "module=control_slot_engine",
+        "E1_H1_FULL_MODULE_DPI_CYCLE"
+      ],
+      "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_control_slot_engine/Ve1_h1_full_checkpoint_module_dpi_control_slot_engine",
+      "run_returncode": 0,
+      "run_stdout_tail": [],
+      "scope": "generated_full_checkpoint_module_only",
+      "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+      "status": "pass",
+      "top_module": "e1_h1_full_checkpoint_module_dpi_control_slot_engine"
+    },
+    {
+      "build_command": [
+        "verilator",
+        "--cc",
+        "--exe",
+        "--build",
+        "--sv",
+        "-Wall",
+        "-Wno-DECLFILENAME",
+        "-Wno-UNUSEDSIGNAL",
+        "-Wno-UNUSEDPARAM",
+        "-Wno-WIDTHEXPAND",
+        "--timing",
+        "--top-module",
+        "e1_h1_full_checkpoint_module_dpi_full_checkpoint_top",
+        "-Mdir",
+        "<build-root>/obj_full_checkpoint_module_dpi_full_checkpoint_top",
+        "-f",
+        "e1/e1-h1/generated/full_checkpoint_dpi/flists/full_checkpoint_top.f",
+        "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+        "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_full_checkpoint_top_main.cpp"
+      ],
+      "build_returncode": 0,
+      "build_stdout_tail": [],
+      "dut_module": "e1_h1_tinyllama_full_checkpoint_top",
+      "expected_stdout_markers": [
+        "module=full_checkpoint_top",
+        "E1_H1_FULL_MODULE_DPI_CYCLE"
+      ],
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/full_checkpoint_top.f",
+      "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_full_checkpoint_top_main.cpp",
+      "name": "full_checkpoint_top",
+      "observed_stdout_markers": [
+        "module=full_checkpoint_top",
+        "E1_H1_FULL_MODULE_DPI_CYCLE"
+      ],
+      "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_full_checkpoint_top/Ve1_h1_full_checkpoint_module_dpi_full_checkpoint_top",
+      "run_returncode": 0,
+      "run_stdout_tail": [],
+      "scope": "generated_full_checkpoint_module_only",
+      "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
+      "status": "pass",
+      "top_module": "e1_h1_full_checkpoint_module_dpi_full_checkpoint_top"
+    }
+  ],
+  "runner": "e1/tools/run_module_dpi_verilator.py",
+  "runner_kind": "actual_verilator_build_and_run",
+  "schema": "e1-module-dpi-verilator-execution-report-v0",
+  "status": "pass",
+  "suite": "full_checkpoint_module_dpi",
+  "test_plan": "e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json"
+}

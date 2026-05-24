@@ -603,6 +603,7 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
   out << "  \"module_isolation_proof\": \"e1/e1-h1/generated/module_dpi/module_isolation.json\",\n";
   out << "  \"cycle_contract\": \"e1/e1-h1/generated/module_dpi/cycle_contract.json\",\n";
   out << "  \"module_test_plan\": \"e1/e1-h1/generated/module_dpi/module_test_plan.json\",\n";
+  out << "  \"verilator_execution_report\": \"e1/e1-h1/generated/module_dpi/verilator_execution_report.json\",\n";
   out << "  \"readme_cycle_coverage\": \"e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json\",\n";
   out << "  \"reference_implementation\": \"imp1\",\n";
   out << "  \"candidate_implementation\": \"imp2\",\n";
@@ -629,6 +630,7 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
     out << "      \"flist\": \"e1/e1-h1/generated/module_dpi/flists/" << spec.name << ".f\",\n";
     out << "      \"imp2_rtl\": \"" << spec.imp2_rtl << "\",\n";
     out << "      \"module_test_plan\": \"e1/e1-h1/generated/module_dpi/module_test_plan.json\",\n";
+    out << "      \"verilator_execution_report\": \"e1/e1-h1/generated/module_dpi/verilator_execution_report.json\",\n";
     out << "      \"readme_cycle_coverage\": \"e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json\",\n";
     out << "      \"vip_cases\": [";
     for (std::size_t j = 0; j < spec.vip_cases.size(); ++j) {
