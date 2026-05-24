@@ -6,6 +6,7 @@
   "module_isolation_proof": "e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json",
   "cycle_contract": "e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json",
   "module_test_plan": "e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json",
+  "readme_cycle_coverage": "e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json",
   "construction_rule": "one_generated_probe_per_full_checkpoint_rtl_module_with_cpp_dpi_driven_neighbors",
   "modules": [
     {
@@ -18,6 +19,7 @@
       "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_scheduler_main.cpp",
       "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_scheduler.f",
       "module_test_plan": "e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json",
+      "readme_cycle_coverage": "e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json",
       "rtl": ["e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler.sv"],
       "cycle_notes": ["cycle 0 setup", "cycle 2 command handshake", "cycle 6 array done"],
       "input_signals": [
@@ -72,6 +74,7 @@
       "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine_main.cpp",
       "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_tile_engine.f",
       "module_test_plan": "e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json",
+      "readme_cycle_coverage": "e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json",
       "rtl": ["e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler.sv", "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv", "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv", "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_tile_engine.sv"],
       "cycle_notes": ["cycle 1 scheduler valid", "cycle 2 gated array command", "cycles 3-6 latch/array transfer"],
       "input_signals": [
@@ -135,6 +138,7 @@
       "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_scheduler_main.cpp",
       "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_scheduler.f",
       "module_test_plan": "e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json",
+      "readme_cycle_coverage": "e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json",
       "rtl": ["e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_scheduler.sv"],
       "cycle_notes": ["cycle 0 control issue", "cycle 2 execute", "cycle 3 commit"],
       "input_signals": [
@@ -177,6 +181,7 @@
       "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_graph_sequencer_main.cpp",
       "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/graph_sequencer.f",
       "module_test_plan": "e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json",
+      "readme_cycle_coverage": "e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json",
       "rtl": ["e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.sv"],
       "cycle_notes": ["cycle 0 present graph slot", "cycle 1 launch selected engine", "cycle 2 wait done", "cycle 3 commit"],
       "input_signals": [
@@ -223,6 +228,7 @@
       "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine_main.cpp",
       "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_slot_engine.f",
       "module_test_plan": "e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json",
+      "readme_cycle_coverage": "e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json",
       "rtl": ["e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv", "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv", "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv"],
       "cycle_notes": ["cycle 1 slot command valid", "cycle 2 array command", "cycles 3-6 separated latch/array"],
       "input_signals": [
@@ -289,6 +295,7 @@
       "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine_main.cpp",
       "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_slot_engine.f",
       "module_test_plan": "e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json",
+      "readme_cycle_coverage": "e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json",
       "rtl": ["e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv"],
       "cycle_notes": ["cycle 0 control valid", "cycle 2 execute", "cycle 3 commit"],
       "input_signals": [
@@ -333,6 +340,7 @@
       "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_full_checkpoint_top_main.cpp",
       "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/full_checkpoint_top.f",
       "module_test_plan": "e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json",
+      "readme_cycle_coverage": "e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json",
       "rtl": ["e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.sv", "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv", "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv", "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv", "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv", "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.sv"],
       "cycle_notes": ["cycle 0 graph slot", "cycle 1 slot start", "cycle 2 selected engine runs", "cycle 3 graph commit"],
       "input_signals": [

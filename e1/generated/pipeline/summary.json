@@ -17,6 +17,7 @@
   "full_checkpoint_module_dpi_status": "pass",
   "full_checkpoint_module_interfaces_doc": "e1/e1-h1/generated/full_checkpoint_dpi/module_interfaces.md",
   "full_checkpoint_module_isolation_proof": "e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json",
+  "full_checkpoint_module_readme_cycle_coverage": "e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json",
   "full_checkpoint_module_test_plan": "e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json",
   "full_checkpoint_rtl_cycle_lowering": "e1/generated/pipeline/20_full_checkpoint_rtl_cycle_lowering.json",
   "full_checkpoint_rtl_cycle_lowering_status": "pass",
@@ -45,6 +46,7 @@
   "module_dpi_generation": "e1/generated/pipeline/12_module_dpi_generation.json",
   "module_dpi_isolation_proof": "e1/e1-h1/generated/module_dpi/module_isolation.json",
   "module_dpi_manifest": "e1/e1-h1/generated/module_dpi/manifest.json",
+  "module_dpi_readme_cycle_coverage": "e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json",
   "module_dpi_test_plan": "e1/e1-h1/generated/module_dpi/module_test_plan.json",
   "operation_counts": {
     "add": 2,

@@ -1,0 +1,107 @@
+{
+  "schema": "e1-h1-module-dpi-readme-cycle-coverage-v0",
+  "generator": "e1/e1-h1/tools/generate_module_dpi.cpp",
+  "readme": "e1/e1-h1/docs/modules/README.md",
+  "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+  "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+  "cycle_contract": "e1/e1-h1/generated/module_dpi/cycle_contract.json",
+  "construction_rule": "every_base_ip_cycle_template_and_phase_name_is_present_in_the_module_readme",
+  "modules": [
+    {
+      "name": "control_cpu",
+      "top_module": "e1_h1_control_cpu",
+      "template": "cpu_command_8_cycle_template",
+      "cycle_period": 8,
+      "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+      "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+      "phase_names": ["reset_release", "command_backpressure", "command_handshake", "wait_for_array", "wait_for_array_stable", "array_completion", "halt_transition", "halted_idle"],
+      "checks": [
+        {"name": "readme_cycle_diagram_present", "status": "pass"},
+        {"name": "readme_cycle_contract_index_present", "status": "pass"},
+        {"name": "readme_module_name_present", "status": "pass"},
+        {"name": "readme_template_present", "status": "pass"},
+        {"name": "readme_all_phase_names_present", "status": "pass"}
+      ]
+    },
+    {
+      "name": "rgmii_ethernet_ingress",
+      "top_module": "e1_h1_rgmii_ethernet_ingress",
+      "template": "digital_rgmii_ingress_10_cycle_template",
+      "cycle_period": 10,
+      "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+      "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+      "phase_names": ["idle_after_reset", "frame_nibble_0", "frame_nibble_1", "frame_nibble_2", "frame_nibble_3", "frame_nibble_4", "frame_gap", "downstream_accept", "drain_stream", "return_idle"],
+      "checks": [
+        {"name": "readme_cycle_diagram_present", "status": "pass"},
+        {"name": "readme_cycle_contract_index_present", "status": "pass"},
+        {"name": "readme_module_name_present", "status": "pass"},
+        {"name": "readme_template_present", "status": "pass"},
+        {"name": "readme_all_phase_names_present", "status": "pass"}
+      ]
+    },
+    {
+      "name": "ingress_sram",
+      "top_module": "e1_h1_stream_sram",
+      "template": "latch_buffer_6_cycle_template",
+      "cycle_period": 6,
+      "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+      "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+      "phase_names": ["latch_first_word", "hold_latched_word", "release_latched_word", "latch_next_clean_word", "reject_error_word", "empty_or_ready"],
+      "checks": [
+        {"name": "readme_cycle_diagram_present", "status": "pass"},
+        {"name": "readme_cycle_contract_index_present", "status": "pass"},
+        {"name": "readme_module_name_present", "status": "pass"},
+        {"name": "readme_template_present", "status": "pass"},
+        {"name": "readme_all_phase_names_present", "status": "pass"}
+      ]
+    },
+    {
+      "name": "activation_sram",
+      "top_module": "e1_h1_config_sram",
+      "template": "config_sram_3_cycle_template",
+      "cycle_period": 3,
+      "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+      "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+      "phase_names": ["initialization_latch", "initialized_hold_0", "initialized_hold_1"],
+      "checks": [
+        {"name": "readme_cycle_diagram_present", "status": "pass"},
+        {"name": "readme_cycle_contract_index_present", "status": "pass"},
+        {"name": "readme_module_name_present", "status": "pass"},
+        {"name": "readme_template_present", "status": "pass"},
+        {"name": "readme_all_phase_names_present", "status": "pass"}
+      ]
+    },
+    {
+      "name": "accumulator_sram",
+      "top_module": "e1_h1_config_sram",
+      "template": "config_sram_3_cycle_template",
+      "cycle_period": 3,
+      "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+      "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+      "phase_names": ["initialization_latch", "initialized_hold_0", "initialized_hold_1"],
+      "checks": [
+        {"name": "readme_cycle_diagram_present", "status": "pass"},
+        {"name": "readme_cycle_contract_index_present", "status": "pass"},
+        {"name": "readme_module_name_present", "status": "pass"},
+        {"name": "readme_template_present", "status": "pass"},
+        {"name": "readme_all_phase_names_present", "status": "pass"}
+      ]
+    },
+    {
+      "name": "systolic_array",
+      "top_module": "e1_h1_systolic_array",
+      "template": "systolic_array_8_cycle_template",
+      "cycle_period": 8,
+      "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+      "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+      "phase_names": ["array_idle", "accept_array_command", "enter_busy", "consume_input_beat_0", "consume_input_beat_1", "consume_input_beat_2", "completion_pulse", "return_ready"],
+      "checks": [
+        {"name": "readme_cycle_diagram_present", "status": "pass"},
+        {"name": "readme_cycle_contract_index_present", "status": "pass"},
+        {"name": "readme_module_name_present", "status": "pass"},
+        {"name": "readme_template_present", "status": "pass"},
+        {"name": "readme_all_phase_names_present", "status": "pass"}
+      ]
+    }
+  ]
+}

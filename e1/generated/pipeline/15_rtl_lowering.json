@@ -103,6 +103,10 @@
         "status": "pass"
       },
       {
+        "name": "module_dpi_readme_cycle_coverage_exists",
+        "status": "pass"
+      },
+      {
         "name": "all_module_dpi_modules_have_isolation_proofs",
         "status": "pass"
       },
@@ -112,6 +116,10 @@
       },
       {
         "name": "all_module_dpi_modules_have_verilator_test_plans",
+        "status": "pass"
+      },
+      {
+        "name": "all_module_dpi_modules_have_readme_cycle_coverage",
         "status": "pass"
       },
       {
@@ -257,6 +265,46 @@
         "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu_main.cpp",
         "name": "control_cpu",
         "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu.sv",
+        "readme_cycle_coverage": {
+          "checks": [
+            {
+              "name": "readme_cycle_diagram_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_cycle_contract_index_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_module_name_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_template_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_all_phase_names_present",
+              "status": "pass"
+            }
+          ],
+          "cycle_period": 8,
+          "name": "control_cpu",
+          "phase_names": [
+            "reset_release",
+            "command_backpressure",
+            "command_handshake",
+            "wait_for_array",
+            "wait_for_array_stable",
+            "array_completion",
+            "halt_transition",
+            "halted_idle"
+          ],
+          "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+          "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+          "template": "cpu_command_8_cycle_template",
+          "top_module": "e1_h1_control_cpu"
+        },
         "reference_module": "e1_h1_imp1_control_cpu_ref",
         "test_plan": {
           "checks": [
@@ -456,6 +504,48 @@
         "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_rgmii_ethernet_ingress_main.cpp",
         "name": "rgmii_ethernet_ingress",
         "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_rgmii_ethernet_ingress.sv",
+        "readme_cycle_coverage": {
+          "checks": [
+            {
+              "name": "readme_cycle_diagram_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_cycle_contract_index_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_module_name_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_template_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_all_phase_names_present",
+              "status": "pass"
+            }
+          ],
+          "cycle_period": 10,
+          "name": "rgmii_ethernet_ingress",
+          "phase_names": [
+            "idle_after_reset",
+            "frame_nibble_0",
+            "frame_nibble_1",
+            "frame_nibble_2",
+            "frame_nibble_3",
+            "frame_nibble_4",
+            "frame_gap",
+            "downstream_accept",
+            "drain_stream",
+            "return_idle"
+          ],
+          "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+          "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+          "template": "digital_rgmii_ingress_10_cycle_template",
+          "top_module": "e1_h1_rgmii_ethernet_ingress"
+        },
         "reference_module": "e1_h1_imp1_rgmii_ethernet_ingress_ref",
         "test_plan": {
           "checks": [
@@ -627,6 +717,44 @@
         "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram_main.cpp",
         "name": "ingress_sram",
         "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram.sv",
+        "readme_cycle_coverage": {
+          "checks": [
+            {
+              "name": "readme_cycle_diagram_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_cycle_contract_index_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_module_name_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_template_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_all_phase_names_present",
+              "status": "pass"
+            }
+          ],
+          "cycle_period": 6,
+          "name": "ingress_sram",
+          "phase_names": [
+            "latch_first_word",
+            "hold_latched_word",
+            "release_latched_word",
+            "latch_next_clean_word",
+            "reject_error_word",
+            "empty_or_ready"
+          ],
+          "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+          "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+          "template": "latch_buffer_6_cycle_template",
+          "top_module": "e1_h1_stream_sram"
+        },
         "reference_module": "e1_h1_imp1_stream_sram_ref",
         "test_plan": {
           "checks": [
@@ -777,6 +905,41 @@
         "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_activation_sram_main.cpp",
         "name": "activation_sram",
         "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_activation_sram.sv",
+        "readme_cycle_coverage": {
+          "checks": [
+            {
+              "name": "readme_cycle_diagram_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_cycle_contract_index_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_module_name_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_template_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_all_phase_names_present",
+              "status": "pass"
+            }
+          ],
+          "cycle_period": 3,
+          "name": "activation_sram",
+          "phase_names": [
+            "initialization_latch",
+            "initialized_hold_0",
+            "initialized_hold_1"
+          ],
+          "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+          "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+          "template": "config_sram_3_cycle_template",
+          "top_module": "e1_h1_config_sram"
+        },
         "reference_module": "e1_h1_imp1_config_sram_ref",
         "test_plan": {
           "checks": [
@@ -927,6 +1090,41 @@
         "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_accumulator_sram_main.cpp",
         "name": "accumulator_sram",
         "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_accumulator_sram.sv",
+        "readme_cycle_coverage": {
+          "checks": [
+            {
+              "name": "readme_cycle_diagram_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_cycle_contract_index_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_module_name_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_template_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_all_phase_names_present",
+              "status": "pass"
+            }
+          ],
+          "cycle_period": 3,
+          "name": "accumulator_sram",
+          "phase_names": [
+            "initialization_latch",
+            "initialized_hold_0",
+            "initialized_hold_1"
+          ],
+          "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+          "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+          "template": "config_sram_3_cycle_template",
+          "top_module": "e1_h1_config_sram"
+        },
         "reference_module": "e1_h1_imp1_config_sram_ref",
         "test_plan": {
           "checks": [
@@ -1112,6 +1310,46 @@
         "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array_main.cpp",
         "name": "systolic_array",
         "probe": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array.sv",
+        "readme_cycle_coverage": {
+          "checks": [
+            {
+              "name": "readme_cycle_diagram_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_cycle_contract_index_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_module_name_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_template_present",
+              "status": "pass"
+            },
+            {
+              "name": "readme_all_phase_names_present",
+              "status": "pass"
+            }
+          ],
+          "cycle_period": 8,
+          "name": "systolic_array",
+          "phase_names": [
+            "array_idle",
+            "accept_array_command",
+            "enter_busy",
+            "consume_input_beat_0",
+            "consume_input_beat_1",
+            "consume_input_beat_2",
+            "completion_pulse",
+            "return_ready"
+          ],
+          "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+          "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+          "template": "systolic_array_8_cycle_template",
+          "top_module": "e1_h1_systolic_array"
+        },
         "reference_module": "e1_h1_imp1_systolic_array_ref",
         "test_plan": {
           "checks": [
@@ -1168,6 +1406,7 @@
         "top_module": "e1_h1_systolic_array"
       }
     ],
+    "readme_cycle_coverage": "e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json",
     "schema": "e1-module-dpi-generation-report-v0",
     "scoreboard": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_scoreboard.cpp",
     "separation_of_concerns": {

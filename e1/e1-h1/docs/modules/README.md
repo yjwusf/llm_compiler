@@ -182,6 +182,35 @@ Top cycle  graph_sequencer responsibility       selected slot engine
 3          commits graph slot                    returns done to sequencer
 ```
 
+### Generated Cycle Contract Index
+
+The tables below are the machine-checked index for the generated
+`cycle_contract.json` files. The C++ DPI generators fail if a module name,
+template name, or phase name in those contracts is missing here.
+
+Base module cycle contracts:
+
+| Module | Template | Cycle Phases |
+| --- | --- | --- |
+| `control_cpu` | `cpu_command_8_cycle_template` | 0 `reset_release`; 1 `command_backpressure`; 2 `command_handshake`; 3 `wait_for_array`; 4 `wait_for_array_stable`; 5 `array_completion`; 6 `halt_transition`; 7 `halted_idle` |
+| `rgmii_ethernet_ingress` | `digital_rgmii_ingress_10_cycle_template` | 0 `idle_after_reset`; 1 `frame_nibble_0`; 2 `frame_nibble_1`; 3 `frame_nibble_2`; 4 `frame_nibble_3`; 5 `frame_nibble_4`; 6 `frame_gap`; 7 `downstream_accept`; 8 `drain_stream`; 9 `return_idle` |
+| `ingress_sram` | `latch_buffer_6_cycle_template` | 0 `latch_first_word`; 1 `hold_latched_word`; 2 `release_latched_word`; 3 `latch_next_clean_word`; 4 `reject_error_word`; 5 `empty_or_ready` |
+| `activation_sram` | `config_sram_3_cycle_template` | 0 `initialization_latch`; 1 `initialized_hold_0`; 2 `initialized_hold_1` |
+| `accumulator_sram` | `config_sram_3_cycle_template` | 0 `initialization_latch`; 1 `initialized_hold_0`; 2 `initialized_hold_1` |
+| `systolic_array` | `systolic_array_8_cycle_template` | 0 `array_idle`; 1 `accept_array_command`; 2 `enter_busy`; 3 `consume_input_beat_0`; 4 `consume_input_beat_1`; 5 `consume_input_beat_2`; 6 `completion_pulse`; 7 `return_ready` |
+
+Full-checkpoint generated module cycle contracts:
+
+| Module | Template | Cycle Phases |
+| --- | --- | --- |
+| `linear_scheduler` | `tile_command_8_cycle_cpu_latch_array_template` | 0 `setup_tile_command`; 1 `assert_scheduler_valid`; 2 `accept_command_handshake`; 3 `wait_for_array_progress_0`; 4 `wait_for_array_progress_1`; 5 `wait_for_array_progress_2`; 6 `sample_array_done`; 7 `advance_tile_counters` |
+| `linear_tile_engine` | `tile_command_8_cycle_cpu_latch_array_template` | 0 `setup_tile_engine`; 1 `scheduler_valid_visible`; 2 `array_command_handshake`; 3 `latch_to_array_beat_0`; 4 `latch_to_array_beat_1`; 5 `latch_to_array_beat_2`; 6 `array_done_pulse`; 7 `return_ready` |
+| `control_scheduler` | `control_op_4_cycle_cpu_template` | 0 `issue_control_op`; 1 `read_control_metadata`; 2 `execute_control_op`; 3 `commit_control_op` |
+| `graph_sequencer` | `graph_slot_4_cycle_launch_template` | 0 `present_graph_slot`; 1 `launch_selected_engine`; 2 `wait_for_slot_done`; 3 `commit_graph_slot` |
+| `linear_slot_engine` | `tile_command_8_cycle_cpu_latch_array_template` | 0 `latch_selected_linear_slot`; 1 `slot_command_valid`; 2 `array_command_handshake`; 3 `latch_to_array_beat_0`; 4 `latch_to_array_beat_1`; 5 `latch_to_array_beat_2`; 6 `array_done_pulse`; 7 `slot_done_or_next_tile` |
+| `control_slot_engine` | `control_op_4_cycle_cpu_template` | 0 `issue_selected_control_slot`; 1 `read_selected_control_metadata`; 2 `execute_selected_control_slot`; 3 `commit_selected_control_slot` |
+| `full_checkpoint_top` | `top_dispatch_4_cycle_slot_engine_template` | 0 `present_top_graph_slot`; 1 `start_selected_slot_engine`; 2 `run_selected_slot_engine`; 3 `commit_top_graph_slot` |
+
 The linear slot engine instantiates the separated `ingress_sram` latch buffer
 and `systolic_array` modules. The control slot engine does not instantiate
 array RTL. The generated top-level Verilator harness runs all 308 graph slots
@@ -211,3 +240,6 @@ back to this README's cycle diagrams. It also emits
 `e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json`, which records
 the Verilator top, flist, scoreboard, C++ main, and expected output markers for
 each generated module-only run.
+The generated `readme_cycle_coverage.json` artifacts for both base IP and
+full-checkpoint modules prove that this README lists every generated cycle
+template and phase name.

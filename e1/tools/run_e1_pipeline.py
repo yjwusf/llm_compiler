@@ -579,13 +579,16 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
     module_isolation_path = module_dpi_dir / "module_isolation.json"
     cycle_contract_path = module_dpi_dir / "cycle_contract.json"
     module_test_plan_path = module_dpi_dir / "module_test_plan.json"
+    readme_cycle_coverage_path = module_dpi_dir / "readme_cycle_coverage.json"
     module_isolation = load_json(module_isolation_path)
     cycle_contract = load_json(cycle_contract_path)
     module_test_plan = load_json(module_test_plan_path)
+    readme_cycle_coverage = load_json(readme_cycle_coverage_path)
     module_names = {module["name"] for module in module_dpi_manifest["modules"]}
     isolation_by_name = {module["name"]: module for module in module_isolation["modules"]}
     cycle_contract_by_name = {module["name"]: module for module in cycle_contract["modules"]}
     test_plan_by_name = {module["name"]: module for module in module_test_plan["modules"]}
+    readme_cycle_coverage_by_name = {module["name"]: module for module in readme_cycle_coverage["modules"]}
     checks = [
         {
             "name": "module_dpi_manifest_exists",
@@ -614,6 +617,10 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
         {
             "name": "module_dpi_test_plan_exists",
             "status": "pass" if module_test_plan_path.exists() else "fail",
+        },
+        {
+            "name": "module_dpi_readme_cycle_coverage_exists",
+            "status": "pass" if readme_cycle_coverage_path.exists() else "fail",
         },
         {
             "name": "all_module_dpi_modules_have_isolation_proofs",
@@ -651,6 +658,20 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
             else "fail",
         },
         {
+            "name": "all_module_dpi_modules_have_readme_cycle_coverage",
+            "status": "pass"
+            if module_names == set(readme_cycle_coverage_by_name)
+            and all(
+                all(check["status"] == "pass" for check in readme_cycle_coverage_by_name[module["name"]]["checks"])
+                and readme_cycle_coverage_by_name[module["name"]]["template"]
+                == cycle_contract_by_name[module["name"]]["template"]
+                and readme_cycle_coverage_by_name[module["name"]]["phase_names"]
+                == [step["phase"] for step in cycle_contract_by_name[module["name"]]["cycles"]]
+                for module in module_dpi_manifest["modules"]
+            )
+            else "fail",
+        },
+        {
             "name": "ingress_sram_is_latch_buffer",
             "status": "pass"
             if any(module["name"] == "ingress_sram" and module["latch_buffer"] for module in module_dpi_manifest["modules"])
@@ -666,6 +687,7 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
         "module_isolation_proof": module_dpi_manifest["module_isolation_proof"],
         "cycle_contract": module_dpi_manifest["cycle_contract"],
         "module_test_plan": module_dpi_manifest["module_test_plan"],
+        "readme_cycle_coverage": module_dpi_manifest["readme_cycle_coverage"],
         "module_count": len(module_dpi_manifest["modules"]),
         "modules": [
             {
@@ -680,6 +702,7 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
                 "isolation": isolation_by_name[module["name"]],
                 "cycle_contract": cycle_contract_by_name[module["name"]],
                 "test_plan": test_plan_by_name[module["name"]],
+                "readme_cycle_coverage": readme_cycle_coverage_by_name[module["name"]],
             }
             for module in module_dpi_manifest["modules"]
         ],
@@ -731,13 +754,16 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
     module_isolation_path = module_dpi_dir / "module_isolation.json"
     cycle_contract_path = module_dpi_dir / "cycle_contract.json"
     module_test_plan_path = module_dpi_dir / "module_test_plan.json"
+    readme_cycle_coverage_path = module_dpi_dir / "readme_cycle_coverage.json"
     module_isolation = load_json(module_isolation_path)
     cycle_contract = load_json(cycle_contract_path)
     module_test_plan = load_json(module_test_plan_path)
+    readme_cycle_coverage = load_json(readme_cycle_coverage_path)
     module_names = {module["name"] for module in manifest["modules"]}
     isolation_by_name = {module["name"]: module for module in module_isolation["modules"]}
     cycle_contract_by_name = {module["name"]: module for module in cycle_contract["modules"]}
     test_plan_by_name = {module["name"]: module for module in module_test_plan["modules"]}
+    readme_cycle_coverage_by_name = {module["name"]: module for module in readme_cycle_coverage["modules"]}
     expected_modules = {
         "linear_scheduler",
         "linear_tile_engine",
@@ -785,6 +811,10 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
             "status": "pass" if module_test_plan_path.exists() else "fail",
         },
         {
+            "name": "generated_full_checkpoint_readme_cycle_coverage_exists",
+            "status": "pass" if readme_cycle_coverage_path.exists() else "fail",
+        },
+        {
             "name": "all_generated_full_checkpoint_modules_have_signal_docs",
             "status": "pass"
             if all(module.get("input_signals") and module.get("output_signals") for module in manifest["modules"])
@@ -826,6 +856,20 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
             else "fail",
         },
         {
+            "name": "all_generated_full_checkpoint_modules_have_readme_cycle_coverage",
+            "status": "pass"
+            if module_names == set(readme_cycle_coverage_by_name)
+            and all(
+                all(check["status"] == "pass" for check in readme_cycle_coverage_by_name[module["name"]]["checks"])
+                and readme_cycle_coverage_by_name[module["name"]]["template"]
+                == cycle_contract_by_name[module["name"]]["template"]
+                and readme_cycle_coverage_by_name[module["name"]]["phase_names"]
+                == [step["phase"] for step in cycle_contract_by_name[module["name"]]["cycles"]]
+                for module in manifest["modules"]
+            )
+            else "fail",
+        },
+        {
             "name": "full_checkpoint_top_dpi_covers_slot_engines",
             "status": "pass"
             if any(
@@ -847,6 +891,7 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
         "module_isolation_proof": manifest["module_isolation_proof"],
         "cycle_contract": manifest["cycle_contract"],
         "module_test_plan": manifest["module_test_plan"],
+        "readme_cycle_coverage": manifest["readme_cycle_coverage"],
         "module_count": len(manifest["modules"]),
         "modules": [
             {
@@ -863,6 +908,7 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
                 "isolation": isolation_by_name[module["name"]],
                 "cycle_contract": cycle_contract_by_name[module["name"]],
                 "test_plan": test_plan_by_name[module["name"]],
+                "readme_cycle_coverage": readme_cycle_coverage_by_name[module["name"]],
             }
             for module in manifest["modules"]
         ],
@@ -4635,6 +4681,7 @@ def run_pipeline(
             module_dpi_report["module_isolation_proof"],
             module_dpi_report["cycle_contract"],
             module_dpi_report["module_test_plan"],
+            module_dpi_report["readme_cycle_coverage"],
             *[module["probe"] for module in module_dpi_report["modules"]],
             *[module["main"] for module in module_dpi_report["modules"]],
             *[module["flist"] for module in module_dpi_report["modules"]],
@@ -4747,6 +4794,7 @@ def run_pipeline(
         "module_dpi_isolation_proof": module_dpi_report["module_isolation_proof"],
         "module_dpi_cycle_contract": module_dpi_report["cycle_contract"],
         "module_dpi_test_plan": module_dpi_report["module_test_plan"],
+        "module_dpi_readme_cycle_coverage": module_dpi_report["readme_cycle_coverage"],
         "rtl_lowering": repo_rel(rtl_lowering_out),
         "rtl_lowering_status": rtl_lowering["status"],
         "tinyllama_imp2_coverage": repo_rel(tinyllama_coverage_out),
@@ -4794,6 +4842,7 @@ def run_pipeline(
         "full_checkpoint_module_isolation_proof": full_checkpoint_module_dpi["module_isolation_proof"],
         "full_checkpoint_module_cycle_contract": full_checkpoint_module_dpi["cycle_contract"],
         "full_checkpoint_module_test_plan": full_checkpoint_module_dpi["module_test_plan"],
+        "full_checkpoint_module_readme_cycle_coverage": full_checkpoint_module_dpi["readme_cycle_coverage"],
         "full_checkpoint_module_dpi_status": full_checkpoint_module_dpi["status"],
         "full_checkpoint_module_dpi_count": full_checkpoint_module_dpi["module_count"],
         "systemverilog_plan": repo_rel(sv_out),
@@ -4823,6 +4872,7 @@ def run_pipeline(
         "module_dpi_isolation_proof": module_dpi_report["module_isolation_proof"],
         "module_dpi_cycle_contract": module_dpi_report["cycle_contract"],
         "module_dpi_test_plan": module_dpi_report["module_test_plan"],
+        "module_dpi_readme_cycle_coverage": module_dpi_report["readme_cycle_coverage"],
         "rtl_lowering": repo_rel(rtl_lowering_out),
         "rtl_lowering_status": rtl_lowering["status"],
         "full_tinyllama_checkpoint_execution": repo_rel(output_dir / "17_full_tinyllama_checkpoint_execution.json"),
@@ -4869,6 +4919,7 @@ def run_pipeline(
         "full_checkpoint_module_isolation_proof": full_checkpoint_module_dpi["module_isolation_proof"],
         "full_checkpoint_module_cycle_contract": full_checkpoint_module_dpi["cycle_contract"],
         "full_checkpoint_module_test_plan": full_checkpoint_module_dpi["module_test_plan"],
+        "full_checkpoint_module_readme_cycle_coverage": full_checkpoint_module_dpi["readme_cycle_coverage"],
         "full_checkpoint_module_dpi_status": full_checkpoint_module_dpi["status"],
         "full_checkpoint_module_dpi_count": full_checkpoint_module_dpi["module_count"],
         "pipeline": architecture["pipeline"],

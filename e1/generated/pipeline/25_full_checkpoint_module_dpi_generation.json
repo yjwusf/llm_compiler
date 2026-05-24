@@ -33,6 +33,10 @@
       "status": "pass"
     },
     {
+      "name": "generated_full_checkpoint_readme_cycle_coverage_exists",
+      "status": "pass"
+    },
+    {
       "name": "all_generated_full_checkpoint_modules_have_signal_docs",
       "status": "pass"
     },
@@ -46,6 +50,10 @@
     },
     {
       "name": "all_generated_full_checkpoint_modules_have_verilator_test_plans",
+      "status": "pass"
+    },
+    {
+      "name": "all_generated_full_checkpoint_modules_have_readme_cycle_coverage",
       "status": "pass"
     },
     {
@@ -314,6 +322,46 @@
       ],
       "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_scheduler.sv",
       "probe_module": "e1_h1_full_checkpoint_module_dpi_linear_scheduler",
+      "readme_cycle_coverage": {
+        "checks": [
+          {
+            "name": "readme_cycle_diagram_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_contract_index_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_module_name_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_template_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_all_phase_names_present",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 8,
+        "name": "linear_scheduler",
+        "phase_names": [
+          "setup_tile_command",
+          "assert_scheduler_valid",
+          "accept_command_handshake",
+          "wait_for_array_progress_0",
+          "wait_for_array_progress_1",
+          "wait_for_array_progress_2",
+          "sample_array_done",
+          "advance_tile_counters"
+        ],
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+        "template": "tile_command_8_cycle_cpu_latch_array_template",
+        "top_module": "e1_h1_tinyllama_linear_scheduler"
+      },
       "rtl": [
         "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler.sv"
       ],
@@ -672,6 +720,46 @@
       ],
       "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine.sv",
       "probe_module": "e1_h1_full_checkpoint_module_dpi_linear_tile_engine",
+      "readme_cycle_coverage": {
+        "checks": [
+          {
+            "name": "readme_cycle_diagram_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_contract_index_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_module_name_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_template_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_all_phase_names_present",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 8,
+        "name": "linear_tile_engine",
+        "phase_names": [
+          "setup_tile_engine",
+          "scheduler_valid_visible",
+          "array_command_handshake",
+          "latch_to_array_beat_0",
+          "latch_to_array_beat_1",
+          "latch_to_array_beat_2",
+          "array_done_pulse",
+          "return_ready"
+        ],
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+        "template": "tile_command_8_cycle_cpu_latch_array_template",
+        "top_module": "e1_h1_tinyllama_linear_tile_engine"
+      },
       "rtl": [
         "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler.sv",
         "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv",
@@ -916,6 +1004,42 @@
       ],
       "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_scheduler.sv",
       "probe_module": "e1_h1_full_checkpoint_module_dpi_control_scheduler",
+      "readme_cycle_coverage": {
+        "checks": [
+          {
+            "name": "readme_cycle_diagram_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_contract_index_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_module_name_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_template_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_all_phase_names_present",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 4,
+        "name": "control_scheduler",
+        "phase_names": [
+          "issue_control_op",
+          "read_control_metadata",
+          "execute_control_op",
+          "commit_control_op"
+        ],
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+        "template": "control_op_4_cycle_cpu_template",
+        "top_module": "e1_h1_tinyllama_control_scheduler"
+      },
       "rtl": [
         "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_scheduler.sv"
       ],
@@ -1178,6 +1302,42 @@
       ],
       "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_graph_sequencer.sv",
       "probe_module": "e1_h1_full_checkpoint_module_dpi_graph_sequencer",
+      "readme_cycle_coverage": {
+        "checks": [
+          {
+            "name": "readme_cycle_diagram_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_contract_index_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_module_name_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_template_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_all_phase_names_present",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 4,
+        "name": "graph_sequencer",
+        "phase_names": [
+          "present_graph_slot",
+          "launch_selected_engine",
+          "wait_for_slot_done",
+          "commit_graph_slot"
+        ],
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+        "template": "graph_slot_4_cycle_launch_template",
+        "top_module": "e1_h1_tinyllama_graph_sequencer"
+      },
       "rtl": [
         "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.sv"
       ],
@@ -1550,6 +1710,46 @@
       ],
       "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine.sv",
       "probe_module": "e1_h1_full_checkpoint_module_dpi_linear_slot_engine",
+      "readme_cycle_coverage": {
+        "checks": [
+          {
+            "name": "readme_cycle_diagram_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_contract_index_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_module_name_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_template_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_all_phase_names_present",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 8,
+        "name": "linear_slot_engine",
+        "phase_names": [
+          "latch_selected_linear_slot",
+          "slot_command_valid",
+          "array_command_handshake",
+          "latch_to_array_beat_0",
+          "latch_to_array_beat_1",
+          "latch_to_array_beat_2",
+          "array_done_pulse",
+          "slot_done_or_next_tile"
+        ],
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+        "template": "tile_command_8_cycle_cpu_latch_array_template",
+        "top_module": "e1_h1_tinyllama_linear_slot_engine"
+      },
       "rtl": [
         "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv",
         "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
@@ -1803,6 +2003,42 @@
       ],
       "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine.sv",
       "probe_module": "e1_h1_full_checkpoint_module_dpi_control_slot_engine",
+      "readme_cycle_coverage": {
+        "checks": [
+          {
+            "name": "readme_cycle_diagram_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_contract_index_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_module_name_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_template_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_all_phase_names_present",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 4,
+        "name": "control_slot_engine",
+        "phase_names": [
+          "issue_selected_control_slot",
+          "read_selected_control_metadata",
+          "execute_selected_control_slot",
+          "commit_selected_control_slot"
+        ],
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+        "template": "control_op_4_cycle_cpu_template",
+        "top_module": "e1_h1_tinyllama_control_slot_engine"
+      },
       "rtl": [
         "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv"
       ],
@@ -2183,6 +2419,42 @@
       ],
       "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_full_checkpoint_top.sv",
       "probe_module": "e1_h1_full_checkpoint_module_dpi_full_checkpoint_top",
+      "readme_cycle_coverage": {
+        "checks": [
+          {
+            "name": "readme_cycle_diagram_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_cycle_contract_index_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_module_name_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_template_present",
+            "status": "pass"
+          },
+          {
+            "name": "readme_all_phase_names_present",
+            "status": "pass"
+          }
+        ],
+        "cycle_period": 4,
+        "name": "full_checkpoint_top",
+        "phase_names": [
+          "present_top_graph_slot",
+          "start_selected_slot_engine",
+          "run_selected_slot_engine",
+          "commit_top_graph_slot"
+        ],
+        "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+        "readme_index": "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+        "template": "top_dispatch_4_cycle_slot_engine_template",
+        "top_module": "e1_h1_tinyllama_full_checkpoint_top"
+      },
       "rtl": [
         "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.sv",
         "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv",
@@ -2246,6 +2518,7 @@
       "top_module": "e1_h1_tinyllama_full_checkpoint_top"
     }
   ],
+  "readme_cycle_coverage": "e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json",
   "schema": "e1-full-checkpoint-module-dpi-generation-report-v0",
   "scoreboard": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
   "status": "pass"

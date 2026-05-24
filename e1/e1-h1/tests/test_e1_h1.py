@@ -44,6 +44,7 @@ MODULE_DPI_MANIFEST = MODULE_DPI_DIR / "manifest.json"
 MODULE_DPI_ISOLATION = MODULE_DPI_DIR / "module_isolation.json"
 MODULE_DPI_CYCLE_CONTRACT = MODULE_DPI_DIR / "cycle_contract.json"
 MODULE_DPI_TEST_PLAN = MODULE_DPI_DIR / "module_test_plan.json"
+MODULE_DPI_README_CYCLE_COVERAGE = MODULE_DPI_DIR / "readme_cycle_coverage.json"
 FULL_CHECKPOINT_GENERATED = E1_H1 / "generated" / "full_checkpoint"
 FULL_CHECKPOINT_MODULE_DPI_GENERATOR = E1_H1 / "tools" / "generate_full_checkpoint_module_dpi.cpp"
 FULL_CHECKPOINT_MODULE_DPI_DIR = E1_H1 / "generated" / "full_checkpoint_dpi"
@@ -52,6 +53,7 @@ FULL_CHECKPOINT_MODULE_INTERFACES = FULL_CHECKPOINT_MODULE_DPI_DIR / "module_int
 FULL_CHECKPOINT_MODULE_ISOLATION = FULL_CHECKPOINT_MODULE_DPI_DIR / "module_isolation.json"
 FULL_CHECKPOINT_CYCLE_CONTRACT = FULL_CHECKPOINT_MODULE_DPI_DIR / "cycle_contract.json"
 FULL_CHECKPOINT_MODULE_TEST_PLAN = FULL_CHECKPOINT_MODULE_DPI_DIR / "module_test_plan.json"
+FULL_CHECKPOINT_README_CYCLE_COVERAGE = FULL_CHECKPOINT_MODULE_DPI_DIR / "readme_cycle_coverage.json"
 
 
 def load_generator():
@@ -436,6 +438,10 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(manifest["module_isolation_proof"], "e1/e1-h1/generated/module_dpi/module_isolation.json")
         self.assertEqual(manifest["cycle_contract"], "e1/e1-h1/generated/module_dpi/cycle_contract.json")
         self.assertEqual(manifest["module_test_plan"], "e1/e1-h1/generated/module_dpi/module_test_plan.json")
+        self.assertEqual(
+            manifest["readme_cycle_coverage"],
+            "e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json",
+        )
         self.assertIn("one_generated_probe_per_ip", manifest["construction_rule"])
         self.assertIn("CPU command issue is tested without the systolic array RTL", manifest["separation_of_concerns"]["control_cpu"])
         self.assertIn("The array is tested without CPU RTL", manifest["separation_of_concerns"]["systolic_array"])
@@ -443,21 +449,31 @@ class E1H1Tests(unittest.TestCase):
         self.assertTrue(MODULE_DPI_ISOLATION.exists())
         self.assertTrue(MODULE_DPI_CYCLE_CONTRACT.exists())
         self.assertTrue(MODULE_DPI_TEST_PLAN.exists())
+        self.assertTrue(MODULE_DPI_README_CYCLE_COVERAGE.exists())
         isolation = json.loads(MODULE_DPI_ISOLATION.read_text(encoding="utf-8"))
         cycle_contract = json.loads(MODULE_DPI_CYCLE_CONTRACT.read_text(encoding="utf-8"))
         test_plan = json.loads(MODULE_DPI_TEST_PLAN.read_text(encoding="utf-8"))
+        readme_cycle_coverage = json.loads(MODULE_DPI_README_CYCLE_COVERAGE.read_text(encoding="utf-8"))
+        readme = (E1_H1 / "docs" / "modules" / "README.md").read_text(encoding="utf-8")
         self.assertEqual(isolation["schema"], "e1-h1-module-dpi-isolation-v0")
         self.assertEqual(cycle_contract["schema"], "e1-h1-module-dpi-cycle-contract-v0")
         self.assertEqual(test_plan["schema"], "e1-h1-module-dpi-test-plan-v0")
+        self.assertEqual(readme_cycle_coverage["schema"], "e1-h1-module-dpi-readme-cycle-coverage-v0")
+        self.assertEqual(
+            readme_cycle_coverage["readme_index"],
+            "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+        )
         isolation_by_name = {module["name"]: module for module in isolation["modules"]}
         cycle_contract_by_name = {module["name"]: module for module in cycle_contract["modules"]}
         test_plan_by_name = {module["name"]: module for module in test_plan["modules"]}
+        readme_coverage_by_name = {module["name"]: module for module in readme_cycle_coverage["modules"]}
 
         modules = {module["name"]: module for module in manifest["modules"]}
         self.assertEqual(set(modules), {path.stem for path in IP_DIR.glob("*.json")})
         self.assertEqual(set(isolation_by_name), set(modules))
         self.assertEqual(set(cycle_contract_by_name), set(modules))
         self.assertEqual(set(test_plan_by_name), set(modules))
+        self.assertEqual(set(readme_coverage_by_name), set(modules))
         self.assertEqual([name for name, module in modules.items() if module["latch_buffer"]], ["ingress_sram"])
         for name, module in modules.items():
             vip = json.loads((REPO_ROOT / f"e1/e1-h1/vip/{name}.json").read_text(encoding="utf-8"))
@@ -467,6 +483,7 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual(module["reference_module"], isolation_by_name[name]["reference_module"])
             self.assertEqual(module["cycle_contract"]["template"], cycle_contract_by_name[name]["template"])
             self.assertEqual(module["cycle_contract"]["phase_source"], "e1_h1_module_dpi_cycle")
+            self.assertEqual(module["readme_cycle_coverage"], manifest["readme_cycle_coverage"])
             self.assertEqual(
                 [step["cycle"] for step in module["cycle_contract"]["cycles"]],
                 list(range(module["cycle_contract"]["cycle_period"])),
@@ -474,6 +491,16 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual({check["status"] for check in isolation_by_name[name]["checks"]}, {"pass"})
             self.assertEqual({check["status"] for check in cycle_contract_by_name[name]["checks"]}, {"pass"})
             self.assertEqual({check["status"] for check in test_plan_by_name[name]["checks"]}, {"pass"})
+            self.assertEqual({check["status"] for check in readme_coverage_by_name[name]["checks"]}, {"pass"})
+            self.assertEqual(readme_coverage_by_name[name]["template"], cycle_contract_by_name[name]["template"])
+            self.assertEqual(
+                readme_coverage_by_name[name]["phase_names"],
+                [step["phase"] for step in cycle_contract_by_name[name]["cycles"]],
+            )
+            self.assertIn(name, readme)
+            self.assertIn(readme_coverage_by_name[name]["template"], readme)
+            for phase in readme_coverage_by_name[name]["phase_names"]:
+                self.assertIn(phase, readme)
             self.assertEqual(test_plan_by_name[name]["verilator"]["top_module"], module["probe_module"])
             self.assertEqual(test_plan_by_name[name]["verilator"]["flist"], module["flist"])
             self.assertEqual(test_plan_by_name[name]["verilator"]["main"], module["main"])
@@ -561,21 +588,34 @@ class E1H1Tests(unittest.TestCase):
             manifest["module_test_plan"],
             "e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json",
         )
+        self.assertEqual(
+            manifest["readme_cycle_coverage"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json",
+        )
         self.assertTrue(FULL_CHECKPOINT_MODULE_INTERFACES.exists())
         self.assertTrue(FULL_CHECKPOINT_MODULE_ISOLATION.exists())
         self.assertTrue(FULL_CHECKPOINT_CYCLE_CONTRACT.exists())
         self.assertTrue(FULL_CHECKPOINT_MODULE_TEST_PLAN.exists())
+        self.assertTrue(FULL_CHECKPOINT_README_CYCLE_COVERAGE.exists())
         interface_doc = FULL_CHECKPOINT_MODULE_INTERFACES.read_text(encoding="utf-8")
         isolation = json.loads(FULL_CHECKPOINT_MODULE_ISOLATION.read_text(encoding="utf-8"))
         cycle_contract = json.loads(FULL_CHECKPOINT_CYCLE_CONTRACT.read_text(encoding="utf-8"))
         test_plan = json.loads(FULL_CHECKPOINT_MODULE_TEST_PLAN.read_text(encoding="utf-8"))
+        readme_cycle_coverage = json.loads(FULL_CHECKPOINT_README_CYCLE_COVERAGE.read_text(encoding="utf-8"))
+        readme = (E1_H1 / "docs" / "modules" / "README.md").read_text(encoding="utf-8")
         self.assertEqual(isolation["schema"], "e1-h1-full-checkpoint-module-isolation-v0")
         self.assertEqual(cycle_contract["schema"], "e1-h1-full-checkpoint-cycle-contract-v0")
         self.assertEqual(test_plan["schema"], "e1-h1-full-checkpoint-module-dpi-test-plan-v0")
+        self.assertEqual(readme_cycle_coverage["schema"], "e1-h1-full-checkpoint-readme-cycle-coverage-v0")
         self.assertEqual(cycle_contract["readme_diagram"], "e1/e1-h1/docs/modules/README.md#cycle-diagram")
+        self.assertEqual(
+            readme_cycle_coverage["readme_index"],
+            "e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index",
+        )
         isolation_by_name = {module["name"]: module for module in isolation["modules"]}
         cycle_contract_by_name = {module["name"]: module for module in cycle_contract["modules"]}
         test_plan_by_name = {module["name"]: module for module in test_plan["modules"]}
+        readme_coverage_by_name = {module["name"]: module for module in readme_cycle_coverage["modules"]}
         self.assertIn("# Generated Full-Checkpoint RTL Module Interfaces", interface_doc)
         self.assertIn("one_generated_probe_per_full_checkpoint_rtl_module", manifest["construction_rule"])
         modules = {module["name"]: module for module in manifest["modules"]}
@@ -597,10 +637,12 @@ class E1H1Tests(unittest.TestCase):
             self.assertIn(module["name"], isolation_by_name)
             self.assertIn(module["name"], cycle_contract_by_name)
             self.assertIn(module["name"], test_plan_by_name)
+            self.assertIn(module["name"], readme_coverage_by_name)
             self.assertEqual(isolation_by_name[module["name"]]["dut_module"], module["top_module"])
             self.assertEqual(isolation_by_name[module["name"]]["rtl_files"], module["rtl"])
             self.assertEqual({check["status"] for check in isolation_by_name[module["name"]]["checks"]}, {"pass"})
             self.assertEqual(module["cycle_contract"]["template"], cycle_contract_by_name[module["name"]]["template"])
+            self.assertEqual(module["readme_cycle_coverage"], manifest["readme_cycle_coverage"])
             self.assertEqual(
                 module["cycle_contract"]["phase_signals"],
                 cycle_contract_by_name[module["name"]]["phase_signals"],
@@ -610,6 +652,19 @@ class E1H1Tests(unittest.TestCase):
                 cycle_contract_by_name[module["name"]]["cycles"],
             )
             self.assertEqual({check["status"] for check in cycle_contract_by_name[module["name"]]["checks"]}, {"pass"})
+            self.assertEqual({check["status"] for check in readme_coverage_by_name[module["name"]]["checks"]}, {"pass"})
+            self.assertEqual(
+                readme_coverage_by_name[module["name"]]["template"],
+                cycle_contract_by_name[module["name"]]["template"],
+            )
+            self.assertEqual(
+                readme_coverage_by_name[module["name"]]["phase_names"],
+                [step["phase"] for step in cycle_contract_by_name[module["name"]]["cycles"]],
+            )
+            self.assertIn(module["name"], readme)
+            self.assertIn(readme_coverage_by_name[module["name"]]["template"], readme)
+            for phase in readme_coverage_by_name[module["name"]]["phase_names"]:
+                self.assertIn(phase, readme)
             self.assertEqual(
                 [step["cycle"] for step in module["cycle_contract"]["cycles"]],
                 list(range(module["cycle_contract"]["cycle_period"])),
@@ -1104,6 +1159,10 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(summary["module_dpi_isolation_proof"], "e1/e1-h1/generated/module_dpi/module_isolation.json")
         self.assertEqual(summary["module_dpi_cycle_contract"], "e1/e1-h1/generated/module_dpi/cycle_contract.json")
         self.assertEqual(summary["module_dpi_test_plan"], "e1/e1-h1/generated/module_dpi/module_test_plan.json")
+        self.assertEqual(
+            summary["module_dpi_readme_cycle_coverage"],
+            "e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json",
+        )
         self.assertEqual(summary["rtl_lowering"], "e1/generated/pipeline/15_rtl_lowering.json")
         self.assertEqual(summary["rtl_lowering_status"], "pass")
         self.assertEqual(
@@ -1163,6 +1222,10 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(
             summary["full_checkpoint_module_test_plan"],
             "e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json",
+        )
+        self.assertEqual(
+            summary["full_checkpoint_module_readme_cycle_coverage"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json",
         )
         self.assertEqual(summary["full_checkpoint_module_dpi_status"], "pass")
         self.assertEqual(summary["full_checkpoint_module_dpi_count"], 7)
@@ -1315,6 +1378,10 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(module_dpi_report["module_isolation_proof"], "e1/e1-h1/generated/module_dpi/module_isolation.json")
         self.assertEqual(module_dpi_report["cycle_contract"], "e1/e1-h1/generated/module_dpi/cycle_contract.json")
         self.assertEqual(module_dpi_report["module_test_plan"], "e1/e1-h1/generated/module_dpi/module_test_plan.json")
+        self.assertEqual(
+            module_dpi_report["readme_cycle_coverage"],
+            "e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json",
+        )
         self.assertEqual(module_dpi_report["module_count"], len(list(IP_DIR.glob("*.json"))))
         self.assertIn("without the systolic array RTL", module_dpi_report["separation_of_concerns"]["control_cpu"])
         self.assertIn("without CPU RTL", module_dpi_report["separation_of_concerns"]["systolic_array"])
@@ -1334,6 +1401,11 @@ class E1H1Tests(unittest.TestCase):
                 list(range(module["cycle_contract"]["cycle_period"])),
             )
             self.assertEqual({check["status"] for check in module["test_plan"]["checks"]}, {"pass"})
+            self.assertEqual({check["status"] for check in module["readme_cycle_coverage"]["checks"]}, {"pass"})
+            self.assertEqual(
+                module["readme_cycle_coverage"]["phase_names"],
+                [step["phase"] for step in module["cycle_contract"]["cycles"]],
+            )
             self.assertEqual(module["test_plan"]["verilator"]["top_module"], module["probe"].split("/")[-1][:-3])
             self.assertEqual(module["test_plan"]["verilator"]["flist"], module["flist"])
             self.assertEqual(module["test_plan"]["verilator"]["main"], module["main"])
@@ -1763,6 +1835,10 @@ class E1H1Tests(unittest.TestCase):
             "e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json",
         )
         self.assertEqual(
+            full_checkpoint_module_dpi["readme_cycle_coverage"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json",
+        )
+        self.assertEqual(
             full_checkpoint_module_dpi["scoreboard"],
             "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
         )
@@ -1793,6 +1869,11 @@ class E1H1Tests(unittest.TestCase):
                 list(range(module["cycle_contract"]["cycle_period"])),
             )
             self.assertEqual({check["status"] for check in module["test_plan"]["checks"]}, {"pass"})
+            self.assertEqual({check["status"] for check in module["readme_cycle_coverage"]["checks"]}, {"pass"})
+            self.assertEqual(
+                module["readme_cycle_coverage"]["phase_names"],
+                [step["phase"] for step in module["cycle_contract"]["cycles"]],
+            )
             self.assertEqual(module["test_plan"]["verilator"]["top_module"], module["probe_module"])
             self.assertEqual(module["test_plan"]["verilator"]["flist"], module["flist"])
             self.assertEqual(module["test_plan"]["verilator"]["main"], module["main"])
@@ -1822,6 +1903,10 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(e2e["module_dpi_isolation_proof"], "e1/e1-h1/generated/module_dpi/module_isolation.json")
         self.assertEqual(e2e["module_dpi_cycle_contract"], "e1/e1-h1/generated/module_dpi/cycle_contract.json")
         self.assertEqual(e2e["module_dpi_test_plan"], "e1/e1-h1/generated/module_dpi/module_test_plan.json")
+        self.assertEqual(
+            e2e["module_dpi_readme_cycle_coverage"],
+            "e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json",
+        )
         self.assertEqual(e2e["rtl_lowering"], "e1/generated/pipeline/15_rtl_lowering.json")
         self.assertEqual(e2e["rtl_lowering_status"], "pass")
         self.assertEqual(e2e["tinyllama_imp2_coverage"], "e1/generated/pipeline/16_tinyllama_imp2_coverage.json")
@@ -1886,6 +1971,10 @@ class E1H1Tests(unittest.TestCase):
             e2e["full_checkpoint_module_test_plan"],
             "e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json",
         )
+        self.assertEqual(
+            e2e["full_checkpoint_module_readme_cycle_coverage"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json",
+        )
         self.assertEqual(e2e["full_checkpoint_module_dpi_status"], "pass")
         self.assertEqual(e2e["full_checkpoint_module_dpi_count"], 7)
         self.assertEqual(e2e["target_package"], "e1/e1-h1/generated/targets/manifest.json")
@@ -1935,6 +2024,7 @@ class E1H1Tests(unittest.TestCase):
             e2e["module_dpi_isolation_proof"],
             e2e["module_dpi_cycle_contract"],
             e2e["module_dpi_test_plan"],
+            e2e["module_dpi_readme_cycle_coverage"],
             e2e["rtl_lowering"],
             e2e["tinyllama_imp2_coverage"],
             e2e["full_tinyllama_checkpoint_execution"],
@@ -1952,6 +2042,7 @@ class E1H1Tests(unittest.TestCase):
             e2e["full_checkpoint_module_isolation_proof"],
             e2e["full_checkpoint_module_cycle_contract"],
             e2e["full_checkpoint_module_test_plan"],
+            e2e["full_checkpoint_module_readme_cycle_coverage"],
             e2e["systemverilog_plan"],
             e2e["target_package_plan"],
             e2e["target_package"],

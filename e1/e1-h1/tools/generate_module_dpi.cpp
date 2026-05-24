@@ -466,6 +466,62 @@ std::string cycle_contract_json(const std::vector<ModuleSpec>& specs) {
   return out.str();
 }
 
+void validate_readme_cycle_coverage(const fs::path& repo_root,
+                                    const std::vector<ModuleSpec>& specs) {
+  const fs::path readme_path = repo_root / "e1/e1-h1/docs/modules/README.md";
+  const std::string readme = read_text(readme_path);
+  require_contains(readme, "## Cycle Diagram", readme_path);
+  require_contains(readme, "### Generated Cycle Contract Index", readme_path);
+  for (const ModuleSpec& spec : specs) {
+    require_contains(readme, spec.name, readme_path);
+    require_contains(readme, cycle_template_name(spec), readme_path);
+    for (const CycleStep& step : cycle_steps(spec)) {
+      require_contains(readme, step.phase, readme_path);
+    }
+  }
+}
+
+std::string readme_cycle_coverage_json(const std::vector<ModuleSpec>& specs) {
+  std::ostringstream out;
+  out << "{\n";
+  out << "  \"schema\": \"e1-h1-module-dpi-readme-cycle-coverage-v0\",\n";
+  out << "  \"generator\": \"e1/e1-h1/tools/generate_module_dpi.cpp\",\n";
+  out << "  \"readme\": \"e1/e1-h1/docs/modules/README.md\",\n";
+  out << "  \"readme_diagram\": \"e1/e1-h1/docs/modules/README.md#cycle-diagram\",\n";
+  out << "  \"readme_index\": \"e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index\",\n";
+  out << "  \"cycle_contract\": \"e1/e1-h1/generated/module_dpi/cycle_contract.json\",\n";
+  out << "  \"construction_rule\": \"every_base_ip_cycle_template_and_phase_name_is_present_in_the_module_readme\",\n";
+  out << "  \"modules\": [\n";
+  for (std::size_t i = 0; i < specs.size(); ++i) {
+    const ModuleSpec& spec = specs[i];
+    const std::vector<CycleStep> steps = cycle_steps(spec);
+    std::vector<std::string> phase_names;
+    for (const CycleStep& step : steps) {
+      phase_names.push_back(step.phase);
+    }
+    out << "    {\n";
+    out << "      \"name\": \"" << spec.name << "\",\n";
+    out << "      \"top_module\": \"" << spec.top_module << "\",\n";
+    out << "      \"template\": \"" << cycle_template_name(spec) << "\",\n";
+    out << "      \"cycle_period\": " << steps.size() << ",\n";
+    out << "      \"readme_diagram\": \"e1/e1-h1/docs/modules/README.md#cycle-diagram\",\n";
+    out << "      \"readme_index\": \"e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index\",\n";
+    write_string_array_json(out, "phase_names", phase_names, "      ");
+    out << ",\n";
+    out << "      \"checks\": [\n";
+    out << "        {\"name\": \"readme_cycle_diagram_present\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"readme_cycle_contract_index_present\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"readme_module_name_present\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"readme_template_present\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"readme_all_phase_names_present\", \"status\": \"pass\"}\n";
+    out << "      ]\n";
+    out << "    }" << (i + 1 == specs.size() ? "\n" : ",\n");
+  }
+  out << "  ]\n";
+  out << "}\n";
+  return out.str();
+}
+
 std::vector<std::string> verilator_fixed_args() {
   return {
       "--cc",
@@ -547,6 +603,7 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
   out << "  \"module_isolation_proof\": \"e1/e1-h1/generated/module_dpi/module_isolation.json\",\n";
   out << "  \"cycle_contract\": \"e1/e1-h1/generated/module_dpi/cycle_contract.json\",\n";
   out << "  \"module_test_plan\": \"e1/e1-h1/generated/module_dpi/module_test_plan.json\",\n";
+  out << "  \"readme_cycle_coverage\": \"e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json\",\n";
   out << "  \"reference_implementation\": \"imp1\",\n";
   out << "  \"candidate_implementation\": \"imp2\",\n";
   out << "  \"construction_rule\": \"one_generated_probe_per_ip_with_only_that_systemverilog_dut_and_cpp_dpi_neighbors\",\n";
@@ -572,6 +629,7 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
     out << "      \"flist\": \"e1/e1-h1/generated/module_dpi/flists/" << spec.name << ".f\",\n";
     out << "      \"imp2_rtl\": \"" << spec.imp2_rtl << "\",\n";
     out << "      \"module_test_plan\": \"e1/e1-h1/generated/module_dpi/module_test_plan.json\",\n";
+    out << "      \"readme_cycle_coverage\": \"e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json\",\n";
     out << "      \"vip_cases\": [";
     for (std::size_t j = 0; j < spec.vip_cases.size(); ++j) {
       out << (j == 0 ? "" : ", ") << "\"" << spec.vip_cases[j] << "\"";
@@ -1178,6 +1236,7 @@ int main(int argc, char** argv) {
       validate_isolation(repo_root, spec);
       validate_cycle_contract(spec);
     }
+    validate_readme_cycle_coverage(repo_root, specs);
 
     write_text(output_dir / "e1_h1_module_dpi_scoreboard.cpp", scoreboard_cpp());
     for (const ModuleSpec& spec : specs) {
@@ -1190,6 +1249,7 @@ int main(int argc, char** argv) {
     write_text(output_dir / "module_isolation.json", module_isolation_json(specs));
     write_text(output_dir / "cycle_contract.json", cycle_contract_json(specs));
     write_text(output_dir / "module_test_plan.json", module_test_plan_json(specs));
+    write_text(output_dir / "readme_cycle_coverage.json", readme_cycle_coverage_json(specs));
 
     std::cout << "PASS e1_h1_generate_module_dpi " << specs.size()
               << " modules -> " << output_dir.generic_string() << "\n";

@@ -5,6 +5,7 @@
   "module_isolation_proof": "e1/e1-h1/generated/module_dpi/module_isolation.json",
   "cycle_contract": "e1/e1-h1/generated/module_dpi/cycle_contract.json",
   "module_test_plan": "e1/e1-h1/generated/module_dpi/module_test_plan.json",
+  "readme_cycle_coverage": "e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json",
   "reference_implementation": "imp1",
   "candidate_implementation": "imp2",
   "construction_rule": "one_generated_probe_per_ip_with_only_that_systemverilog_dut_and_cpp_dpi_neighbors",
@@ -28,6 +29,7 @@
       "flist": "e1/e1-h1/generated/module_dpi/flists/control_cpu.f",
       "imp2_rtl": "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv",
       "module_test_plan": "e1/e1-h1/generated/module_dpi/module_test_plan.json",
+      "readme_cycle_coverage": "e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json",
       "vip_cases": ["reset_to_first_command", "command_backpressure", "array_completion"],
       "cycle_notes": ["cycle 0 reset release", "cycle 1 command valid with backpressure", "cycle 5 array completion"],
       "cycle_contract": {
@@ -60,6 +62,7 @@
       "flist": "e1/e1-h1/generated/module_dpi/flists/rgmii_ethernet_ingress.f",
       "imp2_rtl": "e1/e1-h1/rtl/imp2/e1_h1_rgmii_ethernet_ingress.sv",
       "module_test_plan": "e1/e1-h1/generated/module_dpi/module_test_plan.json",
+      "readme_cycle_coverage": "e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json",
       "vip_cases": ["reset_idle", "minimum_frame", "downstream_backpressure"],
       "cycle_notes": ["cycle 1 frame starts", "cycles 1-5 nibbles shift", "cycle 7 downstream accepts"],
       "cycle_contract": {
@@ -94,6 +97,7 @@
       "flist": "e1/e1-h1/generated/module_dpi/flists/ingress_sram.f",
       "imp2_rtl": "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv",
       "module_test_plan": "e1/e1-h1/generated/module_dpi/module_test_plan.json",
+      "readme_cycle_coverage": "e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json",
       "vip_cases": ["reset_empty", "single_stream_word", "array_backpressure"],
       "cycle_notes": ["cycle 0 latch first word", "cycle 1 hold while array_ready_i is low", "cycle 2 release latched word"],
       "cycle_contract": {
@@ -124,6 +128,7 @@
       "flist": "e1/e1-h1/generated/module_dpi/flists/activation_sram.f",
       "imp2_rtl": "e1/e1-h1/rtl/imp2/e1_h1_config_sram.sv",
       "module_test_plan": "e1/e1-h1/generated/module_dpi/module_test_plan.json",
+      "readme_cycle_coverage": "e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json",
       "vip_cases": ["reset_empty", "single_config_read", "parameterized_size"],
       "cycle_notes": ["cycle -1 reset clears initialized_q", "cycle 0 initialization latch sets", "cycle 1 initialized_q holds"],
       "cycle_contract": {
@@ -151,6 +156,7 @@
       "flist": "e1/e1-h1/generated/module_dpi/flists/accumulator_sram.f",
       "imp2_rtl": "e1/e1-h1/rtl/imp2/e1_h1_config_sram.sv",
       "module_test_plan": "e1/e1-h1/generated/module_dpi/module_test_plan.json",
+      "readme_cycle_coverage": "e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json",
       "vip_cases": ["reset_empty", "single_config_read", "wide_accumulator_word"],
       "cycle_notes": ["cycle -1 reset clears initialized_q", "cycle 0 initialization latch sets", "cycle 1 initialized_q holds"],
       "cycle_contract": {
@@ -178,6 +184,7 @@
       "flist": "e1/e1-h1/generated/module_dpi/flists/systolic_array.f",
       "imp2_rtl": "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
       "module_test_plan": "e1/e1-h1/generated/module_dpi/module_test_plan.json",
+      "readme_cycle_coverage": "e1/e1-h1/generated/module_dpi/readme_cycle_coverage.json",
       "vip_cases": ["command_acceptance", "input_burst", "completion_pulse"],
       "cycle_notes": ["cycle 1 command accepted", "cycles 3-6 input burst drains", "cycle 6 completion pulse"],
       "cycle_contract": {
