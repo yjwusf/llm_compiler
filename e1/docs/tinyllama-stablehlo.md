@@ -196,9 +196,12 @@ stream, generated cycle scheduler, tile engine, control scheduler, graph
 sequencer, and integrated top into one construction check. It records
 `full_checkpoint_graph_lowering: true` only after every ordered layer slot has
 an RTL slot-engine binding, the full top integrates the graph dispatcher, and
-the full linear command stream is checked through the RTL top. It still records
-`full_checkpoint_numeric_output_equivalence: false`; arithmetic kernel
-equivalence against a live TinyLlama checkpoint remains future work.
+the full linear command stream is checked through the RTL top. The proof emits
+one binding for each of the 308 ordered layer slots, with layer, slot-in-layer,
+global-slot index, selected RTL engine, cycle template, and module-DPI probe
+metadata. It still records `full_checkpoint_numeric_output_equivalence: false`;
+arithmetic kernel equivalence against a live TinyLlama checkpoint remains
+future work.
 
 The full-checkpoint module-DPI generation artifact is produced by
 `e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp`. It emits

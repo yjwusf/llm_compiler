@@ -2003,15 +2003,48 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(graph_rtl_proof["graph"]["total_graph_slots"], 308)
         self.assertEqual(graph_rtl_proof["graph"]["total_linear_slots"], 154)
         self.assertEqual(graph_rtl_proof["graph"]["total_control_slots"], 154)
+        self.assertEqual(graph_rtl_proof["graph"]["slot_binding_count"], 308)
         self.assertEqual(graph_rtl_proof["command_stream"]["total_tile_commands"], 3784704)
         self.assertEqual(graph_rtl_proof["command_stream"]["total_rtl_cycles"], 30277632)
         self.assertEqual(graph_rtl_proof["rtl_artifacts"]["top"], rtl_top["top_rtl"])
         self.assertEqual(graph_rtl_proof["rtl_artifacts"]["latch_buffer"], rtl_top["latch_buffer_rtl"])
         self.assertEqual(graph_rtl_proof["rtl_artifacts"]["systolic_array"], rtl_top["systolic_array_rtl"])
         self.assertEqual({check["status"] for check in graph_rtl_proof["checks"]}, {"pass"})
-        self.assertEqual(len(graph_rtl_proof["slot_bindings"]), 14)
+        self.assertEqual(len(graph_rtl_proof["slot_bindings"]), 308)
         self.assertEqual(
-            [binding["name"] for binding in graph_rtl_proof["slot_bindings"]],
+            [binding["global_slot"] for binding in graph_rtl_proof["slot_bindings"]],
+            list(range(308)),
+        )
+        self.assertEqual(
+            {binding["layer"] for binding in graph_rtl_proof["slot_bindings"]},
+            set(range(22)),
+        )
+        self.assertEqual(
+            {
+                binding["slot_in_layer"]
+                for binding in graph_rtl_proof["slot_bindings"]
+            },
+            set(range(14)),
+        )
+        self.assertTrue(
+            all(
+                binding["global_slot"] == binding["layer"] * 14 + binding["slot_in_layer"]
+                for binding in graph_rtl_proof["slot_bindings"]
+            )
+        )
+        self.assertEqual(
+            sum(1 for binding in graph_rtl_proof["slot_bindings"] if binding["kind"] == "linear"),
+            154,
+        )
+        self.assertEqual(
+            sum(1 for binding in graph_rtl_proof["slot_bindings"] if binding["kind"] != "linear"),
+            154,
+        )
+        first_layer_bindings = [
+            binding for binding in graph_rtl_proof["slot_bindings"] if binding["layer"] == 0
+        ]
+        self.assertEqual(
+            [binding["name"] for binding in first_layer_bindings],
             [op["name"] for op in first_layer["ops"]],
         )
         self.assertEqual(

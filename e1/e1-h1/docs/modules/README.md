@@ -231,7 +231,9 @@ The pipeline also emits
 `e1/generated/pipeline/25_full_checkpoint_graph_rtl_lowering_proof.json`, which
 ties the layer plan, generated graph sequencer, slot engines, latch buffer,
 systolic array, and full-command harness into one construction proof that the
-ordered TinyLlama graph slots are lowered to RTL slot-engine dispatch.
+ordered TinyLlama graph slots are lowered to RTL slot-engine dispatch. Its
+`slot_bindings` table enumerates all 308 layer/slot instances with the selected
+slot engine, cycle template, separated modules, and module-DPI probe.
 
 The generated full-checkpoint module-DPI collateral applies the same
 module-only rule to generated RTL modules. The C++ generator emits one probe

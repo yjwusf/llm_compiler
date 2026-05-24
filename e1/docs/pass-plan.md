@@ -130,8 +130,10 @@ hardware and device code.
     - Output: a construction proof that every ordered TinyLlama graph slot is
       bound to a generated slot-scoped RTL engine, that the full linear command
       stream runs through the integrated RTL top, and that command payloads and
-      documented phases are checked. This proves graph-slot RTL lowering and
-      still does not claim TinyLlama numeric output equivalence.
+      documented phases are checked. The proof materializes all 308 layer/slot
+      bindings, not just the repeated 14-slot template. This proves graph-slot
+      RTL lowering and still does not claim TinyLlama numeric output
+      equivalence.
 26. `e1_generate_full_checkpoint_module_dpi`
     - Input: generated full-checkpoint RTL modules.
     - Output: C++-generated module-DPI probes, flists, C++ mains, scoreboard,

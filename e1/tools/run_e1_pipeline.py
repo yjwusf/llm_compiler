@@ -4372,26 +4372,34 @@ def emit_full_checkpoint_graph_rtl_lowering_proof(
     graph_sequencer: dict[str, Any],
     rtl_top: dict[str, Any],
 ) -> dict[str, Any]:
-    first_layer_ops = full_checkpoint_rtl_lowering["layers"][0]["ops"]
     slot_bindings: list[dict[str, Any]] = []
-    for slot, op in enumerate(first_layer_ops):
-        is_linear = op["kind"] == "linear"
-        slot_bindings.append(
-            {
-                "slot": slot,
-                "name": op["name"],
-                "kind": op["kind"],
-                "ip": op["ip"],
-                "rtl_engine": "e1_h1_tinyllama_linear_slot_engine"
-                if is_linear
-                else "e1_h1_tinyllama_control_slot_engine",
-                "rtl_file": rtl_top["linear_slot_engine_rtl"] if is_linear else rtl_top["control_slot_engine_rtl"],
-                "cycle_template": "tile_command_8_cycle_cpu_latch_array_template"
-                if is_linear
-                else "control_op_4_cycle_cpu_template",
-                "separated_modules": ["ingress_sram", "systolic_array"] if is_linear else ["control_cpu"],
-            }
-        )
+    total_layer_slots = int(full_checkpoint_rtl_lowering["aggregate"]["linear_ops_per_layer"]) + int(
+        full_checkpoint_rtl_lowering["aggregate"]["control_ops_per_layer"]
+    )
+    for layer_entry in full_checkpoint_rtl_lowering["layers"]:
+        layer = int(layer_entry["layer"])
+        for slot_in_layer, op in enumerate(layer_entry["ops"]):
+            is_linear = op["kind"] == "linear"
+            slot_bindings.append(
+                {
+                    "global_slot": layer * total_layer_slots + slot_in_layer,
+                    "layer": layer,
+                    "slot_in_layer": slot_in_layer,
+                    "name": op["name"],
+                    "kind": op["kind"],
+                    "ip": op["ip"],
+                    "rtl_engine": "e1_h1_tinyllama_linear_slot_engine"
+                    if is_linear
+                    else "e1_h1_tinyllama_control_slot_engine",
+                    "rtl_file": rtl_top["linear_slot_engine_rtl"] if is_linear else rtl_top["control_slot_engine_rtl"],
+                    "cycle_template": "tile_command_8_cycle_cpu_latch_array_template"
+                    if is_linear
+                    else "control_op_4_cycle_cpu_template",
+                    "module_dpi_probe": op["module_dpi_probe"],
+                    "lowering_status": op["status"],
+                    "separated_modules": ["ingress_sram", "systolic_array"] if is_linear else ["control_cpu"],
+                }
+            )
 
     artifact_paths = [
         rtl_top["top_rtl"],
@@ -4409,9 +4417,6 @@ def emit_full_checkpoint_graph_rtl_lowering_proof(
         control_scheduler["scheduler_rtl"],
         graph_sequencer["scheduler_rtl"],
     ]
-    total_layer_slots = int(full_checkpoint_rtl_lowering["aggregate"]["linear_ops_per_layer"]) + int(
-        full_checkpoint_rtl_lowering["aggregate"]["control_ops_per_layer"]
-    )
     expected_graph_slots = int(full_checkpoint_rtl_lowering["aggregate"]["layers"]) * total_layer_slots
     checks = [
         {
@@ -4436,10 +4441,20 @@ def emit_full_checkpoint_graph_rtl_lowering_proof(
             else "fail",
         },
         {
-            "name": "every_layer_template_slot_has_rtl_binding",
+            "name": "every_graph_slot_has_rtl_binding",
             "status": "pass"
-            if len(slot_bindings) == total_layer_slots
+            if len(slot_bindings) == expected_graph_slots
             and all(binding["rtl_file"] for binding in slot_bindings)
+            else "fail",
+        },
+        {
+            "name": "graph_slot_bindings_are_ordered_by_layer_and_slot",
+            "status": "pass"
+            if [binding["global_slot"] for binding in slot_bindings] == list(range(expected_graph_slots))
+            and all(
+                binding["global_slot"] == binding["layer"] * total_layer_slots + binding["slot_in_layer"]
+                for binding in slot_bindings
+            )
             else "fail",
         },
         {
@@ -4484,6 +4499,7 @@ def emit_full_checkpoint_graph_rtl_lowering_proof(
             "control_slots_per_layer": full_checkpoint_rtl_lowering["aggregate"]["control_ops_per_layer"],
             "total_linear_slots": graph_sequencer["total_linear_slots"],
             "total_control_slots": graph_sequencer["total_control_slots"],
+            "slot_binding_count": len(slot_bindings),
         },
         "command_stream": {
             "total_tile_commands": command_stream["total_tile_commands"],
