@@ -1039,6 +1039,7 @@ class E1H1Tests(unittest.TestCase):
         )
         self.assertEqual(summary["full_checkpoint_rtl_top_full_expected_linear_commands"], 3784704)
         self.assertTrue(summary["full_checkpoint_rtl_top_full_command_count_rtl_execution"])
+        self.assertTrue(summary["full_checkpoint_rtl_top_full_command_payload_schedule_check"])
         self.assertEqual(
             summary["full_checkpoint_module_dpi_generation"],
             "e1/generated/pipeline/25_full_checkpoint_module_dpi_generation.json",
@@ -1587,6 +1588,9 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(rtl_top["full_expected_linear_commands"], 3784704)
         self.assertGreater(rtl_top["full_execution_cycle_limit"], rtl_top["total_tile_commands_full"])
         self.assertTrue(rtl_top["full_command_count_rtl_execution"])
+        self.assertTrue(rtl_top["full_command_payload_schedule_check"])
+        self.assertEqual(rtl_top["full_command_payload_schedule"], command_stream["header"])
+        self.assertIn("checks every command payload", rtl_top["full_command_count_rtl_execution_note"])
         self.assertIn("does not yet prove TinyLlama numeric", rtl_top["full_command_count_rtl_execution_note"])
         self.assertEqual([entry["cycle"] for entry in rtl_top["phase_template"]], list(range(4)))
         self.assertEqual({check["status"] for check in rtl_top["checks"]}, {"pass"})
@@ -1699,6 +1703,7 @@ class E1H1Tests(unittest.TestCase):
         )
         self.assertEqual(e2e["full_checkpoint_rtl_top_full_expected_linear_commands"], 3784704)
         self.assertTrue(e2e["full_checkpoint_rtl_top_full_command_count_rtl_execution"])
+        self.assertTrue(e2e["full_checkpoint_rtl_top_full_command_payload_schedule_check"])
         self.assertEqual(
             e2e["full_checkpoint_module_dpi_generation"],
             "e1/generated/pipeline/25_full_checkpoint_module_dpi_generation.json",
@@ -2149,6 +2154,7 @@ class E1H1Tests(unittest.TestCase):
             self.assertEqual(full_top_full_report["smoke_max_tiles_per_linear_slot"], 0)
             self.assertEqual(full_top_full_report["issued_linear_commands"], 3784704)
             self.assertEqual(full_top_full_report["expected_linear_commands"], 3784704)
+            self.assertEqual(full_top_full_report["checked_command_payloads"], 3784704)
             self.assertEqual(full_top_full_report["issued_control_ops"], 154)
             self.assertEqual(full_top_full_report["issued_graph_slots"], 308)
             self.assertLess(full_top_full_report["cycles"], full_top_full_report["cycle_limit"])

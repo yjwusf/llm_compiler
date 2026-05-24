@@ -276,7 +276,19 @@
         {"name": "buffer_array_valid_o", "width": "1", "description": "Latch-buffer output valid toward the array."},
         {"name": "buffer_array_ready_o", "width": "1", "description": "Array input-ready signal toward the latch buffer."},
         {"name": "array_done_o", "width": "1", "description": "Array completion pulse."},
-        {"name": "array_debug_busy_o", "width": "1", "description": "Array debug busy signal."}
+        {"name": "array_debug_busy_o", "width": "1", "description": "Array debug busy signal."},
+        {"name": "debug_array_cmd_valid_o", "width": "1", "description": "Observed array command-valid at the full top boundary."},
+        {"name": "debug_array_cmd_ready_o", "width": "1", "description": "Observed array command-ready at the full top boundary."},
+        {"name": "debug_cmd_input_addr_o", "width": "32", "description": "Observed input tile base address for payload schedule checks."},
+        {"name": "debug_cmd_weight_addr_o", "width": "32", "description": "Observed weight tile base address for payload schedule checks."},
+        {"name": "debug_cmd_output_addr_o", "width": "32", "description": "Observed output tile base address for payload schedule checks."},
+        {"name": "debug_cmd_rows_o", "width": "16", "description": "Observed tile row count for payload schedule checks."},
+        {"name": "debug_cmd_cols_o", "width": "16", "description": "Observed tile column count for payload schedule checks."},
+        {"name": "debug_cmd_depth_o", "width": "16", "description": "Observed tile reduction depth for payload schedule checks."},
+        {"name": "debug_linear_layer_o", "width": "32", "description": "Observed linear slot layer for payload schedule checks."},
+        {"name": "debug_linear_op_index_o", "width": "3", "description": "Observed linear op index for payload schedule checks."},
+        {"name": "debug_linear_input_tile_o", "width": "9", "description": "Observed input tile index for payload schedule checks."},
+        {"name": "debug_linear_output_tile_o", "width": "9", "description": "Observed output tile index for payload schedule checks."}
       ]
     }
   ]

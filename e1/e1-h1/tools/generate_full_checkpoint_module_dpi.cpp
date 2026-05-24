@@ -777,6 +777,18 @@ std::string sv_full_top() {
   logic buffer_array_ready_o;
   logic array_done_o;
   logic array_debug_busy_o;
+  logic debug_array_cmd_valid_o;
+  logic debug_array_cmd_ready_o;
+  logic [31:0] debug_cmd_input_addr_o;
+  logic [31:0] debug_cmd_weight_addr_o;
+  logic [31:0] debug_cmd_output_addr_o;
+  logic [15:0] debug_cmd_rows_o;
+  logic [15:0] debug_cmd_cols_o;
+  logic [15:0] debug_cmd_depth_o;
+  logic [31:0] debug_linear_layer_o;
+  logic [2:0] debug_linear_op_index_o;
+  logic [8:0] debug_linear_input_tile_o;
+  logic [8:0] debug_linear_output_tile_o;
 
   e1_h1_tinyllama_full_checkpoint_top #(
     .SmokeMaxTilesPerLinearSlot(1)
@@ -807,7 +819,19 @@ std::string sv_full_top() {
     .buffer_array_valid_o(buffer_array_valid_o),
     .buffer_array_ready_o(buffer_array_ready_o),
     .array_done_o(array_done_o),
-    .array_debug_busy_o(array_debug_busy_o)
+    .array_debug_busy_o(array_debug_busy_o),
+    .debug_array_cmd_valid_o(debug_array_cmd_valid_o),
+    .debug_array_cmd_ready_o(debug_array_cmd_ready_o),
+    .debug_cmd_input_addr_o(debug_cmd_input_addr_o),
+    .debug_cmd_weight_addr_o(debug_cmd_weight_addr_o),
+    .debug_cmd_output_addr_o(debug_cmd_output_addr_o),
+    .debug_cmd_rows_o(debug_cmd_rows_o),
+    .debug_cmd_cols_o(debug_cmd_cols_o),
+    .debug_cmd_depth_o(debug_cmd_depth_o),
+    .debug_linear_layer_o(debug_linear_layer_o),
+    .debug_linear_op_index_o(debug_linear_op_index_o),
+    .debug_linear_input_tile_o(debug_linear_input_tile_o),
+    .debug_linear_output_tile_o(debug_linear_output_tile_o)
   );
 
   initial begin
@@ -1105,6 +1129,18 @@ std::vector<ModuleSpec> module_specs() {
               {"buffer_array_ready_o", "1", "Array input-ready signal toward the latch buffer."},
               {"array_done_o", "1", "Array completion pulse."},
               {"array_debug_busy_o", "1", "Array debug busy signal."},
+              {"debug_array_cmd_valid_o", "1", "Observed array command-valid at the full top boundary."},
+              {"debug_array_cmd_ready_o", "1", "Observed array command-ready at the full top boundary."},
+              {"debug_cmd_input_addr_o", "32", "Observed input tile base address for payload schedule checks."},
+              {"debug_cmd_weight_addr_o", "32", "Observed weight tile base address for payload schedule checks."},
+              {"debug_cmd_output_addr_o", "32", "Observed output tile base address for payload schedule checks."},
+              {"debug_cmd_rows_o", "16", "Observed tile row count for payload schedule checks."},
+              {"debug_cmd_cols_o", "16", "Observed tile column count for payload schedule checks."},
+              {"debug_cmd_depth_o", "16", "Observed tile reduction depth for payload schedule checks."},
+              {"debug_linear_layer_o", "32", "Observed linear slot layer for payload schedule checks."},
+              {"debug_linear_op_index_o", "3", "Observed linear op index for payload schedule checks."},
+              {"debug_linear_input_tile_o", "9", "Observed input tile index for payload schedule checks."},
+              {"debug_linear_output_tile_o", "9", "Observed output tile index for payload schedule checks."},
           },
           sv_full_top(),
       },

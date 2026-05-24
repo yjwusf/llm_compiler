@@ -29,7 +29,19 @@ module e1_h1_tinyllama_full_checkpoint_top #(
   output logic        buffer_array_valid_o,
   output logic        buffer_array_ready_o,
   output logic        array_done_o,
-  output logic        array_debug_busy_o
+  output logic        array_debug_busy_o,
+  output logic        debug_array_cmd_valid_o,
+  output logic        debug_array_cmd_ready_o,
+  output logic [31:0] debug_cmd_input_addr_o,
+  output logic [31:0] debug_cmd_weight_addr_o,
+  output logic [31:0] debug_cmd_output_addr_o,
+  output logic [15:0] debug_cmd_rows_o,
+  output logic [15:0] debug_cmd_cols_o,
+  output logic [15:0] debug_cmd_depth_o,
+  output logic [31:0] debug_linear_layer_o,
+  output logic [2:0]  debug_linear_op_index_o,
+  output logic [8:0]  debug_linear_input_tile_o,
+  output logic [8:0]  debug_linear_output_tile_o
 );
 
   logic        graph_slot_valid;
@@ -70,6 +82,18 @@ module e1_h1_tinyllama_full_checkpoint_top #(
   assign graph_op_done = active_is_linear ? linear_done : control_done;
   assign busy_o = graph_busy || linear_busy_o || control_busy_o;
   assign error_o = linear_error;
+  assign debug_array_cmd_valid_o = array_cmd_valid;
+  assign debug_array_cmd_ready_o = array_cmd_ready;
+  assign debug_cmd_input_addr_o = cmd_input_addr;
+  assign debug_cmd_weight_addr_o = cmd_weight_addr;
+  assign debug_cmd_output_addr_o = cmd_output_addr;
+  assign debug_cmd_rows_o = cmd_rows;
+  assign debug_cmd_cols_o = cmd_cols;
+  assign debug_cmd_depth_o = cmd_depth;
+  assign debug_linear_layer_o = linear_layer;
+  assign debug_linear_op_index_o = linear_op_index;
+  assign debug_linear_input_tile_o = linear_input_tile;
+  assign debug_linear_output_tile_o = linear_output_tile;
 
   e1_h1_tinyllama_graph_sequencer u_graph_sequencer (
     .clk_i(clk_i),
@@ -167,7 +191,7 @@ module e1_h1_tinyllama_full_checkpoint_top #(
     end
   end
 
-  logic [439:0] unused_debug;
+  logic [139:0] unused_debug;
   assign unused_debug = {
     graph_busy,
     graph_slot_valid,
@@ -176,18 +200,6 @@ module e1_h1_tinyllama_full_checkpoint_top #(
     control_commit,
     buffer_array_data,
     scheduler_cmd_valid,
-    array_cmd_valid,
-    array_cmd_ready,
-    cmd_input_addr,
-    cmd_weight_addr,
-    cmd_output_addr,
-    cmd_rows,
-    cmd_cols,
-    cmd_depth,
-    linear_layer,
-    linear_op_index,
-    linear_input_tile,
-    linear_output_tile,
     control_layer,
     control_op_index,
     control_kind

@@ -306,6 +306,18 @@ Each section is the review contract for a generated RTL module and its module-on
 | `buffer_array_ready_o` | 1 | Array input-ready signal toward the latch buffer. |
 | `array_done_o` | 1 | Array completion pulse. |
 | `array_debug_busy_o` | 1 | Array debug busy signal. |
+| `debug_array_cmd_valid_o` | 1 | Observed array command-valid at the full top boundary. |
+| `debug_array_cmd_ready_o` | 1 | Observed array command-ready at the full top boundary. |
+| `debug_cmd_input_addr_o` | 32 | Observed input tile base address for payload schedule checks. |
+| `debug_cmd_weight_addr_o` | 32 | Observed weight tile base address for payload schedule checks. |
+| `debug_cmd_output_addr_o` | 32 | Observed output tile base address for payload schedule checks. |
+| `debug_cmd_rows_o` | 16 | Observed tile row count for payload schedule checks. |
+| `debug_cmd_cols_o` | 16 | Observed tile column count for payload schedule checks. |
+| `debug_cmd_depth_o` | 16 | Observed tile reduction depth for payload schedule checks. |
+| `debug_linear_layer_o` | 32 | Observed linear slot layer for payload schedule checks. |
+| `debug_linear_op_index_o` | 3 | Observed linear op index for payload schedule checks. |
+| `debug_linear_input_tile_o` | 9 | Observed input tile index for payload schedule checks. |
+| `debug_linear_output_tile_o` | 9 | Observed output tile index for payload schedule checks. |
 
 ### Cycle Notes
 

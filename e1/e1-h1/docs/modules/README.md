@@ -179,8 +179,10 @@ and bounds each linear slot to a two-tile smoke so the full graph order is
 covered quickly. The generated full-command top harness compiles the same RTL
 with `SmokeMaxTilesPerLinearSlot=0` and runs all 3,784,704 planned linear tile
 commands through the graph sequencer, selected slot engine, latch buffer, and
-systolic-array handshake path. This is command-count RTL execution evidence;
-it still does not claim TinyLlama numeric output equivalence.
+systolic-array handshake path. It checks every accepted command payload against
+`e1/code/program/e1_tinyllama_full_schedule.hpp`. This is full command-stream
+RTL execution evidence; it still does not claim TinyLlama numeric output
+equivalence.
 
 The generated full-checkpoint module-DPI collateral applies the same
 module-only rule to generated RTL modules. The C++ generator emits one probe

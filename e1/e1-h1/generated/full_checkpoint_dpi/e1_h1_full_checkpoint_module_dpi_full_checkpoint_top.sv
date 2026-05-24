@@ -49,6 +49,18 @@ module e1_h1_full_checkpoint_module_dpi_full_checkpoint_top;
   logic buffer_array_ready_o;
   logic array_done_o;
   logic array_debug_busy_o;
+  logic debug_array_cmd_valid_o;
+  logic debug_array_cmd_ready_o;
+  logic [31:0] debug_cmd_input_addr_o;
+  logic [31:0] debug_cmd_weight_addr_o;
+  logic [31:0] debug_cmd_output_addr_o;
+  logic [15:0] debug_cmd_rows_o;
+  logic [15:0] debug_cmd_cols_o;
+  logic [15:0] debug_cmd_depth_o;
+  logic [31:0] debug_linear_layer_o;
+  logic [2:0] debug_linear_op_index_o;
+  logic [8:0] debug_linear_input_tile_o;
+  logic [8:0] debug_linear_output_tile_o;
 
   e1_h1_tinyllama_full_checkpoint_top #(
     .SmokeMaxTilesPerLinearSlot(1)
@@ -79,7 +91,19 @@ module e1_h1_full_checkpoint_module_dpi_full_checkpoint_top;
     .buffer_array_valid_o(buffer_array_valid_o),
     .buffer_array_ready_o(buffer_array_ready_o),
     .array_done_o(array_done_o),
-    .array_debug_busy_o(array_debug_busy_o)
+    .array_debug_busy_o(array_debug_busy_o),
+    .debug_array_cmd_valid_o(debug_array_cmd_valid_o),
+    .debug_array_cmd_ready_o(debug_array_cmd_ready_o),
+    .debug_cmd_input_addr_o(debug_cmd_input_addr_o),
+    .debug_cmd_weight_addr_o(debug_cmd_weight_addr_o),
+    .debug_cmd_output_addr_o(debug_cmd_output_addr_o),
+    .debug_cmd_rows_o(debug_cmd_rows_o),
+    .debug_cmd_cols_o(debug_cmd_cols_o),
+    .debug_cmd_depth_o(debug_cmd_depth_o),
+    .debug_linear_layer_o(debug_linear_layer_o),
+    .debug_linear_op_index_o(debug_linear_op_index_o),
+    .debug_linear_input_tile_o(debug_linear_input_tile_o),
+    .debug_linear_output_tile_o(debug_linear_output_tile_o)
   );
 
   initial begin

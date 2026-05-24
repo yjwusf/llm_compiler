@@ -168,9 +168,10 @@ as separated modules; control slots run through a separate CPU/control slot
 engine without instantiating array RTL. The bounded harness runs all 308 graph
 slots with a two-tile smoke per linear slot. The full-command harness compiles
 the same top with `SmokeMaxTilesPerLinearSlot=0` and runs all 3,784,704 planned
-linear tile commands through the RTL control/handshake path. This is
-full-command-count RTL execution evidence, not yet TinyLlama numeric output
-comparison.
+linear tile commands through the RTL control/handshake path while checking each
+accepted command payload against `e1/code/program/e1_tinyllama_full_schedule.hpp`.
+This is full command-stream RTL execution evidence, not yet TinyLlama numeric
+output comparison.
 
 The full-checkpoint module-DPI generation artifact is produced by
 `e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp`. It emits
