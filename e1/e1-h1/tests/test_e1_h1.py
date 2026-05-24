@@ -46,6 +46,7 @@ FULL_CHECKPOINT_MODULE_DPI_GENERATOR = E1_H1 / "tools" / "generate_full_checkpoi
 FULL_CHECKPOINT_MODULE_DPI_DIR = E1_H1 / "generated" / "full_checkpoint_dpi"
 FULL_CHECKPOINT_MODULE_DPI_MANIFEST = FULL_CHECKPOINT_MODULE_DPI_DIR / "manifest.json"
 FULL_CHECKPOINT_MODULE_INTERFACES = FULL_CHECKPOINT_MODULE_DPI_DIR / "module_interfaces.md"
+FULL_CHECKPOINT_MODULE_ISOLATION = FULL_CHECKPOINT_MODULE_DPI_DIR / "module_isolation.json"
 
 
 def load_generator():
@@ -510,8 +511,16 @@ class E1H1Tests(unittest.TestCase):
             manifest["module_interfaces_doc"],
             "e1/e1-h1/generated/full_checkpoint_dpi/module_interfaces.md",
         )
+        self.assertEqual(
+            manifest["module_isolation_proof"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json",
+        )
         self.assertTrue(FULL_CHECKPOINT_MODULE_INTERFACES.exists())
+        self.assertTrue(FULL_CHECKPOINT_MODULE_ISOLATION.exists())
         interface_doc = FULL_CHECKPOINT_MODULE_INTERFACES.read_text(encoding="utf-8")
+        isolation = json.loads(FULL_CHECKPOINT_MODULE_ISOLATION.read_text(encoding="utf-8"))
+        self.assertEqual(isolation["schema"], "e1-h1-full-checkpoint-module-isolation-v0")
+        isolation_by_name = {module["name"]: module for module in isolation["modules"]}
         self.assertIn("# Generated Full-Checkpoint RTL Module Interfaces", interface_doc)
         self.assertIn("one_generated_probe_per_full_checkpoint_rtl_module", manifest["construction_rule"])
         modules = {module["name"]: module for module in manifest["modules"]}
@@ -530,6 +539,10 @@ class E1H1Tests(unittest.TestCase):
         for module in modules.values():
             self.assertEqual(module["scope"], "generated_full_checkpoint_module_only")
             self.assertIn("cpp_dpi", module["neighbors"])
+            self.assertIn(module["name"], isolation_by_name)
+            self.assertEqual(isolation_by_name[module["name"]]["dut_module"], module["top_module"])
+            self.assertEqual(isolation_by_name[module["name"]]["rtl_files"], module["rtl"])
+            self.assertEqual({check["status"] for check in isolation_by_name[module["name"]]["checks"]}, {"pass"})
             self.assertGreater(len(module["cycle_notes"]), 0, module)
             self.assertGreater(len(module["input_signals"]), 0, module)
             self.assertGreater(len(module["output_signals"]), 0, module)
@@ -556,6 +569,21 @@ class E1H1Tests(unittest.TestCase):
                 )
 
         full_top = modules["full_checkpoint_top"]
+        self.assertEqual(
+            isolation_by_name["full_checkpoint_top"]["allowed_child_modules"],
+            [
+                "e1_h1_tinyllama_graph_sequencer",
+                "e1_h1_tinyllama_linear_slot_engine",
+                "e1_h1_tinyllama_control_slot_engine",
+            ],
+        )
+        self.assertIn("e1_h1_systolic_array", isolation_by_name["full_checkpoint_top"]["forbidden_child_modules"])
+        self.assertIn("e1_h1_stream_sram", isolation_by_name["full_checkpoint_top"]["forbidden_child_modules"])
+        self.assertEqual(
+            isolation_by_name["control_slot_engine"]["allowed_child_modules"],
+            [],
+        )
+        self.assertIn("e1_h1_systolic_array", isolation_by_name["control_slot_engine"]["forbidden_child_modules"])
         self.assertIn(
             "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv",
             full_top["rtl"],
@@ -1049,6 +1077,10 @@ class E1H1Tests(unittest.TestCase):
         self.assertEqual(
             summary["full_checkpoint_module_interfaces_doc"],
             "e1/e1-h1/generated/full_checkpoint_dpi/module_interfaces.md",
+        )
+        self.assertEqual(
+            summary["full_checkpoint_module_isolation_proof"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json",
         )
         self.assertEqual(summary["full_checkpoint_module_dpi_status"], "pass")
         self.assertEqual(summary["full_checkpoint_module_dpi_count"], 7)
@@ -1622,6 +1654,10 @@ class E1H1Tests(unittest.TestCase):
             "e1/e1-h1/generated/full_checkpoint_dpi/module_interfaces.md",
         )
         self.assertEqual(
+            full_checkpoint_module_dpi["module_isolation_proof"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json",
+        )
+        self.assertEqual(
             full_checkpoint_module_dpi["scoreboard"],
             "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp",
         )
@@ -1642,6 +1678,9 @@ class E1H1Tests(unittest.TestCase):
         for module in full_checkpoint_module_dpi["modules"]:
             self.assertGreater(len(module["input_signals"]), 0, module)
             self.assertGreater(len(module["output_signals"]), 0, module)
+            self.assertEqual(module["isolation"]["dut_module"], module["top_module"])
+            self.assertEqual(module["isolation"]["rtl_files"], module["rtl"])
+            self.assertEqual({check["status"] for check in module["isolation"]["checks"]}, {"pass"})
             for signal in [*module["input_signals"], *module["output_signals"]]:
                 self.assertEqual(set(signal), {"name", "width", "description"})
             for path in [module["probe"], module["main"], module["flist"], *module["rtl"]]:
@@ -1717,6 +1756,10 @@ class E1H1Tests(unittest.TestCase):
             e2e["full_checkpoint_module_interfaces_doc"],
             "e1/e1-h1/generated/full_checkpoint_dpi/module_interfaces.md",
         )
+        self.assertEqual(
+            e2e["full_checkpoint_module_isolation_proof"],
+            "e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json",
+        )
         self.assertEqual(e2e["full_checkpoint_module_dpi_status"], "pass")
         self.assertEqual(e2e["full_checkpoint_module_dpi_count"], 7)
         self.assertEqual(e2e["target_package"], "e1/e1-h1/generated/targets/manifest.json")
@@ -1777,6 +1820,7 @@ class E1H1Tests(unittest.TestCase):
             e2e["full_checkpoint_module_dpi_generation"],
             e2e["full_checkpoint_module_dpi_manifest"],
             e2e["full_checkpoint_module_interfaces_doc"],
+            e2e["full_checkpoint_module_isolation_proof"],
             e2e["systemverilog_plan"],
             e2e["target_package_plan"],
             e2e["target_package"],

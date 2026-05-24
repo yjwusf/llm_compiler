@@ -1,0 +1,126 @@
+{
+  "schema": "e1-h1-full-checkpoint-module-isolation-v0",
+  "generator": "e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp",
+  "construction_rule": "one_probe_per_generated_module_with_only_declared_rtl_children",
+  "modules": [
+    {
+      "name": "linear_scheduler",
+      "dut_module": "e1_h1_tinyllama_linear_scheduler",
+      "dut_rtl": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler.sv",
+      "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_scheduler.sv",
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_scheduler.f",
+      "boundary": "cpp_dpi_drives_every_neighbor_not_listed_as_allowed_child_module",
+      "rtl_files": ["e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler.sv"],
+      "allowed_child_modules": [],
+      "forbidden_child_modules": ["e1_h1_tinyllama_linear_tile_engine", "e1_h1_tinyllama_control_scheduler", "e1_h1_tinyllama_graph_sequencer", "e1_h1_tinyllama_linear_slot_engine", "e1_h1_tinyllama_control_slot_engine", "e1_h1_tinyllama_full_checkpoint_top", "e1_h1_stream_sram", "e1_h1_systolic_array"],
+      "checks": [
+        {"name": "dut_rtl_defines_top_module", "status": "pass"},
+        {"name": "allowed_child_modules_present", "status": "pass"},
+        {"name": "forbidden_child_modules_absent", "status": "pass"},
+        {"name": "flist_contains_declared_rtl_plus_probe", "status": "pass"}
+      ]
+    },
+    {
+      "name": "linear_tile_engine",
+      "dut_module": "e1_h1_tinyllama_linear_tile_engine",
+      "dut_rtl": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_tile_engine.sv",
+      "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine.sv",
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_tile_engine.f",
+      "boundary": "cpp_dpi_drives_every_neighbor_not_listed_as_allowed_child_module",
+      "rtl_files": ["e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler.sv", "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv", "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv", "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_tile_engine.sv"],
+      "allowed_child_modules": ["e1_h1_tinyllama_linear_scheduler", "e1_h1_stream_sram", "e1_h1_systolic_array"],
+      "forbidden_child_modules": ["e1_h1_tinyllama_control_scheduler", "e1_h1_tinyllama_graph_sequencer", "e1_h1_tinyllama_linear_slot_engine", "e1_h1_tinyllama_control_slot_engine", "e1_h1_tinyllama_full_checkpoint_top"],
+      "checks": [
+        {"name": "dut_rtl_defines_top_module", "status": "pass"},
+        {"name": "allowed_child_modules_present", "status": "pass"},
+        {"name": "forbidden_child_modules_absent", "status": "pass"},
+        {"name": "flist_contains_declared_rtl_plus_probe", "status": "pass"}
+      ]
+    },
+    {
+      "name": "control_scheduler",
+      "dut_module": "e1_h1_tinyllama_control_scheduler",
+      "dut_rtl": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_scheduler.sv",
+      "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_scheduler.sv",
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_scheduler.f",
+      "boundary": "cpp_dpi_drives_every_neighbor_not_listed_as_allowed_child_module",
+      "rtl_files": ["e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_scheduler.sv"],
+      "allowed_child_modules": [],
+      "forbidden_child_modules": ["e1_h1_tinyllama_linear_scheduler", "e1_h1_tinyllama_linear_tile_engine", "e1_h1_tinyllama_graph_sequencer", "e1_h1_tinyllama_linear_slot_engine", "e1_h1_tinyllama_control_slot_engine", "e1_h1_tinyllama_full_checkpoint_top", "e1_h1_stream_sram", "e1_h1_systolic_array"],
+      "checks": [
+        {"name": "dut_rtl_defines_top_module", "status": "pass"},
+        {"name": "allowed_child_modules_present", "status": "pass"},
+        {"name": "forbidden_child_modules_absent", "status": "pass"},
+        {"name": "flist_contains_declared_rtl_plus_probe", "status": "pass"}
+      ]
+    },
+    {
+      "name": "graph_sequencer",
+      "dut_module": "e1_h1_tinyllama_graph_sequencer",
+      "dut_rtl": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.sv",
+      "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_graph_sequencer.sv",
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/graph_sequencer.f",
+      "boundary": "cpp_dpi_drives_every_neighbor_not_listed_as_allowed_child_module",
+      "rtl_files": ["e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.sv"],
+      "allowed_child_modules": [],
+      "forbidden_child_modules": ["e1_h1_tinyllama_linear_scheduler", "e1_h1_tinyllama_linear_tile_engine", "e1_h1_tinyllama_control_scheduler", "e1_h1_tinyllama_linear_slot_engine", "e1_h1_tinyllama_control_slot_engine", "e1_h1_tinyllama_full_checkpoint_top", "e1_h1_stream_sram", "e1_h1_systolic_array"],
+      "checks": [
+        {"name": "dut_rtl_defines_top_module", "status": "pass"},
+        {"name": "allowed_child_modules_present", "status": "pass"},
+        {"name": "forbidden_child_modules_absent", "status": "pass"},
+        {"name": "flist_contains_declared_rtl_plus_probe", "status": "pass"}
+      ]
+    },
+    {
+      "name": "linear_slot_engine",
+      "dut_module": "e1_h1_tinyllama_linear_slot_engine",
+      "dut_rtl": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv",
+      "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine.sv",
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_slot_engine.f",
+      "boundary": "cpp_dpi_drives_every_neighbor_not_listed_as_allowed_child_module",
+      "rtl_files": ["e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv", "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv", "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv"],
+      "allowed_child_modules": ["e1_h1_stream_sram", "e1_h1_systolic_array"],
+      "forbidden_child_modules": ["e1_h1_tinyllama_linear_scheduler", "e1_h1_tinyllama_linear_tile_engine", "e1_h1_tinyllama_control_scheduler", "e1_h1_tinyllama_graph_sequencer", "e1_h1_tinyllama_control_slot_engine", "e1_h1_tinyllama_full_checkpoint_top"],
+      "checks": [
+        {"name": "dut_rtl_defines_top_module", "status": "pass"},
+        {"name": "allowed_child_modules_present", "status": "pass"},
+        {"name": "forbidden_child_modules_absent", "status": "pass"},
+        {"name": "flist_contains_declared_rtl_plus_probe", "status": "pass"}
+      ]
+    },
+    {
+      "name": "control_slot_engine",
+      "dut_module": "e1_h1_tinyllama_control_slot_engine",
+      "dut_rtl": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv",
+      "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine.sv",
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_slot_engine.f",
+      "boundary": "cpp_dpi_drives_every_neighbor_not_listed_as_allowed_child_module",
+      "rtl_files": ["e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv"],
+      "allowed_child_modules": [],
+      "forbidden_child_modules": ["e1_h1_tinyllama_linear_scheduler", "e1_h1_tinyllama_linear_tile_engine", "e1_h1_tinyllama_control_scheduler", "e1_h1_tinyllama_graph_sequencer", "e1_h1_tinyllama_linear_slot_engine", "e1_h1_tinyllama_full_checkpoint_top", "e1_h1_stream_sram", "e1_h1_systolic_array"],
+      "checks": [
+        {"name": "dut_rtl_defines_top_module", "status": "pass"},
+        {"name": "allowed_child_modules_present", "status": "pass"},
+        {"name": "forbidden_child_modules_absent", "status": "pass"},
+        {"name": "flist_contains_declared_rtl_plus_probe", "status": "pass"}
+      ]
+    },
+    {
+      "name": "full_checkpoint_top",
+      "dut_module": "e1_h1_tinyllama_full_checkpoint_top",
+      "dut_rtl": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.sv",
+      "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_full_checkpoint_top.sv",
+      "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/full_checkpoint_top.f",
+      "boundary": "cpp_dpi_drives_every_neighbor_not_listed_as_allowed_child_module",
+      "rtl_files": ["e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_graph_sequencer.sv", "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv", "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv", "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv", "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv", "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.sv"],
+      "allowed_child_modules": ["e1_h1_tinyllama_graph_sequencer", "e1_h1_tinyllama_linear_slot_engine", "e1_h1_tinyllama_control_slot_engine"],
+      "forbidden_child_modules": ["e1_h1_tinyllama_linear_scheduler", "e1_h1_tinyllama_linear_tile_engine", "e1_h1_tinyllama_control_scheduler", "e1_h1_stream_sram", "e1_h1_systolic_array"],
+      "checks": [
+        {"name": "dut_rtl_defines_top_module", "status": "pass"},
+        {"name": "allowed_child_modules_present", "status": "pass"},
+        {"name": "forbidden_child_modules_absent", "status": "pass"},
+        {"name": "flist_contains_declared_rtl_plus_probe", "status": "pass"}
+      ]
+    }
+  ]
+}

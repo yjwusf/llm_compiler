@@ -30,6 +30,65 @@ struct ModuleSpec {
   std::string probe_sv;
 };
 
+const std::vector<std::string>& known_child_modules() {
+  static const std::vector<std::string> modules = {
+      "e1_h1_tinyllama_linear_scheduler",
+      "e1_h1_tinyllama_linear_tile_engine",
+      "e1_h1_tinyllama_control_scheduler",
+      "e1_h1_tinyllama_graph_sequencer",
+      "e1_h1_tinyllama_linear_slot_engine",
+      "e1_h1_tinyllama_control_slot_engine",
+      "e1_h1_tinyllama_full_checkpoint_top",
+      "e1_h1_stream_sram",
+      "e1_h1_systolic_array",
+  };
+  return modules;
+}
+
+std::vector<std::string> allowed_child_modules(const ModuleSpec& spec) {
+  if (spec.name == "linear_tile_engine") {
+    return {
+        "e1_h1_tinyllama_linear_scheduler",
+        "e1_h1_stream_sram",
+        "e1_h1_systolic_array",
+    };
+  }
+  if (spec.name == "linear_slot_engine") {
+    return {
+        "e1_h1_stream_sram",
+        "e1_h1_systolic_array",
+    };
+  }
+  if (spec.name == "full_checkpoint_top") {
+    return {
+        "e1_h1_tinyllama_graph_sequencer",
+        "e1_h1_tinyllama_linear_slot_engine",
+        "e1_h1_tinyllama_control_slot_engine",
+    };
+  }
+  return {};
+}
+
+std::vector<std::string> forbidden_child_modules(const ModuleSpec& spec) {
+  const std::vector<std::string> allowed = allowed_child_modules(spec);
+  std::vector<std::string> forbidden;
+  for (const std::string& module : known_child_modules()) {
+    if (module == spec.top_module) {
+      continue;
+    }
+    bool is_allowed = false;
+    for (const std::string& child : allowed) {
+      if (child == module) {
+        is_allowed = true;
+      }
+    }
+    if (!is_allowed) {
+      forbidden.push_back(module);
+    }
+  }
+  return forbidden;
+}
+
 std::string read_text(const fs::path& path) {
   std::ifstream input(path);
   if (!input) {
@@ -56,6 +115,20 @@ void validate_rtl_inputs(const fs::path& repo_root, const ModuleSpec& spec) {
     if (text.find("module " + spec.top_module) == std::string::npos &&
         rtl == spec.rtl.back()) {
       throw std::runtime_error(rtl + " does not define " + spec.top_module);
+    }
+  }
+}
+
+void validate_isolation(const fs::path& repo_root, const ModuleSpec& spec) {
+  const std::string dut_text = read_text(repo_root / spec.rtl.back());
+  for (const std::string& child : allowed_child_modules(spec)) {
+    if (dut_text.find(child) == std::string::npos) {
+      throw std::runtime_error(spec.name + " is missing allowed child " + child);
+    }
+  }
+  for (const std::string& child : forbidden_child_modules(spec)) {
+    if (dut_text.find(child) != std::string::npos) {
+      throw std::runtime_error(spec.name + " unexpectedly references forbidden child " + child);
     }
   }
 }
@@ -143,6 +216,17 @@ void write_signal_array_json(std::ostringstream& out,
   out << indent << "]";
 }
 
+void write_string_array_json(std::ostringstream& out,
+                             const std::string& key,
+                             const std::vector<std::string>& values,
+                             const std::string& indent) {
+  out << indent << "\"" << key << "\": [";
+  for (std::size_t i = 0; i < values.size(); ++i) {
+    out << (i == 0 ? "" : ", ") << "\"" << values[i] << "\"";
+  }
+  out << "]";
+}
+
 std::string module_interfaces_markdown(const std::vector<ModuleSpec>& specs) {
   std::ostringstream out;
   out << "# Generated Full-Checkpoint RTL Module Interfaces\n\n";
@@ -184,6 +268,7 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
   out << "  \"generator\": \"e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp\",\n";
   out << "  \"scoreboard\": \"e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp\",\n";
   out << "  \"module_interfaces_doc\": \"e1/e1-h1/generated/full_checkpoint_dpi/module_interfaces.md\",\n";
+  out << "  \"module_isolation_proof\": \"e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json\",\n";
   out << "  \"construction_rule\": \"one_generated_probe_per_full_checkpoint_rtl_module_with_cpp_dpi_driven_neighbors\",\n";
   out << "  \"modules\": [\n";
   for (std::size_t i = 0; i < specs.size(); ++i) {
@@ -211,6 +296,41 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
     out << ",\n";
     write_signal_array_json(out, "output_signals", spec.output_signals, "      ");
     out << "\n";
+    out << "    }" << (i + 1 == specs.size() ? "\n" : ",\n");
+  }
+  out << "  ]\n";
+  out << "}\n";
+  return out.str();
+}
+
+std::string module_isolation_json(const std::vector<ModuleSpec>& specs) {
+  std::ostringstream out;
+  out << "{\n";
+  out << "  \"schema\": \"e1-h1-full-checkpoint-module-isolation-v0\",\n";
+  out << "  \"generator\": \"e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp\",\n";
+  out << "  \"construction_rule\": \"one_probe_per_generated_module_with_only_declared_rtl_children\",\n";
+  out << "  \"modules\": [\n";
+  for (std::size_t i = 0; i < specs.size(); ++i) {
+    const ModuleSpec& spec = specs[i];
+    out << "    {\n";
+    out << "      \"name\": \"" << spec.name << "\",\n";
+    out << "      \"dut_module\": \"" << spec.top_module << "\",\n";
+    out << "      \"dut_rtl\": \"" << spec.rtl.back() << "\",\n";
+    out << "      \"probe\": \"e1/e1-h1/generated/full_checkpoint_dpi/" << spec.probe_module << ".sv\",\n";
+    out << "      \"flist\": \"e1/e1-h1/generated/full_checkpoint_dpi/flists/" << spec.name << ".f\",\n";
+    out << "      \"boundary\": \"cpp_dpi_drives_every_neighbor_not_listed_as_allowed_child_module\",\n";
+    write_string_array_json(out, "rtl_files", spec.rtl, "      ");
+    out << ",\n";
+    write_string_array_json(out, "allowed_child_modules", allowed_child_modules(spec), "      ");
+    out << ",\n";
+    write_string_array_json(out, "forbidden_child_modules", forbidden_child_modules(spec), "      ");
+    out << ",\n";
+    out << "      \"checks\": [\n";
+    out << "        {\"name\": \"dut_rtl_defines_top_module\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"allowed_child_modules_present\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"forbidden_child_modules_absent\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"flist_contains_declared_rtl_plus_probe\", \"status\": \"pass\"}\n";
+    out << "      ]\n";
     out << "    }" << (i + 1 == specs.size() ? "\n" : ",\n");
   }
   out << "  ]\n";
@@ -1175,6 +1295,7 @@ int main(int argc, char** argv) {
 
     for (const ModuleSpec& spec : specs) {
       validate_rtl_inputs(repo_root, spec);
+      validate_isolation(repo_root, spec);
     }
 
     write_text(output_dir / "e1_h1_full_checkpoint_module_dpi_scoreboard.cpp", scoreboard_cpp());
@@ -1186,6 +1307,7 @@ int main(int argc, char** argv) {
     }
     write_text(output_dir / "manifest.json", manifest_json(specs));
     write_text(output_dir / "module_interfaces.md", module_interfaces_markdown(specs));
+    write_text(output_dir / "module_isolation.json", module_isolation_json(specs));
 
     std::cout << "PASS e1_h1_generate_full_checkpoint_module_dpi " << specs.size()
               << " modules -> " << output_dir.generic_string() << "\n";

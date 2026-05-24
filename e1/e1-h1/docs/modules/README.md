@@ -113,6 +113,7 @@ The generated artifacts are:
 - `e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp`
 - `e1/e1-h1/generated/full_checkpoint_dpi/manifest.json`
 - `e1/e1-h1/generated/full_checkpoint_dpi/module_interfaces.md`
+- `e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json`
 - `e1/e1-h1/generated/full_checkpoint_dpi/flists/*.f`
 
 The Verilator harness checks sampled RTL command payloads against
@@ -192,4 +193,6 @@ graph sequencer, linear slot engine, control slot engine, and full-checkpoint
 top. Each probe records cycle notes through DPI and has its own flist and C++
 main, so review can build and run the modules individually. The same generator
 also emits `e1/e1-h1/generated/full_checkpoint_dpi/module_interfaces.md`, which
-is the generated input/output signal table for every full-checkpoint RTL module.
+is the generated input/output signal table for every full-checkpoint RTL module,
+and `e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json`, which lists
+the allowed and forbidden RTL child modules for each generated DUT.

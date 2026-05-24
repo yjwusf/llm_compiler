@@ -123,8 +123,8 @@ hardware and device code.
 25. `e1_generate_full_checkpoint_module_dpi`
     - Input: generated full-checkpoint RTL modules.
     - Output: C++-generated module-DPI probes, flists, C++ mains, scoreboard,
-      manifest, and generated input/output signal documentation for each
-      generated full-checkpoint RTL module.
+      manifest, generated input/output signal documentation, and generated
+      isolation proof for each generated full-checkpoint RTL module.
 26. `e1_end_to_end_smoke`
     - Input: all prior pass artifacts.
     - Output: one evidence report tying StableHLO, E1-H1 binding, device code,
@@ -169,7 +169,8 @@ E1 is complete when TinyLlama-derived reduced workloads can run through:
   Verilator smoke and a full-command-payload/phase Verilator run.
 - C++-generated module-DPI probes for the generated full-checkpoint RTL
   modules, including their flists, C++ mains, scoreboard, and per-module cycle
-  notes.
+  notes, plus generated isolation proof showing each DUT's allowed and
+  forbidden child modules.
 - Implementation matrix showing active `imp2` candidates and `imp1` mock
   references.
 - Generated SystemVerilog mocks.

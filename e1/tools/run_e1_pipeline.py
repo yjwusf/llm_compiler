@@ -664,7 +664,10 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
     manifest_path = module_dpi_dir / "manifest.json"
     manifest = load_json(manifest_path)
     module_interfaces_doc = module_dpi_dir / "module_interfaces.md"
+    module_isolation_path = module_dpi_dir / "module_isolation.json"
+    module_isolation = load_json(module_isolation_path)
     module_names = {module["name"] for module in manifest["modules"]}
+    isolation_by_name = {module["name"]: module for module in module_isolation["modules"]}
     expected_modules = {
         "linear_scheduler",
         "linear_tile_engine",
@@ -700,9 +703,23 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
             "status": "pass" if module_interfaces_doc.exists() else "fail",
         },
         {
+            "name": "generated_full_checkpoint_isolation_proof_exists",
+            "status": "pass" if module_isolation_path.exists() else "fail",
+        },
+        {
             "name": "all_generated_full_checkpoint_modules_have_signal_docs",
             "status": "pass"
             if all(module.get("input_signals") and module.get("output_signals") for module in manifest["modules"])
+            else "fail",
+        },
+        {
+            "name": "all_generated_full_checkpoint_modules_have_isolation_proofs",
+            "status": "pass"
+            if module_names == set(isolation_by_name)
+            and all(
+                all(check["status"] == "pass" for check in isolation_by_name[module["name"]]["checks"])
+                for module in manifest["modules"]
+            )
             else "fail",
         },
         {
@@ -724,6 +741,7 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
         "manifest": repo_rel(manifest_path),
         "scoreboard": manifest["scoreboard"],
         "module_interfaces_doc": manifest["module_interfaces_doc"],
+        "module_isolation_proof": manifest["module_isolation_proof"],
         "module_count": len(manifest["modules"]),
         "modules": [
             {
@@ -737,6 +755,7 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
                 "cycle_notes": module["cycle_notes"],
                 "input_signals": module["input_signals"],
                 "output_signals": module["output_signals"],
+                "isolation": isolation_by_name[module["name"]],
             }
             for module in manifest["modules"]
         ],
@@ -4659,6 +4678,7 @@ def run_pipeline(
         "full_checkpoint_module_dpi_generation": repo_rel(full_checkpoint_module_dpi_out),
         "full_checkpoint_module_dpi_manifest": full_checkpoint_module_dpi["manifest"],
         "full_checkpoint_module_interfaces_doc": full_checkpoint_module_dpi["module_interfaces_doc"],
+        "full_checkpoint_module_isolation_proof": full_checkpoint_module_dpi["module_isolation_proof"],
         "full_checkpoint_module_dpi_status": full_checkpoint_module_dpi["status"],
         "full_checkpoint_module_dpi_count": full_checkpoint_module_dpi["module_count"],
         "systemverilog_plan": repo_rel(sv_out),
@@ -4727,6 +4747,7 @@ def run_pipeline(
         "full_checkpoint_module_dpi_generation": repo_rel(full_checkpoint_module_dpi_out),
         "full_checkpoint_module_dpi_manifest": full_checkpoint_module_dpi["manifest"],
         "full_checkpoint_module_interfaces_doc": full_checkpoint_module_dpi["module_interfaces_doc"],
+        "full_checkpoint_module_isolation_proof": full_checkpoint_module_dpi["module_isolation_proof"],
         "full_checkpoint_module_dpi_status": full_checkpoint_module_dpi["status"],
         "full_checkpoint_module_dpi_count": full_checkpoint_module_dpi["module_count"],
         "pipeline": architecture["pipeline"],
