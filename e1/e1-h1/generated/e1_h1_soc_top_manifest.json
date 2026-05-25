@@ -1005,7 +1005,7 @@
       "module": "e1_h1_systolic_array",
       "name": "systolic_array",
       "parameter_count": 4,
-      "port_count": 16,
+      "port_count": 17,
       "rtl": "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
       "status": "pass"
     }
@@ -1215,6 +1215,36 @@
         "single_output_driver": true
       },
       "width": 1
+    },
+    {
+      "direction": "output",
+      "drivers": [
+        {
+          "direction": "output",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "result_digest_o",
+          "width": 32
+        }
+      ],
+      "endpoints": [
+        {
+          "direction": "output",
+          "instance": "systolic_array",
+          "module": "e1_h1_systolic_array",
+          "port": "result_digest_o",
+          "width": 32
+        }
+      ],
+      "inouts": [],
+      "loads": [],
+      "name": "debug_array_result_digest_o",
+      "validation": {
+        "has_input_load": false,
+        "inout_only": false,
+        "single_output_driver": true
+      },
+      "width": 32
     },
     {
       "direction": "output",

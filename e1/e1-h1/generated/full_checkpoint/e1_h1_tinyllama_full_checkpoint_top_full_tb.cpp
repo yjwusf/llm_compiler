@@ -13,9 +13,14 @@ constexpr std::uint32_t kLayers = 22;
 constexpr std::uint32_t kTotalGraphSlots = 308;
 constexpr std::uint32_t kTotalLinearSlots = 154;
 constexpr std::uint32_t kTotalControlSlots = 154;
+constexpr std::uint32_t kControlOpsPerLayer = 7;
 constexpr std::uint32_t kSmokeMaxTilesPerLinearSlot = 0;
 constexpr std::uint32_t kExpectedLinearCommands = 3784704;
 constexpr std::uint64_t kCycleLimit = 45422400ull;
+constexpr std::uint8_t kControlIndex[kControlOpsPerLayer] = {0, 1, 2, 3, 4, 5, 6};
+constexpr std::uint8_t kControlKind[kControlOpsPerLayer] = {1, 2, 3, 4, 1, 5, 4};
+constexpr std::uint64_t kControlDigestOffsetBasis = 1469598103934665603ull;
+constexpr std::uint64_t kControlDigestPrime = 1099511628211ull;
 
 void tick(VerilatedContext& context, Ve1_h1_tinyllama_full_checkpoint_top& top) {
   top.clk_i = 0;
@@ -50,6 +55,124 @@ void advance(std::uint32_t& layer,
   }
   op_index = 0;
   ++layer;
+}
+
+std::uint64_t mix_control_word(std::uint64_t digest, std::uint32_t word) {
+  digest ^= word;
+  digest *= kControlDigestPrime;
+  return digest;
+}
+
+std::uint64_t mix_control_slot_digest(std::uint64_t digest,
+                                      std::uint32_t layer,
+                                      std::uint32_t control_op_index,
+                                      std::uint32_t control_kind) {
+  digest = mix_control_word(digest, layer);
+  digest = mix_control_word(digest, control_op_index);
+  digest = mix_control_word(digest, control_kind);
+  return digest;
+}
+
+std::uint64_t expected_control_digest() {
+  std::uint64_t digest = kControlDigestOffsetBasis;
+  for (std::uint32_t layer = 0; layer < kLayers; ++layer) {
+    for (std::uint32_t slot = 0; slot < kControlOpsPerLayer; ++slot) {
+      digest = mix_control_slot_digest(digest, layer, kControlIndex[slot], kControlKind[slot]);
+    }
+  }
+  return digest;
+}
+
+struct LinearTraceAnchor {
+  bool valid = false;
+  std::uint64_t cycle = 0;
+  std::uint32_t command_index = 0;
+  std::uint32_t layer = 0;
+  std::uint32_t op_index = 0;
+  std::uint32_t input_tile = 0;
+  std::uint32_t output_tile = 0;
+  e1_device::tinyllama_full::TileCommand expected{};
+  e1_device::tinyllama_full::TileCommand observed{};
+};
+
+struct ControlTraceAnchor {
+  bool valid = false;
+  std::uint64_t cycle = 0;
+  std::uint32_t control_index = 0;
+  std::uint32_t layer = 0;
+  std::uint32_t slot = 0;
+  std::uint32_t op_index = 0;
+  std::uint32_t kind = 0;
+};
+
+void print_tile_command_json(const e1_device::tinyllama_full::TileCommand& command) {
+  std::cout
+      << "{\"input_addr\": " << command.input_addr
+      << ", \"weight_addr\": " << command.weight_addr
+      << ", \"output_addr\": " << command.output_addr
+      << ", \"rows\": " << command.rows
+      << ", \"cols\": " << command.cols
+      << ", \"depth\": " << command.depth
+      << "}";
+}
+
+void print_linear_trace_anchor_json(const LinearTraceAnchor& anchor) {
+  std::cout
+      << "{\"valid\": " << (anchor.valid ? "true" : "false")
+      << ", \"cycle\": " << anchor.cycle
+      << ", \"command_index\": " << anchor.command_index
+      << ", \"layer\": " << anchor.layer
+      << ", \"op_index\": " << anchor.op_index
+      << ", \"input_tile\": " << anchor.input_tile
+      << ", \"output_tile\": " << anchor.output_tile
+      << ", \"expected\": ";
+  print_tile_command_json(anchor.expected);
+  std::cout << ", \"observed\": ";
+  print_tile_command_json(anchor.observed);
+  std::cout << "}";
+}
+
+void print_control_trace_anchor_json(const ControlTraceAnchor& anchor) {
+  std::cout
+      << "{\"valid\": " << (anchor.valid ? "true" : "false")
+      << ", \"cycle\": " << anchor.cycle
+      << ", \"control_index\": " << anchor.control_index
+      << ", \"layer\": " << anchor.layer
+      << ", \"slot\": " << anchor.slot
+      << ", \"op_index\": " << anchor.op_index
+      << ", \"kind\": " << anchor.kind
+      << "}";
+}
+
+void print_linear_op_trace_coverage_json(const std::uint64_t* counts) {
+  using namespace e1_device::tinyllama_full;
+  std::cout << "[";
+  for (std::uint32_t op = 0; op < kLinearOpCount; ++op) {
+    const std::uint64_t expected = kLayers * tile_count(kLinearOps[op]);
+    std::cout
+        << (op == 0 ? "" : ", ")
+        << "{\"op_index\": " << op
+        << ", \"name\": \"" << kLinearOps[op].name << "\""
+        << ", \"observed_commands\": " << counts[op]
+        << ", \"expected_commands\": " << expected
+        << "}";
+  }
+  std::cout << "]";
+}
+
+void print_control_slot_trace_coverage_json(const std::uint32_t* counts) {
+  std::cout << "[";
+  for (std::uint32_t slot = 0; slot < kControlOpsPerLayer; ++slot) {
+    std::cout
+        << (slot == 0 ? "" : ", ")
+        << "{\"slot\": " << slot
+        << ", \"op_index\": " << static_cast<unsigned>(kControlIndex[slot])
+        << ", \"kind\": " << static_cast<unsigned>(kControlKind[slot])
+        << ", \"observed_payloads\": " << counts[slot]
+        << ", \"expected_payloads\": " << kLayers
+        << "}";
+  }
+  std::cout << "]";
 }
 
 }  // namespace
@@ -88,11 +211,22 @@ int main(int argc, char** argv) {
   std::uint32_t checked_payloads = 0;
   std::uint32_t checked_phase1_scheduler_valids = 0;
   std::uint32_t checked_phase6_array_dones = 0;
+  std::uint32_t checked_control_payloads = 0;
+  std::uint32_t checked_control_commits = 0;
   std::uint32_t layer = 0;
   std::uint32_t op_index = 0;
   std::uint32_t input_tile = 0;
   std::uint32_t output_tile = 0;
+  std::uint64_t accepted_payload_digest =
+      e1_device::tinyllama_full::kCommandDigestOffsetBasis;
+  std::uint64_t accepted_control_digest = kControlDigestOffsetBasis;
   std::uint64_t cycles = 0;
+  LinearTraceAnchor first_linear_anchor;
+  LinearTraceAnchor last_linear_anchor;
+  ControlTraceAnchor first_control_anchor;
+  ControlTraceAnchor last_control_anchor;
+  std::uint64_t linear_op_command_counts[e1_device::tinyllama_full::kLinearOpCount] = {};
+  std::uint32_t control_slot_payload_counts[kControlOpsPerLayer] = {};
 
   for (; cycles < kCycleLimit && !top.done_o; ++cycles) {
     top.stream_valid_i = 1;
@@ -128,6 +262,48 @@ int main(int argc, char** argv) {
       }
       ++checked_phase1_scheduler_valids;
     }
+    if (top.debug_control_valid_o) {
+      if (top.control_cycle_phase_o != 0) {
+        fail("control valid outside phase 0");
+      }
+      if (checked_control_payloads >= kTotalControlSlots) {
+        fail("unexpected extra control payload");
+      } else {
+        const std::uint32_t expected_layer = checked_control_payloads / kControlOpsPerLayer;
+        const std::uint32_t expected_slot = checked_control_payloads % kControlOpsPerLayer;
+        if (top.debug_control_layer_o != expected_layer ||
+            top.debug_control_op_index_o != kControlIndex[expected_slot] ||
+            top.debug_control_kind_o != kControlKind[expected_slot]) {
+          fail("control slot payload does not match generated graph schedule");
+        }
+        accepted_control_digest = mix_control_slot_digest(
+            accepted_control_digest,
+            top.debug_control_layer_o,
+            top.debug_control_op_index_o,
+            top.debug_control_kind_o);
+        const ControlTraceAnchor anchor{
+            true,
+            cycles,
+            checked_control_payloads,
+            top.debug_control_layer_o,
+            expected_slot,
+            top.debug_control_op_index_o,
+            top.debug_control_kind_o,
+        };
+        if (!first_control_anchor.valid) {
+          first_control_anchor = anchor;
+        }
+        last_control_anchor = anchor;
+        ++control_slot_payload_counts[expected_slot];
+        ++checked_control_payloads;
+      }
+    }
+    if (top.debug_control_commit_o) {
+      if (top.control_cycle_phase_o != 3) {
+        fail("control commit outside phase 3");
+      }
+      ++checked_control_commits;
+    }
     if (top.debug_array_cmd_valid_o && !top.debug_scheduler_cmd_valid_o) {
       fail("array command valid without scheduler command valid");
     }
@@ -137,18 +313,44 @@ int main(int argc, char** argv) {
     if (top.debug_array_cmd_valid_o && top.debug_array_cmd_ready_o) {
       using namespace e1_device::tinyllama_full;
       const TileCommand expected = command_for(layer, op_index, input_tile, output_tile);
-      if (top.debug_cmd_input_addr_o != expected.input_addr ||
-          top.debug_cmd_weight_addr_o != expected.weight_addr ||
-          top.debug_cmd_output_addr_o != expected.output_addr ||
-          top.debug_cmd_rows_o != expected.rows ||
-          top.debug_cmd_cols_o != expected.cols ||
-          top.debug_cmd_depth_o != expected.depth ||
+      const TileCommand observed{
+          top.debug_cmd_input_addr_o,
+          top.debug_cmd_weight_addr_o,
+          top.debug_cmd_output_addr_o,
+          static_cast<std::uint16_t>(top.debug_cmd_rows_o),
+          static_cast<std::uint16_t>(top.debug_cmd_cols_o),
+          static_cast<std::uint16_t>(top.debug_cmd_depth_o),
+      };
+      if (observed.input_addr != expected.input_addr ||
+          observed.weight_addr != expected.weight_addr ||
+          observed.output_addr != expected.output_addr ||
+          observed.rows != expected.rows ||
+          observed.cols != expected.cols ||
+          observed.depth != expected.depth ||
           top.debug_linear_layer_o != layer ||
           top.debug_linear_op_index_o != op_index ||
           top.debug_linear_input_tile_o != input_tile ||
           top.debug_linear_output_tile_o != output_tile) {
         fail("full top command payload does not match generated schedule");
       }
+      const std::uint32_t command_index = checked_payloads;
+      const LinearTraceAnchor anchor{
+          true,
+          cycles,
+          command_index,
+          layer,
+          op_index,
+          input_tile,
+          output_tile,
+          expected,
+          observed,
+      };
+      if (!first_linear_anchor.valid) {
+        first_linear_anchor = anchor;
+      }
+      last_linear_anchor = anchor;
+      ++linear_op_command_counts[op_index];
+      accepted_payload_digest = mix_tile_command_digest(accepted_payload_digest, observed);
       ++checked_payloads;
       advance(layer, op_index, input_tile, output_tile);
     }
@@ -186,11 +388,38 @@ int main(int argc, char** argv) {
   if (checked_phase6_array_dones != kExpectedLinearCommands) {
     fail("phase 6 array-done count mismatch");
   }
+  const std::uint64_t expected_payload_digest =
+      e1_device::tinyllama_full::command_stream_digest();
+  if (accepted_payload_digest != expected_payload_digest) {
+    fail("accepted payload digest mismatch");
+  }
   if (top.issued_control_ops_o != kTotalControlSlots) {
     fail("control op count mismatch");
   }
+  if (checked_control_payloads != kTotalControlSlots) {
+    fail("checked control payload count mismatch");
+  }
+  if (checked_control_commits != kTotalControlSlots) {
+    fail("checked control commit count mismatch");
+  }
+  const std::uint64_t expected_control_payload_digest = expected_control_digest();
+  if (accepted_control_digest != expected_control_payload_digest) {
+    fail("accepted control payload digest mismatch");
+  }
   if (!saw_latched_hold || !saw_array_consume || !saw_linear_busy || !saw_control_busy) {
     fail("full RTL top did not exercise separated engines and latch buffer");
+  }
+  for (std::uint32_t op = 0; op < e1_device::tinyllama_full::kLinearOpCount; ++op) {
+    const std::uint64_t expected =
+        kLayers * e1_device::tinyllama_full::tile_count(e1_device::tinyllama_full::kLinearOps[op]);
+    if (linear_op_command_counts[op] != expected) {
+      fail("linear op trace coverage count mismatch");
+    }
+  }
+  for (std::uint32_t slot = 0; slot < kControlOpsPerLayer; ++slot) {
+    if (control_slot_payload_counts[slot] != kLayers) {
+      fail("control slot trace coverage count mismatch");
+    }
   }
 
   std::cout
@@ -205,14 +434,36 @@ int main(int argc, char** argv) {
       << "  \"issued_linear_commands\": " << top.issued_linear_commands_o << ",\n"
       << "  \"expected_linear_commands\": " << kExpectedLinearCommands << ",\n"
       << "  \"checked_command_payloads\": " << checked_payloads << ",\n"
+      << "  \"expected_payload_digest\": " << expected_payload_digest << ",\n"
+      << "  \"accepted_payload_digest\": " << accepted_payload_digest << ",\n"
       << "  \"checked_phase1_scheduler_valids\": " << checked_phase1_scheduler_valids << ",\n"
       << "  \"checked_phase6_array_dones\": " << checked_phase6_array_dones << ",\n"
+      << "  \"checked_control_payloads\": " << checked_control_payloads << ",\n"
+      << "  \"checked_control_commits\": " << checked_control_commits << ",\n"
+      << "  \"expected_control_digest\": " << expected_control_payload_digest << ",\n"
+      << "  \"accepted_control_digest\": " << accepted_control_digest << ",\n"
       << "  \"issued_control_ops\": " << top.issued_control_ops_o << ",\n"
       << "  \"issued_graph_slots\": " << top.issued_graph_slots_o << ",\n"
       << "  \"cycles\": " << cycles << ",\n"
       << "  \"cycle_limit\": " << kCycleLimit << ",\n"
       << "  \"saw_latched_hold\": " << (saw_latched_hold ? "true" : "false") << ",\n"
-      << "  \"saw_array_consume\": " << (saw_array_consume ? "true" : "false") << "\n"
+      << "  \"saw_array_consume\": " << (saw_array_consume ? "true" : "false") << ",\n"
+      << "  \"linear_trace_anchors\": {\"first\": ";
+  print_linear_trace_anchor_json(first_linear_anchor);
+  std::cout << ", \"last\": ";
+  print_linear_trace_anchor_json(last_linear_anchor);
+  std::cout << "},\n"
+      << "  \"control_trace_anchors\": {\"first\": ";
+  print_control_trace_anchor_json(first_control_anchor);
+  std::cout << ", \"last\": ";
+  print_control_trace_anchor_json(last_control_anchor);
+  std::cout << "},\n"
+      << "  \"linear_op_trace_coverage\": ";
+  print_linear_op_trace_coverage_json(linear_op_command_counts);
+  std::cout << ",\n"
+      << "  \"control_slot_trace_coverage\": ";
+  print_control_slot_trace_coverage_json(control_slot_payload_counts);
+  std::cout << "\n"
       << "}\n";
 
   return pass ? 0 : 1;

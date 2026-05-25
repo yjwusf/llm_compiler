@@ -15,7 +15,8 @@
   "cpp_environment": [
     "cpu_command_producer",
     "input_stream_producer",
-    "completion_scoreboard"
+    "completion_scoreboard",
+    "result_digest_scoreboard"
   ],
   "perf_counters": [
     "cycles",

@@ -16,8 +16,39 @@ extern "C" void e1_h1_module_dpi_begin(const char* module_name, const char* vip_
   std::printf("E1_H1_MODULE_DPI_BEGIN module=%s case=%s\n", g_module, g_case);
 }
 
+extern "C" void e1_h1_module_dpi_case(const char* module_name, const char* vip_case) {
+  std::printf("E1_H1_MODULE_DPI_CASE module=%s case=%s\n", module_name, vip_case);
+}
+
 extern "C" void e1_h1_module_dpi_cycle(const char* module_name, int cycle, const char* phase) {
   std::printf("E1_H1_MODULE_DPI_CYCLE module=%s cycle=%d phase=%s\n", module_name, cycle, phase);
+}
+
+extern "C" int e1_h1_module_dpi_phase_signal(
+    const char* module_name,
+    const char* signal_name,
+    int cycle,
+    int expected,
+    int actual) {
+  std::printf(
+      "E1_H1_MODULE_DPI_PHASE_SIGNAL module=%s signal=%s cycle=%d expected=%d actual=%d\n",
+      module_name,
+      signal_name,
+      cycle,
+      expected,
+      actual);
+  if (expected != actual) {
+    std::fprintf(
+        stderr,
+        "E1_H1_MODULE_DPI_PHASE_SIGNAL_MISMATCH module=%s signal=%s cycle=%d expected=%d actual=%d\n",
+        module_name,
+        signal_name,
+        cycle,
+        expected,
+        actual);
+    return 0;
+  }
+  return 1;
 }
 
 extern "C" int e1_h1_module_dpi_compare_u32(
@@ -35,6 +66,39 @@ extern "C" int e1_h1_module_dpi_compare_u32(
         cycle,
         static_cast<unsigned>(imp1_value),
         static_cast<unsigned>(imp2_value));
+    return 0;
+  }
+  return 1;
+}
+
+extern "C" int e1_h1_module_dpi_expect_systolic_digest(
+    int cycle,
+    int actual_value) {
+  static constexpr unsigned kExpectedDigests[] = {
+      0x00000000u,
+      0x001d0000u,
+      0x001d0000u,
+      0x003a1007u,
+      0x00743009u,
+      0x00e87015u,
+      0x01d0f02du,
+      0x01d0f02du,
+  };
+  const unsigned actual = static_cast<unsigned>(actual_value);
+  const unsigned expected =
+      cycle >= 0 && cycle < 8 ? kExpectedDigests[cycle] : 0xffffffffu;
+  std::printf(
+      "E1_H1_MODULE_DPI_SYSTOLIC_DIGEST cycle=%d expected=0x%x actual=0x%x\n",
+      cycle,
+      expected,
+      actual);
+  if (actual != expected) {
+    std::fprintf(
+        stderr,
+        "E1_H1_MODULE_DPI_SYSTOLIC_DIGEST_MISMATCH cycle=%d expected=0x%x actual=0x%x\n",
+        cycle,
+        expected,
+        actual);
     return 0;
   }
   return 1;

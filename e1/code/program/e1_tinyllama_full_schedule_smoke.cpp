@@ -18,6 +18,7 @@ int main() {
       kLinearOpCount == 7u &&
       commands_per_layer() == 172032ull &&
       total_tile_commands() == 3784704ull &&
+      command_stream_digest() != kCommandDigestOffsetBasis &&
       kLinearOps[0].input_tiles == 128u &&
       kLinearOps[0].output_tiles == 128u &&
       kLinearOps[6].input_tiles == 352u &&
@@ -40,6 +41,7 @@ int main() {
       << "  \"linear_ops_per_layer\": " << kLinearOpCount << ",\n"
       << "  \"commands_per_layer\": " << commands_per_layer() << ",\n"
       << "  \"total_tile_commands\": " << total_tile_commands() << ",\n"
+      << "  \"payload_digest\": " << command_stream_digest() << ",\n"
       << "  \"first_input_addr\": " << first.input_addr << ",\n"
       << "  \"last_output_addr\": " << last.output_addr << "\n"
       << "}\n";

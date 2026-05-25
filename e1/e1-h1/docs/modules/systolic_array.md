@@ -55,6 +55,7 @@ tile-stream interfaces.
 | `done_o` | 1 | core clock | Mock command completed. |
 | `error_o` | 1 | core clock | Mock command failed. |
 | `debug_busy_o` | 1 | core clock | Array is busy. |
+| `result_digest_o` | 32 | core clock | Deterministic digest of the accepted command and input beats. |
 
 ## Interface Protocol
 
@@ -69,13 +70,16 @@ JSON-configured dimensions, C++ model behavior, and L1.5 counters.
 
 ## Mock Behavior
 
-The mock accepts one command when idle, consumes four valid input beats, then
-pulses done.
+The mock accepts one command when idle, seeds `result_digest_o` from the command
+fields, folds four valid input beats into the digest, then pulses done. This is
+not a full matrix multiply result, but it makes the datapath observable to the
+module-DPI C++ scoreboard.
 
 ## C++ Model Contract
 
 The C++ model implements `SystolicArrayModel::submit` and `tick` as the
-behavioral reference for command acceptance and completion counters.
+behavioral reference for command acceptance, completion counters, and the
+command-seed portion of `result_digest_o`.
 
 C++ implementation: `e1::SystolicArrayModel` in
 `e1/code/chip_model/e1_chip_model.*`.

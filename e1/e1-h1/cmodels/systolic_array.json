@@ -5,14 +5,15 @@
   "header": "e1/code/chip_model/e1_chip_model.hpp",
   "source": "e1/code/chip_model/e1_chip_model.cpp",
   "class": "e1::SystolicArrayModel",
-  "contract": "Models command acceptance, work latency, busy state, and completion for the systolic-array placeholder.",
+  "contract": "Models command acceptance, work latency, busy state, completion, and the placeholder result digest for the systolic-array boundary.",
   "inputs": [
     "SystolicCommand",
     "tick"
   ],
   "outputs": [
     "busy",
-    "completion_counter"
+    "completion_counter",
+    "result_digest"
   ],
   "perf_counters": [
     "cycles",

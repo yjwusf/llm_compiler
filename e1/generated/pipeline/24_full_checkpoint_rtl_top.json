@@ -1,4 +1,18 @@
 {
+  "bounded_smoke_verilator_report": {
+    "issued_control_ops": 154,
+    "issued_graph_slots": 308,
+    "issued_linear_commands": 308,
+    "launch_control": 154,
+    "launch_linear": 154,
+    "layers": 22,
+    "saw_array_consume": true,
+    "saw_latched_hold": true,
+    "schema": "e1-full-checkpoint-rtl-top-smoke-v0",
+    "smoke_max_tiles_per_linear_slot": 2,
+    "status": "pass",
+    "total_graph_slots": 308
+  },
   "checks": [
     {
       "name": "full_rtl_top_generated",
@@ -21,11 +35,43 @@
       "status": "pass"
     },
     {
+      "name": "bounded_top_verilator_execution_passed",
+      "status": "pass"
+    },
+    {
+      "name": "full_command_top_verilator_execution_passed",
+      "status": "pass"
+    },
+    {
       "name": "full_command_payloads_checked_against_cpp_schedule",
       "status": "pass"
     },
     {
+      "name": "full_command_payload_digest_checked_against_cpp_schedule",
+      "status": "pass"
+    },
+    {
       "name": "full_command_cycle_phases_checked",
+      "status": "pass"
+    },
+    {
+      "name": "full_command_control_payloads_checked_against_graph_schedule",
+      "status": "pass"
+    },
+    {
+      "name": "full_command_control_payload_digest_checked",
+      "status": "pass"
+    },
+    {
+      "name": "full_command_trace_anchors_match_cpp_schedule",
+      "status": "pass"
+    },
+    {
+      "name": "full_command_per_op_trace_coverage_matches_cpp_schedule",
+      "status": "pass"
+    },
+    {
+      "name": "full_checkpoint_structural_rtl_execution_reported",
       "status": "pass"
     },
     {
@@ -39,12 +85,386 @@
   "full_checkpoint_graph_lowering": true,
   "full_checkpoint_numeric_output_equivalence": false,
   "full_checkpoint_ordered_graph_integrated_rtl": true,
-  "full_checkpoint_rtl_execution": false,
+  "full_checkpoint_rtl_execution": true,
+  "full_checkpoint_rtl_execution_scope": "structural_graph_slot_and_command_stream_verilator_execution_without_tensor_numeric_equivalence",
+  "full_checkpoint_structural_rtl_execution": true,
+  "full_checkpoint_structural_rtl_execution_note": "Structural RTL execution means the bounded graph-slot smoke and full-command Verilator runs both passed, every planned command reached the selected RTL slot-engine path, linear command payloads and digest matched the generated C++ schedule, CPU/control slot payloads and digest matched the generated graph schedule, and documented phase checks passed. It is not a TinyLlama output tensor equivalence claim.",
+  "full_command_control_digest": 6222091122336370120,
+  "full_command_control_digest_check": true,
+  "full_command_control_schedule_check": true,
   "full_command_count_rtl_execution": true,
-  "full_command_count_rtl_execution_note": "Runs every planned linear tile command through generated RTL control/handshake paths; checks every command payload against the generated C++ schedule; checks the phase 1 scheduler-valid, phase 2 array-handshake, and phase 6 array-done sequence for every command; does not yet prove TinyLlama numeric output equivalence.",
+  "full_command_count_rtl_execution_note": "Runs every planned linear tile command through generated RTL control/handshake paths; checks every command payload and the accepted payload digest against the generated C++ schedule; checks the phase 1 scheduler-valid, phase 2 array-handshake, and phase 6 array-done sequence for every command; checks every CPU/control slot payload and commit against the generated graph schedule; does not yet prove TinyLlama numeric output equivalence.",
   "full_command_cycle_phase_check": true,
+  "full_command_payload_digest": 4032683563216624323,
+  "full_command_payload_digest_check": true,
   "full_command_payload_schedule": "e1/code/program/e1_tinyllama_full_schedule.hpp",
   "full_command_payload_schedule_check": true,
+  "full_command_per_op_trace_coverage": {
+    "control_slots": [
+      {
+        "expected_payloads": 22,
+        "kind": 1,
+        "observed_payloads": 22,
+        "op_index": 0,
+        "slot": 0
+      },
+      {
+        "expected_payloads": 22,
+        "kind": 2,
+        "observed_payloads": 22,
+        "op_index": 1,
+        "slot": 1
+      },
+      {
+        "expected_payloads": 22,
+        "kind": 3,
+        "observed_payloads": 22,
+        "op_index": 2,
+        "slot": 2
+      },
+      {
+        "expected_payloads": 22,
+        "kind": 4,
+        "observed_payloads": 22,
+        "op_index": 3,
+        "slot": 3
+      },
+      {
+        "expected_payloads": 22,
+        "kind": 1,
+        "observed_payloads": 22,
+        "op_index": 4,
+        "slot": 4
+      },
+      {
+        "expected_payloads": 22,
+        "kind": 5,
+        "observed_payloads": 22,
+        "op_index": 5,
+        "slot": 5
+      },
+      {
+        "expected_payloads": 22,
+        "kind": 4,
+        "observed_payloads": 22,
+        "op_index": 6,
+        "slot": 6
+      }
+    ],
+    "linear_ops": [
+      {
+        "expected_commands": 360448,
+        "name": "q_proj",
+        "observed_commands": 360448,
+        "op_index": 0
+      },
+      {
+        "expected_commands": 45056,
+        "name": "k_proj",
+        "observed_commands": 45056,
+        "op_index": 1
+      },
+      {
+        "expected_commands": 45056,
+        "name": "v_proj",
+        "observed_commands": 45056,
+        "op_index": 2
+      },
+      {
+        "expected_commands": 360448,
+        "name": "o_proj",
+        "observed_commands": 360448,
+        "op_index": 3
+      },
+      {
+        "expected_commands": 991232,
+        "name": "gate_proj",
+        "observed_commands": 991232,
+        "op_index": 4
+      },
+      {
+        "expected_commands": 991232,
+        "name": "up_proj",
+        "observed_commands": 991232,
+        "op_index": 5
+      },
+      {
+        "expected_commands": 991232,
+        "name": "down_proj",
+        "observed_commands": 991232,
+        "op_index": 6
+      }
+    ]
+  },
+  "full_command_per_op_trace_coverage_check": true,
+  "full_command_trace_anchor_check": true,
+  "full_command_trace_anchors": {
+    "control": {
+      "first": {
+        "control_index": 0,
+        "cycle": 2,
+        "kind": 1,
+        "layer": 0,
+        "op_index": 0,
+        "slot": 0,
+        "valid": true
+      },
+      "last": {
+        "control_index": 153,
+        "cycle": 30279474,
+        "kind": 4,
+        "layer": 21,
+        "op_index": 6,
+        "slot": 6,
+        "valid": true
+      }
+    },
+    "linear": {
+      "first": {
+        "command_index": 0,
+        "cycle": 12,
+        "expected": {
+          "cols": 16,
+          "depth": 16,
+          "input_addr": 16777216,
+          "output_addr": 805306368,
+          "rows": 16,
+          "weight_addr": 268435456
+        },
+        "input_tile": 0,
+        "layer": 0,
+        "observed": {
+          "cols": 16,
+          "depth": 16,
+          "input_addr": 16777216,
+          "output_addr": 805306368,
+          "rows": 16,
+          "weight_addr": 268435456
+        },
+        "op_index": 0,
+        "output_tile": 0,
+        "valid": true
+      },
+      "last": {
+        "command_index": 3784703,
+        "cycle": 30279464,
+        "expected": {
+          "cols": 16,
+          "depth": 16,
+          "input_addr": 39212992,
+          "output_addr": 827727808,
+          "rows": 16,
+          "weight_addr": 629931968
+        },
+        "input_tile": 351,
+        "layer": 21,
+        "observed": {
+          "cols": 16,
+          "depth": 16,
+          "input_addr": 39212992,
+          "output_addr": 827727808,
+          "rows": 16,
+          "weight_addr": 629931968
+        },
+        "op_index": 6,
+        "output_tile": 127,
+        "valid": true
+      }
+    }
+  },
+  "full_command_verilator_report": {
+    "accepted_control_digest": 6222091122336370120,
+    "accepted_payload_digest": 4032683563216624323,
+    "checked_command_payloads": 3784704,
+    "checked_control_commits": 154,
+    "checked_control_payloads": 154,
+    "checked_phase1_scheduler_valids": 3784704,
+    "checked_phase6_array_dones": 3784704,
+    "control_slot_trace_coverage": [
+      {
+        "expected_payloads": 22,
+        "kind": 1,
+        "observed_payloads": 22,
+        "op_index": 0,
+        "slot": 0
+      },
+      {
+        "expected_payloads": 22,
+        "kind": 2,
+        "observed_payloads": 22,
+        "op_index": 1,
+        "slot": 1
+      },
+      {
+        "expected_payloads": 22,
+        "kind": 3,
+        "observed_payloads": 22,
+        "op_index": 2,
+        "slot": 2
+      },
+      {
+        "expected_payloads": 22,
+        "kind": 4,
+        "observed_payloads": 22,
+        "op_index": 3,
+        "slot": 3
+      },
+      {
+        "expected_payloads": 22,
+        "kind": 1,
+        "observed_payloads": 22,
+        "op_index": 4,
+        "slot": 4
+      },
+      {
+        "expected_payloads": 22,
+        "kind": 5,
+        "observed_payloads": 22,
+        "op_index": 5,
+        "slot": 5
+      },
+      {
+        "expected_payloads": 22,
+        "kind": 4,
+        "observed_payloads": 22,
+        "op_index": 6,
+        "slot": 6
+      }
+    ],
+    "control_trace_anchors": {
+      "first": {
+        "control_index": 0,
+        "cycle": 2,
+        "kind": 1,
+        "layer": 0,
+        "op_index": 0,
+        "slot": 0,
+        "valid": true
+      },
+      "last": {
+        "control_index": 153,
+        "cycle": 30279474,
+        "kind": 4,
+        "layer": 21,
+        "op_index": 6,
+        "slot": 6,
+        "valid": true
+      }
+    },
+    "cycle_limit": 45422400,
+    "cycles": 30279480,
+    "expected_control_digest": 6222091122336370120,
+    "expected_linear_commands": 3784704,
+    "expected_payload_digest": 4032683563216624323,
+    "issued_control_ops": 154,
+    "issued_graph_slots": 308,
+    "issued_linear_commands": 3784704,
+    "launch_control": 154,
+    "launch_linear": 154,
+    "layers": 22,
+    "linear_op_trace_coverage": [
+      {
+        "expected_commands": 360448,
+        "name": "q_proj",
+        "observed_commands": 360448,
+        "op_index": 0
+      },
+      {
+        "expected_commands": 45056,
+        "name": "k_proj",
+        "observed_commands": 45056,
+        "op_index": 1
+      },
+      {
+        "expected_commands": 45056,
+        "name": "v_proj",
+        "observed_commands": 45056,
+        "op_index": 2
+      },
+      {
+        "expected_commands": 360448,
+        "name": "o_proj",
+        "observed_commands": 360448,
+        "op_index": 3
+      },
+      {
+        "expected_commands": 991232,
+        "name": "gate_proj",
+        "observed_commands": 991232,
+        "op_index": 4
+      },
+      {
+        "expected_commands": 991232,
+        "name": "up_proj",
+        "observed_commands": 991232,
+        "op_index": 5
+      },
+      {
+        "expected_commands": 991232,
+        "name": "down_proj",
+        "observed_commands": 991232,
+        "op_index": 6
+      }
+    ],
+    "linear_trace_anchors": {
+      "first": {
+        "command_index": 0,
+        "cycle": 12,
+        "expected": {
+          "cols": 16,
+          "depth": 16,
+          "input_addr": 16777216,
+          "output_addr": 805306368,
+          "rows": 16,
+          "weight_addr": 268435456
+        },
+        "input_tile": 0,
+        "layer": 0,
+        "observed": {
+          "cols": 16,
+          "depth": 16,
+          "input_addr": 16777216,
+          "output_addr": 805306368,
+          "rows": 16,
+          "weight_addr": 268435456
+        },
+        "op_index": 0,
+        "output_tile": 0,
+        "valid": true
+      },
+      "last": {
+        "command_index": 3784703,
+        "cycle": 30279464,
+        "expected": {
+          "cols": 16,
+          "depth": 16,
+          "input_addr": 39212992,
+          "output_addr": 827727808,
+          "rows": 16,
+          "weight_addr": 629931968
+        },
+        "input_tile": 351,
+        "layer": 21,
+        "observed": {
+          "cols": 16,
+          "depth": 16,
+          "input_addr": 39212992,
+          "output_addr": 827727808,
+          "rows": 16,
+          "weight_addr": 629931968
+        },
+        "op_index": 6,
+        "output_tile": 127,
+        "valid": true
+      }
+    },
+    "saw_array_consume": true,
+    "saw_latched_hold": true,
+    "schema": "e1-full-checkpoint-rtl-top-full-command-v0",
+    "smoke_max_tiles_per_linear_slot": 0,
+    "status": "pass",
+    "total_graph_slots": 308
+  },
   "full_execution_cycle_limit": 45422400,
   "full_expected_linear_commands": 3784704,
   "full_top_verilator_parameter": "-GSmokeMaxTilesPerLinearSlot=0",
@@ -94,5 +514,261 @@
   "total_linear_slots": 154,
   "total_tile_commands_full": 3784704,
   "truth_boundary": "ordered_graph_slot_dispatch_to_slot_scoped_rtl_engines",
+  "verilator_execution": {
+    "build_workdir_is_temporary": true,
+    "full_command": {
+      "accepted_control_digest": 6222091122336370120,
+      "accepted_payload_digest": 4032683563216624323,
+      "checked_command_payloads": 3784704,
+      "checked_control_commits": 154,
+      "checked_control_payloads": 154,
+      "checked_phase1_scheduler_valids": 3784704,
+      "checked_phase6_array_dones": 3784704,
+      "control_slot_trace_coverage": [
+        {
+          "expected_payloads": 22,
+          "kind": 1,
+          "observed_payloads": 22,
+          "op_index": 0,
+          "slot": 0
+        },
+        {
+          "expected_payloads": 22,
+          "kind": 2,
+          "observed_payloads": 22,
+          "op_index": 1,
+          "slot": 1
+        },
+        {
+          "expected_payloads": 22,
+          "kind": 3,
+          "observed_payloads": 22,
+          "op_index": 2,
+          "slot": 2
+        },
+        {
+          "expected_payloads": 22,
+          "kind": 4,
+          "observed_payloads": 22,
+          "op_index": 3,
+          "slot": 3
+        },
+        {
+          "expected_payloads": 22,
+          "kind": 1,
+          "observed_payloads": 22,
+          "op_index": 4,
+          "slot": 4
+        },
+        {
+          "expected_payloads": 22,
+          "kind": 5,
+          "observed_payloads": 22,
+          "op_index": 5,
+          "slot": 5
+        },
+        {
+          "expected_payloads": 22,
+          "kind": 4,
+          "observed_payloads": 22,
+          "op_index": 6,
+          "slot": 6
+        }
+      ],
+      "control_trace_anchors": {
+        "first": {
+          "control_index": 0,
+          "cycle": 2,
+          "kind": 1,
+          "layer": 0,
+          "op_index": 0,
+          "slot": 0,
+          "valid": true
+        },
+        "last": {
+          "control_index": 153,
+          "cycle": 30279474,
+          "kind": 4,
+          "layer": 21,
+          "op_index": 6,
+          "slot": 6,
+          "valid": true
+        }
+      },
+      "cycle_limit": 45422400,
+      "cycles": 30279480,
+      "expected_control_digest": 6222091122336370120,
+      "expected_linear_commands": 3784704,
+      "expected_payload_digest": 4032683563216624323,
+      "issued_control_ops": 154,
+      "issued_graph_slots": 308,
+      "issued_linear_commands": 3784704,
+      "launch_control": 154,
+      "launch_linear": 154,
+      "layers": 22,
+      "linear_op_trace_coverage": [
+        {
+          "expected_commands": 360448,
+          "name": "q_proj",
+          "observed_commands": 360448,
+          "op_index": 0
+        },
+        {
+          "expected_commands": 45056,
+          "name": "k_proj",
+          "observed_commands": 45056,
+          "op_index": 1
+        },
+        {
+          "expected_commands": 45056,
+          "name": "v_proj",
+          "observed_commands": 45056,
+          "op_index": 2
+        },
+        {
+          "expected_commands": 360448,
+          "name": "o_proj",
+          "observed_commands": 360448,
+          "op_index": 3
+        },
+        {
+          "expected_commands": 991232,
+          "name": "gate_proj",
+          "observed_commands": 991232,
+          "op_index": 4
+        },
+        {
+          "expected_commands": 991232,
+          "name": "up_proj",
+          "observed_commands": 991232,
+          "op_index": 5
+        },
+        {
+          "expected_commands": 991232,
+          "name": "down_proj",
+          "observed_commands": 991232,
+          "op_index": 6
+        }
+      ],
+      "linear_trace_anchors": {
+        "first": {
+          "command_index": 0,
+          "cycle": 12,
+          "expected": {
+            "cols": 16,
+            "depth": 16,
+            "input_addr": 16777216,
+            "output_addr": 805306368,
+            "rows": 16,
+            "weight_addr": 268435456
+          },
+          "input_tile": 0,
+          "layer": 0,
+          "observed": {
+            "cols": 16,
+            "depth": 16,
+            "input_addr": 16777216,
+            "output_addr": 805306368,
+            "rows": 16,
+            "weight_addr": 268435456
+          },
+          "op_index": 0,
+          "output_tile": 0,
+          "valid": true
+        },
+        "last": {
+          "command_index": 3784703,
+          "cycle": 30279464,
+          "expected": {
+            "cols": 16,
+            "depth": 16,
+            "input_addr": 39212992,
+            "output_addr": 827727808,
+            "rows": 16,
+            "weight_addr": 629931968
+          },
+          "input_tile": 351,
+          "layer": 21,
+          "observed": {
+            "cols": 16,
+            "depth": 16,
+            "input_addr": 39212992,
+            "output_addr": 827727808,
+            "rows": 16,
+            "weight_addr": 629931968
+          },
+          "op_index": 6,
+          "output_tile": 127,
+          "valid": true
+        }
+      },
+      "saw_array_consume": true,
+      "saw_latched_hold": true,
+      "schema": "e1-full-checkpoint-rtl-top-full-command-v0",
+      "smoke_max_tiles_per_linear_slot": 0,
+      "status": "pass",
+      "total_graph_slots": 308
+    },
+    "full_command_build_command": [
+      "/opt/homebrew/bin/verilator",
+      "--cc",
+      "--exe",
+      "--build",
+      "--sv",
+      "-Wall",
+      "-Wno-DECLFILENAME",
+      "-Wno-UNUSEDSIGNAL",
+      "-Wno-UNUSEDPARAM",
+      "-Wno-WIDTHEXPAND",
+      "--top-module",
+      "e1_h1_tinyllama_full_checkpoint_top",
+      "-GSmokeMaxTilesPerLinearSlot=0",
+      "-Mdir",
+      "<full_checkpoint_top_full_obj_dir>",
+      "-CFLAGS",
+      "-std=c++17",
+      "-f",
+      "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.f",
+      "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top_full_tb.cpp"
+    ],
+    "schema": "e1-full-checkpoint-rtl-top-verilator-execution-v0",
+    "smoke": {
+      "issued_control_ops": 154,
+      "issued_graph_slots": 308,
+      "issued_linear_commands": 308,
+      "launch_control": 154,
+      "launch_linear": 154,
+      "layers": 22,
+      "saw_array_consume": true,
+      "saw_latched_hold": true,
+      "schema": "e1-full-checkpoint-rtl-top-smoke-v0",
+      "smoke_max_tiles_per_linear_slot": 2,
+      "status": "pass",
+      "total_graph_slots": 308
+    },
+    "smoke_build_command": [
+      "/opt/homebrew/bin/verilator",
+      "--cc",
+      "--exe",
+      "--build",
+      "--sv",
+      "-Wall",
+      "-Wno-DECLFILENAME",
+      "-Wno-UNUSEDSIGNAL",
+      "-Wno-UNUSEDPARAM",
+      "-Wno-WIDTHEXPAND",
+      "--top-module",
+      "e1_h1_tinyllama_full_checkpoint_top",
+      "-GSmokeMaxTilesPerLinearSlot=2",
+      "-Mdir",
+      "<full_checkpoint_top_smoke_obj_dir>",
+      "-CFLAGS",
+      "-std=c++17",
+      "-f",
+      "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top.f",
+      "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top_tb.cpp"
+    ],
+    "status": "pass"
+  },
   "verilator_tb": "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_full_checkpoint_top_tb.cpp"
 }

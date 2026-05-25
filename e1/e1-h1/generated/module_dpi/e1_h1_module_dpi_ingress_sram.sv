@@ -2,7 +2,15 @@
 
 module e1_h1_module_dpi_ingress_sram;
   import "DPI-C" function void e1_h1_module_dpi_begin(input string module_name, input string vip_case);
+  import "DPI-C" function void e1_h1_module_dpi_case(input string module_name, input string vip_case);
   import "DPI-C" function void e1_h1_module_dpi_cycle(input string module_name, input int cycle, input string phase);
+  import "DPI-C" function int e1_h1_module_dpi_phase_signal(
+    input string module_name,
+    input string signal_name,
+    input int cycle,
+    input int expected,
+    input int actual
+  );
   import "DPI-C" function int e1_h1_module_dpi_compare_u32(
     input string signal_name,
     input int cycle,
@@ -10,6 +18,7 @@ module e1_h1_module_dpi_ingress_sram;
     input int imp2_value
   );
 
+  logic [7:0] probe_cycle_phase_o;
   logic clk_i;
   logic rst_ni;
   logic stream_valid_i;
@@ -79,6 +88,9 @@ module e1_h1_module_dpi_ingress_sram;
 
   initial begin
     e1_h1_module_dpi_begin("ingress_sram", "module_only_latched_buffer");
+    e1_h1_module_dpi_case("ingress_sram", "reset_empty");
+    e1_h1_module_dpi_case("ingress_sram", "single_stream_word");
+    e1_h1_module_dpi_case("ingress_sram", "array_backpressure");
     clk_i = 1'b0;
     rst_ni = 1'b0;
     stream_valid_i = 1'b0;
@@ -89,7 +101,11 @@ module e1_h1_module_dpi_ingress_sram;
     tick();
     rst_ni = 1'b1;
     for (int cycle = 0; cycle < 6; cycle++) begin
+      probe_cycle_phase_o = cycle[7:0];
       e1_h1_module_dpi_cycle("ingress_sram", cycle, phase_name(cycle));
+      if (e1_h1_module_dpi_phase_signal("ingress_sram", "probe_cycle_phase_o", cycle, cycle, int'(probe_cycle_phase_o)) == 0) begin
+        $fatal(1, "ingress_sram phase signal mismatch cycle %0d", cycle);
+      end
       stream_valid_i = (cycle == 0 || cycle == 3 || cycle == 4);
       stream_data_i = 64'h2000 + cycle[7:0];
       stream_last_i = (cycle == 4);

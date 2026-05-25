@@ -10,6 +10,7 @@
 module e1_h1_soc_top (
   input logic clk_i,
   output logic debug_array_busy_o,
+  output logic [31:0] debug_array_result_digest_o,
   output logic debug_halted_o,
   input logic rgmii_rx_clk_i,
   input logic rgmii_rx_ctl_i,
@@ -238,7 +239,8 @@ module e1_h1_soc_top (
     .input_data_i(array_input_data_dst),
     .done_o(array_done_src),
     .error_o(array_error_src),
-    .debug_busy_o(debug_array_busy_o)
+    .debug_busy_o(debug_array_busy_o),
+    .result_digest_o(debug_array_result_digest_o)
   );
 
 endmodule

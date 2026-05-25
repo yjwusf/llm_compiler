@@ -71,8 +71,11 @@ dependencies.
 
 ## Current Implementation Check
 
-The executable E1-H1 path currently proves the checked-in reduced TinyLlama
-StableHLO fixture, not the full TinyLlama checkpoint. The pipeline emits:
+The executable E1-H1 path proves the checked-in reduced TinyLlama StableHLO
+fixture and now carries a shape-complete full-checkpoint structural RTL
+lowering path through command-stream, graph-slot, and module-DPI construction
+evidence. It still does not claim live full-checkpoint StableHLO export or
+TinyLlama numeric output equivalence. The pipeline emits:
 
 - `e1/generated/pipeline/12_module_dpi_generation.json`
 - `e1/generated/pipeline/15_rtl_lowering.json`
@@ -88,7 +91,8 @@ StableHLO fixture, not the full TinyLlama checkpoint. The pipeline emits:
 - `e1/generated/pipeline/25_full_checkpoint_graph_rtl_lowering_proof.json`
 - `e1/generated/pipeline/26_full_checkpoint_module_dpi_generation.json`
 - `e1/generated/pipeline/27_full_graph_module_dpi_binding.json`
-- `e1/generated/pipeline/28_end_to_end_smoke.json`
+- `e1/generated/pipeline/28_lowering_construction_certificate.json`
+- `e1/generated/pipeline/29_end_to_end_smoke.json`
 
 The coverage artifact requires every StableHLO operation in
 `tinyllama_block.mlir` to bind to an accepted active `imp2` implementation and
@@ -97,13 +101,17 @@ records `full_tinyllama_checkpoint_implemented: false` until live checkpoint
 export and execution are added.
 
 The base E1-H1 module-DPI generator emits
-`e1/e1-h1/generated/module_dpi/module_isolation.json` and
+`e1/e1-h1/generated/module_dpi/module_interfaces.md`,
+`e1/e1-h1/generated/module_dpi/module_isolation.json`, and
 `e1/e1-h1/generated/module_dpi/cycle_contract.json` in addition to the probe
 manifest and `e1/e1-h1/generated/module_dpi/module_test_plan.json`. These
-artifacts prove each replaceable IP probe contains only one active `imp2` DUT
-plus its `imp1` oracle, that every probe-reported cycle is named against the
-README cycle diagrams, and that each module has a generated Verilator
-invocation. The C++ generator also emits
+artifacts prove each replaceable IP has generated input/output signal
+documentation, that each probe contains only one active `imp2` DUT plus its
+`imp1` oracle with exact recorded instantiation counts in both the isolation
+proof and construction ledger, that every probe-reported cycle is named against the README
+cycle diagrams, that the exact ordered cycle-index row is present in the
+README, and that each module has a generated Verilator invocation. The C++
+generator also emits
 `e1/e1-h1/generated/module_dpi/verilator_execution_recipe.json`, which owns the
 exact build command, obj-dir convention, run executable, and expected DPI
 markers for every module-only run, and
@@ -114,7 +122,13 @@ consumes that generated recipe with the test plan and emits
 `e1/e1-h1/generated/module_dpi/verilator_execution_report.json`, which records
 the actual module-only Verilator build/run result and observed DPI stdout
 markers for every base IP, including one `phase=<name>` marker for every named
-cycle phase in the generated cycle contract.
+cycle phase in the generated cycle contract. It also records the first observed
+DPI phase trace and checks it against the generated cycle order. For base IPs
+it also records `case=<name>` markers for every module-VIP stream-space case
+declared in `e1/e1-h1/vip/*.json`, and the runner checks the observed case
+trace against the C++-generated order. The pipeline module-DPI report also
+cross-checks each generated probe, main, flist, top module, and active `imp2`
+RTL path against `e1/e1-h1/generated/implementation_matrix.json`.
 
 The RTL-lowering artifact maps each checked-in StableHLO fixture operation to
 an active `imp2` RTL module, its imp2 flist, and its generated module-DPI proof.
@@ -191,10 +205,26 @@ engine without instantiating array RTL. The bounded harness runs all 308 graph
 slots with a two-tile smoke per linear slot. The full-command harness compiles
 the same top with `SmokeMaxTilesPerLinearSlot=0` and runs all 3,784,704 planned
 linear tile commands through the RTL control/handshake path while checking each
-accepted command payload against `e1/code/program/e1_tinyllama_full_schedule.hpp`.
-It also checks the phase 1 scheduler-valid, phase 2 array-handshake, and phase
-6 array-done sequence for every command. This is full command-stream RTL
-execution evidence, not yet TinyLlama numeric output comparison.
+accepted command payload and the accepted payload digest against
+`e1/code/program/e1_tinyllama_full_schedule.hpp`. It also checks the phase 1
+scheduler-valid, phase 2 array-handshake, and phase 6 array-done sequence for
+every command. The pipeline compiles and runs the bounded and full-command top
+harnesses with Verilator and records their emitted JSON reports in
+`e1/generated/pipeline/24_full_checkpoint_rtl_top.json`. The recorded build
+commands use `<full_checkpoint_top_smoke_obj_dir>` and
+`<full_checkpoint_top_full_obj_dir>` placeholders for Verilator object
+directories, so the proof is not tied to one developer machine's temporary
+path. This is full command-stream RTL execution evidence. The RTL-top report
+records `full_checkpoint_rtl_execution: true` only at the scoped construction
+boundary
+`structural_graph_slot_and_command_stream_verilator_execution_without_tensor_numeric_equivalence`.
+It also records
+`full_checkpoint_structural_rtl_execution: true` only when the bounded
+graph-slot smoke and the full-command run both pass, every planned command is
+accepted through the RTL path, payload and digest checks match the generated
+C++ schedule, every CPU/control slot payload and commit matches the generated
+graph schedule, and the documented command phase checks pass. It is not yet a
+TinyLlama numeric output comparison.
 
 The full-checkpoint graph RTL-lowering proof ties the layer plan, command
 stream, generated cycle scheduler, tile engine, control scheduler, graph
@@ -207,9 +237,14 @@ global-slot index, selected RTL engine, cycle template, and module-DPI probe
 metadata. It also records README cycle coverage for the tile-command,
 control-op, graph-launch, and top-dispatch templates, so the proof fails if a
 used full-graph cycle phase is no longer listed in the module README diagrams.
-It still records `full_checkpoint_numeric_output_equivalence: false`;
-arithmetic kernel equivalence against a live TinyLlama checkpoint remains future
-work.
+It records `full_checkpoint_rtl_execution: true` only for the scoped structural
+construction boundary, records `full_checkpoint_structural_rtl_execution: true`
+for the current structural Verilator evidence, and still records
+`full_checkpoint_numeric_output_equivalence: false`; arithmetic kernel
+equivalence against a live TinyLlama checkpoint remains future work. The proof
+also requires machine-checked README diagram snippets for the separated CPU,
+`ingress_sram` latch buffer, systolic array, graph sequencer, and top
+slot-dispatch cycle boundaries.
 
 The full-checkpoint module-DPI generation artifact is produced by
 `e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp`. It emits
@@ -217,11 +252,15 @@ The full-checkpoint module-DPI generation artifact is produced by
 probe per generated full-checkpoint RTL module, matching flists, C++ mains, a
 shared C++ scoreboard, and
 `e1/e1-h1/generated/full_checkpoint_dpi/module_interfaces.md` with generated
-input/output signal tables. It also emits
+input/output signal tables. The same generator parses each generated DUT's
+SystemVerilog port block and the pipeline report fails if those tables omit,
+reorder, or mis-size any RTL input or output. It also emits
 `e1/e1-h1/generated/full_checkpoint_dpi/module_isolation.json`, which records
 the allowed and forbidden RTL child modules for each generated DUT, and
 `e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json`, which names every
-cycle phase and phase signal for each generated module. The companion
+cycle phase and phase signal for each generated module and requires the README
+cycle-contract index to contain the exact ordered row for the module. The
+companion
 `e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json` records the
 module-only Verilator build/run inputs for every generated module. The paired
 `e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_recipe.json`
@@ -230,7 +269,10 @@ runner. The execution report
 `e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_report.json`
 records the actual Verilator build/run result for each generated module-only
 probe and requires every generated cycle-contract phase name to appear as an
-observed DPI phase marker. The generated
+observed DPI phase marker in the expected cycle order. It also records a
+generated phase-signal trace, so `cycle_phase_o` or the full top's
+`graph_cycle_phase_o` is checked against the expected cycle index while the
+module runs. The generated
 `e1/e1-h1/generated/full_checkpoint_dpi/construction_ledger.json` is the
 per-module source-of-truth ledger tying the C++ spec to probes, flists,
 interfaces, isolation, cycle phases, README coverage, and Verilator recipes.
@@ -243,7 +285,68 @@ linear scheduler, tile engine, control scheduler, graph sequencer, slot
 engines, and full-checkpoint top to have passing module-DPI Verilator reports,
 and also requires the separated base `control_cpu`, `ingress_sram` latch
 buffer, and `systolic_array` modules to have passing module-only DPI reports
-and passing C++ construction-ledger checks.
+and passing C++ construction-ledger checks. The binding proof parses the
+generated RTL and separated base `imp2` RTL source files, then emits a
+source-derived coverage row for each parsed SystemVerilog module. Each
+coverage row carries exact flist entries, probe DUT/reference instance counts,
+cycle-contract status, README cycle-row status, ordered Verilator phase-trace
+status, the matching generated C++ launcher runtime result, and an exact
+launcher-recipe match for the generated command, executable, and stdout marker
+contract. The row also carries the expected and observed launcher phase-key
+prefixes for phase names and phase-signal values. The row records the selected
+DUT RTL for both generated and base modules; generated full-checkpoint rows
+prove `selected DUT + probe` flists, while separated base rows prove `imp1
+reference + imp2 DUT + probe` flists. The binding also scans the on-disk
+`e1/e1-h1/generated/full_checkpoint/*.sv` and `e1/e1-h1/rtl/imp2/*.sv`
+inventories, then checks that they exactly match the generated module-DPI RTL
+set and the all-base `imp2` RTL set, and that every parsed inventory module is
+covered by module-DPI evidence. The same binding report also carries an
+all-base-module proof for every replaceable base IP in
+`e1/e1-h1/generated/module_dpi`, including RGMII ingress and both SRAM shell
+configurations. Each all-base row parses the selected `imp2` RTL source and
+proves the expected SystemVerilog top module is defined there, then ties that
+row to the generated C++ launcher's runtime marker, ordered phase, repeated
+template, phase-signal, and exact recipe-match checks.
+
+`e1/generated/pipeline/28_lowering_construction_certificate.json` is the
+machine-checkable construction certificate for the current lowering boundary.
+It ties StableHLO fixture operations to active `imp2` RTL and module-DPI
+proofs, ties every planned full-checkpoint graph slot to generated RTL slot
+engines and documented cycle templates, records target-filelist agreement, and
+hashes the source/report/RTL/README artifacts that form the proof chain. It
+also hashes every target-listed RTL file, generated SoC top artifacts, the SoC
+top generator inputs, the C++ module-DPI generator sources, the module-DPI
+Verilator recipe runner, and the pipeline orchestrator so the proof chain
+includes the programs that generate and execute module-local DPI evidence. It
+also carries the production RTL inventory for generated top, accepted `imp1`
+mocks, active base `imp2`, and generated full-checkpoint RTL, then hashes every
+inventory RTL path. The accepted `imp1` mock RTL rows include one-file
+Verilator lint evidence in addition to the C++/L1.5/VIP contracts. The same
+certificate parses the generated SoC top against the composition manifest and
+requires each expected IP instance to appear once, including distinct control
+CPU, ingress latch-buffer, and systolic-array boundaries. It records every
+StableHLO source operation instance by source line, source span, result SSA
+name, and operation text before binding that instance to its RTL/module-DPI
+proof. It also records the full
+command-stream payload digest and checks that it matches the RTL-accepted
+payload digest from the executed full-command Verilator report. It also
+records the CPU/control slot payload digest from the same full-command
+Verilator report. It requires structural RTL execution while explicitly
+recording TinyLlama numeric output equivalence as a non-claim.
+
+The end-to-end smoke report then checks that the active implementation, FPGA,
+and OpenROAD target filelists all name the same RTL files, that each
+target-listed RTL file is either the generated SoC top or has a passing
+module-DPI proof with exact C++ launcher recipe and phase-key evidence, and that
+the lowering construction certificate passes. It also records a production RTL
+inventory spanning the generated SoC top,
+accepted `imp1` mock RTL, active base `imp2` RTL, and generated
+full-checkpoint RTL. Each inventory row must parse the RTL source, match the
+expected SystemVerilog module names, and point to the proof family for that
+category: standalone top Verilator, `imp1` mock C++/L1.5/VIP contracts plus
+one-file Verilator lint, or module-only DPI/Verilator. Source-derived
+module-only rows must also carry the generated C++ launcher's runtime result,
+exact recipe match, and expected/observed phase-key prefixes.
 
 ## Full Checkpoint Execution
 

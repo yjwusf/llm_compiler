@@ -1,8 +1,9 @@
 {
   "checks": [
     {
-      "name": "full_checkpoint_plan_is_shape_complete",
-      "status": "planned"
+      "name": "full_checkpoint_layer_to_rtl_contract_passed",
+      "source_status": "pass",
+      "status": "pass"
     },
     {
       "name": "command_stream_smoke",
@@ -14,6 +15,10 @@
     },
     {
       "name": "command_count_matches_plan",
+      "status": "pass"
+    },
+    {
+      "name": "payload_digest_generated_by_cpp_schedule",
       "status": "pass"
     }
   ],
@@ -96,6 +101,8 @@
     }
   ],
   "model_id": "tinyllama-1.1b-chat-v1.0",
+  "payload_digest": 4032683563216624323,
+  "payload_digest_source": "e1_device::tinyllama_full::command_stream_digest",
   "schema": "e1-full-checkpoint-command-stream-v0",
   "smoke": {
     "commands_per_layer": 172032,
@@ -103,6 +110,7 @@
     "last_output_addr": 827727808,
     "layers": 22,
     "linear_ops_per_layer": 7,
+    "payload_digest": 4032683563216624323,
     "schema": "e1-full-checkpoint-command-stream-smoke-v0",
     "status": "pass",
     "total_tile_commands": 3784704

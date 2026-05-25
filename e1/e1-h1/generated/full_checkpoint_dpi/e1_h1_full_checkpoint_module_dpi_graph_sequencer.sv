@@ -3,6 +3,13 @@
 module e1_h1_full_checkpoint_module_dpi_graph_sequencer;
   import "DPI-C" function void e1_h1_full_dpi_begin(input string module_name, input string vip_case);
   import "DPI-C" function void e1_h1_full_dpi_cycle(input string module_name, input int cycle, input string phase);
+  import "DPI-C" function int e1_h1_full_dpi_phase_signal(
+    input string module_name,
+    input string signal_name,
+    input int cycle,
+    input int expected,
+    input int actual
+  );
   import "DPI-C" function int e1_h1_full_dpi_expect_u32(
     input string module_name,
     input string signal_name,
@@ -21,6 +28,14 @@ module e1_h1_full_checkpoint_module_dpi_graph_sequencer;
       $fatal(1, "graph_sequencer mismatch %s", signal_name);
     end
   endtask
+
+  task automatic expect_phase_signal(input string signal_name, input int cycle, input int expected, input int actual);
+    if (e1_h1_full_dpi_phase_signal("graph_sequencer", signal_name, cycle, expected, actual) == 0) begin
+      $fatal(1, "graph_sequencer phase signal mismatch %s", signal_name);
+    end
+  endtask
+
+  int contract_cycle = 0;
 
   logic clk_i;
   logic rst_ni;
@@ -90,7 +105,11 @@ module e1_h1_full_checkpoint_module_dpi_graph_sequencer;
     tick();
     start_i = 1'b0;
     for (int cycle = 0; cycle < 1600 && !done_o; cycle++) begin
-      e1_h1_full_dpi_cycle("graph_sequencer", cycle, phase_name(cycle));
+      if (int'(cycle_phase_o) == (contract_cycle % 4)) begin
+        e1_h1_full_dpi_cycle("graph_sequencer", contract_cycle, phase_name(contract_cycle));
+        expect_phase_signal("cycle_phase_o", contract_cycle, contract_cycle % 4, int'(cycle_phase_o));
+        contract_cycle++;
+      end
       op_done_i = (cycle_phase_o == 2'd2);
       if (launch_linear_o) linear_launches++;
       if (launch_control_o) control_launches++;

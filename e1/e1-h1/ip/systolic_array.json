@@ -73,6 +73,7 @@
     {"name": "input_data_i", "direction": "input", "width": 64, "connect": "net.array_input_data"},
     {"name": "done_o", "direction": "output", "width": 1, "connect": "net.array_done"},
     {"name": "error_o", "direction": "output", "width": 1, "connect": "net.array_error"},
-    {"name": "debug_busy_o", "direction": "output", "width": 1, "connect": "top.debug_array_busy_o"}
+    {"name": "debug_busy_o", "direction": "output", "width": 1, "connect": "top.debug_array_busy_o"},
+    {"name": "result_digest_o", "direction": "output", "width": 32, "connect": "top.debug_array_result_digest_o"}
   ]
 }

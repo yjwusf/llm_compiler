@@ -11,6 +11,33 @@ extern "C" void e1_h1_full_dpi_cycle(const char* module_name, int cycle, const c
   std::printf("E1_H1_FULL_MODULE_DPI_CYCLE module=%s cycle=%d phase=%s\n", module_name, cycle, phase);
 }
 
+extern "C" int e1_h1_full_dpi_phase_signal(
+    const char* module_name,
+    const char* signal_name,
+    int cycle,
+    int expected,
+    int actual) {
+  std::printf(
+      "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL module=%s signal=%s cycle=%d expected=%d actual=%d\n",
+      module_name,
+      signal_name,
+      cycle,
+      expected,
+      actual);
+  if (expected != actual) {
+    std::fprintf(
+        stderr,
+        "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL_MISMATCH module=%s signal=%s cycle=%d expected=%d actual=%d\n",
+        module_name,
+        signal_name,
+        cycle,
+        expected,
+        actual);
+    return 0;
+  }
+  return 1;
+}
+
 extern "C" int e1_h1_full_dpi_expect_u32(
     const char* module_name,
     const char* signal_name,

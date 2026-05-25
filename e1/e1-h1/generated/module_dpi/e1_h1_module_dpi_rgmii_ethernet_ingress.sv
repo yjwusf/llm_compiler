@@ -2,7 +2,15 @@
 
 module e1_h1_module_dpi_rgmii_ethernet_ingress;
   import "DPI-C" function void e1_h1_module_dpi_begin(input string module_name, input string vip_case);
+  import "DPI-C" function void e1_h1_module_dpi_case(input string module_name, input string vip_case);
   import "DPI-C" function void e1_h1_module_dpi_cycle(input string module_name, input int cycle, input string phase);
+  import "DPI-C" function int e1_h1_module_dpi_phase_signal(
+    input string module_name,
+    input string signal_name,
+    input int cycle,
+    input int expected,
+    input int actual
+  );
   import "DPI-C" function int e1_h1_module_dpi_compare_u32(
     input string signal_name,
     input int cycle,
@@ -10,6 +18,7 @@ module e1_h1_module_dpi_rgmii_ethernet_ingress;
     input int imp2_value
   );
 
+  logic [7:0] probe_cycle_phase_o;
   logic clk_i;
   logic rst_ni;
   logic rgmii_rx_clk_i;
@@ -89,6 +98,9 @@ module e1_h1_module_dpi_rgmii_ethernet_ingress;
 
   initial begin
     e1_h1_module_dpi_begin("rgmii_ethernet_ingress", "module_only_rgmii_ingress");
+    e1_h1_module_dpi_case("rgmii_ethernet_ingress", "reset_idle");
+    e1_h1_module_dpi_case("rgmii_ethernet_ingress", "minimum_frame");
+    e1_h1_module_dpi_case("rgmii_ethernet_ingress", "downstream_backpressure");
     clk_i = 1'b0;
     rgmii_rx_clk_i = 1'b0;
     rst_ni = 1'b0;
@@ -99,7 +111,11 @@ module e1_h1_module_dpi_rgmii_ethernet_ingress;
     tick_rgmii();
     rst_ni = 1'b1;
     for (int cycle = 0; cycle < 10; cycle++) begin
+      probe_cycle_phase_o = cycle[7:0];
       e1_h1_module_dpi_cycle("rgmii_ethernet_ingress", cycle, phase_name(cycle));
+      if (e1_h1_module_dpi_phase_signal("rgmii_ethernet_ingress", "probe_cycle_phase_o", cycle, cycle, int'(probe_cycle_phase_o)) == 0) begin
+        $fatal(1, "rgmii_ethernet_ingress phase signal mismatch cycle %0d", cycle);
+      end
       rgmii_rx_ctl_i = (cycle >= 1 && cycle <= 5);
       stream_ready_i = (cycle >= 7);
       rgmii_rxd_i = cycle[3:0];

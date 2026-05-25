@@ -107,6 +107,27 @@ The integrated top smoke test is:
 
 - `e1/e1-h1/tests/e1_h1_soc_top_tb.cpp`
 
+The E1 end-to-end smoke report runs this testbench as a standalone Verilator
+proof for the generated top and attaches that proof to every target-filelist
+row for `e1/e1-h1/generated/e1_h1_soc_top.sv`. Target packages must therefore
+show either module-DPI evidence for an RTL file or this generated-top
+standalone proof. The checked-in proof records `<soc_top_obj_dir>` and
+`<soc_top_obj_dir>/Ve1_h1_soc_top` instead of a machine-local temporary build
+path, so the evidence is reproducible across developers and CI machines.
+The same end-to-end report includes `production_rtl_inventory`, where the
+generated top is classified separately from `imp1` mock RTL, active base
+`imp2` RTL, and generated full-checkpoint RTL. The generated-top row must parse
+`e1_h1_soc_top` from this file and attach the standalone Verilator proof. The
+inventory's `standalone_runtime_inventory` includes this generated-top proof
+alongside the C++-generated module-DPI Verilator runs for active base `imp2`
+RTL and generated full-checkpoint RTL; only accepted `imp1` mock RTL is exempt
+from that active-runtime lane.
+The construction certificate also carries `generated_soc_top_hierarchy`, which
+parses this RTL against `e1_h1_soc_top_manifest.json`; every manifest IP must
+appear exactly once as `u_<ip-name>`, its active RTL must define the module, and
+the control CPU, ingress latch buffer, and systolic array must stay distinct
+instance boundaries.
+
 It combines:
 
 - `cpu_subsystem`: `control_cpu`

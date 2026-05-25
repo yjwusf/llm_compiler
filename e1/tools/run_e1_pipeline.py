@@ -9,6 +9,7 @@ same artifact boundaries that the real TinyLlama export will use.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.util
 import json
 import re
@@ -47,8 +48,71 @@ def repo_rel(path: Path) -> str:
         return str(path)
 
 
+def replace_path_token(value: str, actual: Path, token: str) -> str:
+    return value.replace(str(actual), token)
+
+
+def replace_command_path_token(command: list[str], actual: Path, token: str) -> list[str]:
+    return [replace_path_token(part, actual, token) for part in command]
+
+
+def artifact_record(path: str) -> dict[str, Any]:
+    artifact_path = REPO_ROOT / path
+    record: dict[str, Any] = {
+        "path": path,
+        "exists": artifact_path.exists(),
+    }
+    if artifact_path.is_file():
+        record["sha256"] = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
+    return record
+
+
 def stablehlo_ops(text: str) -> Counter[str]:
     return Counter(re.findall(r"stablehlo\.([a-zA-Z_][a-zA-Z0-9_]*)", text))
+
+
+def stablehlo_operation_instances(text: str) -> list[dict[str, Any]]:
+    lines = text.splitlines()
+    op_starts: list[dict[str, Any]] = []
+    for line_number, line in enumerate(lines, 1):
+        match = re.search(r"stablehlo\.([a-zA-Z_][a-zA-Z0-9_]*)", line)
+        if match is None:
+            continue
+        result_match = re.search(r"(%[a-zA-Z_][a-zA-Z0-9_]*)\s*=", line)
+        op_starts.append(
+            {
+                "source_line": line_number,
+                "operation": f"stablehlo.{match.group(1)}",
+                "stablehlo_op": match.group(1),
+                "ssa_result": result_match.group(1) if result_match is not None else None,
+            }
+        )
+
+    instances: list[dict[str, Any]] = []
+    for index, op in enumerate(op_starts):
+        start_line = int(op["source_line"])
+        stop_line = int(op_starts[index + 1]["source_line"]) - 1 if index + 1 < len(op_starts) else len(lines)
+        for line_number in range(start_line + 1, stop_line + 1):
+            if lines[line_number - 1].strip().startswith("return "):
+                stop_line = line_number - 1
+                break
+        snippet = " ".join(
+            line.strip()
+            for line in lines[start_line - 1 : stop_line]
+            if line.strip()
+        )
+        instances.append(
+            {
+                "source_index": index,
+                "source_line": start_line,
+                "source_end_line": stop_line,
+                "operation": op["operation"],
+                "stablehlo_op": op["stablehlo_op"],
+                "ssa_result": op["ssa_result"],
+                "source_snippet": snippet,
+            }
+        )
+    return instances
 
 
 def tensors(text: str) -> list[str]:
@@ -82,6 +146,62 @@ def load_optional_json(path: Path) -> dict[str, Any]:
     return load_json(path)
 
 
+def readme_index_row(name: str, template: str, cycles: list[dict[str, Any]]) -> str:
+    phase_list = "; ".join(
+        f"{step['cycle']} `{step['phase']}`"
+        for step in cycles
+    )
+    return f"| `{name}` | `{template}` | {phase_list} |"
+
+
+def parse_sv_module_ports(path: Path, top_module: str) -> list[dict[str, str]]:
+    text = path.read_text(encoding="utf-8")
+    module_pos = text.find(f"module {top_module}")
+    if module_pos < 0:
+        raise ValueError(f"{repo_rel(path)}: missing module {top_module}")
+    port_start = text.find("(", module_pos)
+    port_end = text.find("\n);", port_start)
+    if port_start < 0 or port_end < 0:
+        raise ValueError(f"{repo_rel(path)}: cannot parse port block for {top_module}")
+
+    ports: list[dict[str, str]] = []
+    for raw_line in text[port_start + 1 : port_end].splitlines():
+        line = raw_line.strip().rstrip(",")
+        tokens = line.split()
+        if not tokens or tokens[0] not in {"input", "output"}:
+            continue
+        if len(tokens) not in {3, 4} or tokens[1] != "logic":
+            raise ValueError(f"{repo_rel(path)}: unsupported port declaration {line!r}")
+        width = "1"
+        if len(tokens) == 4:
+            match = re.fullmatch(r"\[(\d+):0\]", tokens[2])
+            if match is None:
+                raise ValueError(f"{repo_rel(path)}: unsupported port width {tokens[2]!r}")
+            width = str(int(match.group(1)) + 1)
+        ports.append({"name": tokens[-1], "direction": tokens[0], "width": width})
+    return ports
+
+
+def parse_sv_defined_modules(path: Path) -> list[str]:
+    text = path.read_text(encoding="utf-8")
+    return re.findall(r"\bmodule\s+([a-zA-Z_][a-zA-Z0-9_$]*)\b", text)
+
+
+def split_ports_by_direction(ports: list[dict[str, str]]) -> dict[str, list[dict[str, str]]]:
+    return {
+        "input": [
+            {"name": port["name"], "width": port["width"]}
+            for port in ports
+            if port["direction"] == "input"
+        ],
+        "output": [
+            {"name": port["name"], "width": port["width"]}
+            for port in ports
+            if port["direction"] == "output"
+        ],
+    }
+
+
 def run_module_dpi_verilator_runner(
     test_plan_path: Path,
     recipe_path: Path,
@@ -108,6 +228,530 @@ def run_module_dpi_verilator_runner(
         stderr=subprocess.STDOUT,
         check=True,
     )
+
+
+def run_full_checkpoint_top_verilator(
+    flist_path: Path,
+    smoke_tb_path: Path,
+    full_tb_path: Path,
+) -> dict[str, Any]:
+    verilator = shutil.which("verilator")
+    if verilator is None:
+        return {
+            "schema": "e1-full-checkpoint-rtl-top-verilator-execution-v0",
+            "status": "missing_verilator",
+            "smoke": {},
+            "full_command": {},
+        }
+
+    def build_and_run(
+        obj_dir: Path,
+        tb_path: Path,
+        smoke_tiles_per_linear_slot: int,
+        obj_dir_token: str,
+    ) -> tuple[list[str], dict[str, Any]]:
+        build_command = [
+            verilator,
+            "--cc",
+            "--exe",
+            "--build",
+            "--sv",
+            "-Wall",
+            "-Wno-DECLFILENAME",
+            "-Wno-UNUSEDSIGNAL",
+            "-Wno-UNUSEDPARAM",
+            "-Wno-WIDTHEXPAND",
+            "--top-module",
+            "e1_h1_tinyllama_full_checkpoint_top",
+            f"-GSmokeMaxTilesPerLinearSlot={smoke_tiles_per_linear_slot}",
+            "-Mdir",
+            str(obj_dir),
+            "-CFLAGS",
+            "-std=c++17",
+            "-f",
+            repo_rel(flist_path),
+            repo_rel(tb_path),
+        ]
+        subprocess.run(
+            build_command,
+            cwd=REPO_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=True,
+        )
+        result = subprocess.run(
+            [str(obj_dir / "Ve1_h1_tinyllama_full_checkpoint_top")],
+            cwd=REPO_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=True,
+        )
+        stable_build_command = replace_command_path_token(build_command, obj_dir, obj_dir_token)
+        return stable_build_command, json.loads(result.stdout)
+
+    with tempfile.TemporaryDirectory(prefix="e1_full_checkpoint_top_") as tmp:
+        tmp_path = Path(tmp)
+        smoke_build_command, smoke_report = build_and_run(
+            tmp_path / "obj_full_checkpoint_top_smoke",
+            smoke_tb_path,
+            2,
+            "<full_checkpoint_top_smoke_obj_dir>",
+        )
+        full_build_command, full_report = build_and_run(
+            tmp_path / "obj_full_checkpoint_top_full",
+            full_tb_path,
+            0,
+            "<full_checkpoint_top_full_obj_dir>",
+        )
+
+    return {
+        "schema": "e1-full-checkpoint-rtl-top-verilator-execution-v0",
+        "status": "pass"
+        if smoke_report.get("status") == "pass" and full_report.get("status") == "pass"
+        else "fail",
+        "build_workdir_is_temporary": True,
+        "smoke_build_command": smoke_build_command,
+        "full_command_build_command": full_build_command,
+        "smoke": smoke_report,
+        "full_command": full_report,
+    }
+
+
+def run_generated_soc_top_verilator_smoke(
+    rtl_files: list[str],
+    tb_path: Path,
+) -> dict[str, Any]:
+    verilator = shutil.which("verilator")
+    report: dict[str, Any] = {
+        "schema": "e1-generated-soc-top-standalone-verilator-smoke-v0",
+        "top_module": "e1_h1_soc_top",
+        "testbench": repo_rel(tb_path),
+        "rtl_files": rtl_files,
+        "assertions": [
+            "core_clock_ticks",
+            "rgmii_rx_clock_ticks",
+            "array_busy_observed",
+            "cpu_halted_observed",
+        ],
+    }
+    if verilator is None:
+        return {
+            **report,
+            "status": "missing_verilator",
+            "build_command": [],
+            "run_executable": None,
+            "stdout": "",
+        }
+
+    with tempfile.TemporaryDirectory(prefix="e1_soc_top_") as tmp:
+        obj_dir = Path(tmp) / "obj_dir"
+        obj_dir_token = "<soc_top_obj_dir>"
+        build_command = [
+            verilator,
+            "--cc",
+            "--exe",
+            "--build",
+            "--sv",
+            "-Wall",
+            "-Wno-DECLFILENAME",
+            "-Wno-UNUSEDSIGNAL",
+            "-Wno-UNUSEDPARAM",
+            "-Wno-MULTITOP",
+            "--top-module",
+            "e1_h1_soc_top",
+            "-Mdir",
+            str(obj_dir),
+            *rtl_files,
+            repo_rel(tb_path),
+        ]
+        build = subprocess.run(
+            build_command,
+            cwd=REPO_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=False,
+        )
+        run_executable = obj_dir / "Ve1_h1_soc_top"
+        stable_build_command = replace_command_path_token(build_command, obj_dir, obj_dir_token)
+        stable_run_executable = replace_path_token(str(run_executable), obj_dir, obj_dir_token)
+        if build.returncode != 0:
+            return {
+                **report,
+                "status": "build_fail",
+                "build_workdir_is_temporary": True,
+                "build_command": stable_build_command,
+                "run_executable": stable_run_executable,
+                "stdout": replace_path_token(build.stdout, obj_dir, obj_dir_token),
+            }
+        run = subprocess.run(
+            [str(run_executable)],
+            cwd=REPO_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=False,
+        )
+        return {
+            **report,
+            "status": "pass" if run.returncode == 0 else "run_fail",
+            "build_workdir_is_temporary": True,
+            "build_command": stable_build_command,
+            "run_executable": stable_run_executable,
+            "stdout": replace_path_token(run.stdout, obj_dir, obj_dir_token),
+        }
+
+
+def run_imp1_mock_rtl_lints(implementation_matrix: dict[str, Any]) -> dict[str, Any]:
+    verilator = shutil.which("verilator")
+    runtime_output_dir = REPO_ROOT / "e1/e1-h1/generated/imp1_mock_runtime"
+    runtime_output_dir.mkdir(parents=True, exist_ok=True)
+    rtl_to_ips: dict[str, list[dict[str, str]]] = {}
+    for ip in implementation_matrix["ips"]:
+        rtl_to_ips.setdefault(ip["imp1"]["rtl"], []).append(
+            {
+                "name": ip["name"],
+                "top_module": ip["module"],
+                "flist": ip["imp1"]["flist"],
+            }
+        )
+
+    def generated_mock_runtime_main(top_module: str, ports: list[dict[str, str]]) -> str:
+        input_names = {
+            port["name"]
+            for port in ports
+            if port["direction"] == "input"
+        }
+
+        def set_input(name: str, expression: str) -> str:
+            if name not in input_names:
+                return ""
+            return f"    top.{name} = {expression};\n"
+
+        input_initializers = "".join(
+            f"  top.{name} = 0;\n"
+            for name in sorted(input_names)
+        )
+        cycle_assignments = "".join(
+            [
+                set_input("rst_ni", "cycle > 0"),
+                set_input("cmd_valid_i", "cycle == 1"),
+                set_input("cmd_ready_i", "cycle >= 2"),
+                set_input("array_done_i", "cycle >= 5"),
+                set_input("array_error_i", "0"),
+                set_input("stream_valid_i", "cycle == 1 || cycle == 3"),
+                set_input("stream_last_i", "cycle == 3"),
+                set_input("stream_error_i", "0"),
+                set_input("stream_ready_i", "cycle >= 2"),
+                set_input("array_ready_i", "cycle >= 2"),
+                set_input("input_valid_i", "cycle >= 3 && cycle <= 6"),
+                set_input("rgmii_rx_ctl_i", "cycle >= 1 && cycle <= 4"),
+                set_input("rgmii_rxd_i", "cycle & 0xf"),
+            ]
+        )
+        clock_toggles = "".join(
+            [
+                (
+                    "    top.clk_i = 1;\n"
+                    "    top.eval();\n"
+                    "    top.clk_i = 0;\n"
+                    "    top.eval();\n"
+                    if "clk_i" in input_names
+                    else ""
+                ),
+                (
+                    "    top.rgmii_rx_clk_i = 1;\n"
+                    "    top.eval();\n"
+                    "    top.rgmii_rx_clk_i = 0;\n"
+                    "    top.eval();\n"
+                    if "rgmii_rx_clk_i" in input_names
+                    else ""
+                ),
+            ]
+        )
+        return (
+            f'#include "V{top_module}.h"\n'
+            '#include "verilated.h"\n'
+            "#include <iostream>\n\n"
+            "int main(int argc, char** argv) {\n"
+            "  Verilated::commandArgs(argc, argv);\n"
+            f"  V{top_module} top;\n"
+            f"{input_initializers}"
+            "  for (int cycle = 0; cycle < 8; ++cycle) {\n"
+            f"{cycle_assignments}"
+            "    top.eval();\n"
+            f"{clock_toggles}"
+            "  }\n"
+            f'  std::cout << "E1_H1_IMP1_MOCK_RUNTIME module={top_module} cycles=8\\n";\n'
+            "  top.final();\n"
+            "  return 0;\n"
+            "}\n"
+        )
+
+    def run_imp1_mock_runtime_smoke(
+        *,
+        rtl: str,
+        top_module: str | None,
+    ) -> dict[str, Any]:
+        if verilator is None:
+            return {
+                "rtl": rtl,
+                "top_module": top_module,
+                "main": None,
+                "generated_artifacts": [],
+                "status": "missing_verilator",
+                "build_command": [],
+                "run_executable": None,
+                "stdout": "",
+                "expected_stdout_marker": None,
+                "stdout_marker_present": False,
+            }
+        if top_module is None:
+            return {
+                "rtl": rtl,
+                "top_module": top_module,
+                "main": None,
+                "generated_artifacts": [],
+                "status": "ambiguous_top_module",
+                "build_command": [],
+                "run_executable": None,
+                "stdout": "",
+                "expected_stdout_marker": None,
+                "stdout_marker_present": False,
+            }
+
+        ports = parse_sv_module_ports(REPO_ROOT / rtl, top_module)
+        main_path = runtime_output_dir / f"{top_module}_smoke.cpp"
+        write_text(main_path, generated_mock_runtime_main(top_module, ports))
+        with tempfile.TemporaryDirectory() as tmp:
+            obj_dir = Path(tmp) / f"obj_{top_module}"
+            obj_token = f"<imp1_mock_runtime_obj_dir_{top_module}>"
+            build_command = [
+                verilator,
+                "--cc",
+                "--exe",
+                "--build",
+                "--sv",
+                "-Wall",
+                "-Wno-DECLFILENAME",
+                "-Wno-UNUSEDSIGNAL",
+                "-Wno-UNUSEDPARAM",
+                "--top-module",
+                top_module,
+                "-Mdir",
+                str(obj_dir),
+                rtl,
+                repo_rel(main_path),
+            ]
+            build = subprocess.run(
+                build_command,
+                cwd=REPO_ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+            stable_build_command = replace_command_path_token(
+                build_command,
+                obj_dir,
+                obj_token,
+            )
+            run_executable = obj_dir / f"V{top_module}"
+            stable_run_executable = replace_path_token(
+                str(run_executable),
+                obj_dir,
+                obj_token,
+            )
+            stdout = replace_path_token(build.stdout, obj_dir, obj_token)
+            if build.returncode != 0:
+                return {
+                    "rtl": rtl,
+                    "top_module": top_module,
+                    "main": repo_rel(main_path),
+                    "generated_artifacts": [repo_rel(main_path)],
+                    "status": "build_fail",
+                    "build_command": stable_build_command,
+                    "run_executable": stable_run_executable,
+                    "stdout": stdout,
+                    "expected_stdout_marker": (
+                        f"E1_H1_IMP1_MOCK_RUNTIME module={top_module} cycles=8"
+                    ),
+                    "stdout_marker_present": False,
+                }
+            run = subprocess.run(
+                [str(run_executable)],
+                cwd=REPO_ROOT,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+            run_stdout = replace_path_token(run.stdout, obj_dir, obj_token)
+            expected_marker = f"E1_H1_IMP1_MOCK_RUNTIME module={top_module} cycles=8"
+            marker_present = expected_marker in run_stdout
+            return {
+                "rtl": rtl,
+                "top_module": top_module,
+                "main": repo_rel(main_path),
+                "generated_artifacts": [repo_rel(main_path)],
+                "status": "pass" if run.returncode == 0 and marker_present else "run_fail",
+                "build_command": stable_build_command,
+                "run_executable": stable_run_executable,
+                "stdout": run_stdout,
+                "expected_stdout_marker": expected_marker,
+                "stdout_marker_present": marker_present,
+            }
+
+    rows = []
+    runtime_rows = []
+    for rtl, ips in sorted(rtl_to_ips.items()):
+        defined_modules = parse_sv_defined_modules(REPO_ROOT / rtl) if (REPO_ROOT / rtl).exists() else []
+        expected_modules = unique_ordered([ip["top_module"] for ip in ips])
+        top_module = expected_modules[0] if len(expected_modules) == 1 else None
+        command = [
+            verilator or "verilator",
+            "--lint-only",
+            "--sv",
+            "-Wall",
+            "-Wno-DECLFILENAME",
+            "-Wno-UNUSEDSIGNAL",
+            "-Wno-UNUSEDPARAM",
+            "--top-module",
+            top_module or "<ambiguous_imp1_top_module>",
+            rtl,
+        ]
+        if verilator is None:
+            rows.append(
+                {
+                    "rtl": rtl,
+                    "ips": ips,
+                    "defined_modules": defined_modules,
+                    "expected_modules": expected_modules,
+                    "top_module": top_module,
+                    "command": command,
+                    "status": "missing_verilator",
+                    "stdout": "",
+                }
+            )
+            continue
+        runtime_rows.append(
+            run_imp1_mock_runtime_smoke(
+                rtl=rtl,
+                top_module=top_module,
+            )
+        )
+        if top_module is None:
+            rows.append(
+                {
+                    "rtl": rtl,
+                    "ips": ips,
+                    "defined_modules": defined_modules,
+                    "expected_modules": expected_modules,
+                    "top_module": top_module,
+                    "command": command,
+                    "status": "ambiguous_top_module",
+                    "stdout": "",
+                }
+            )
+            continue
+        lint = subprocess.run(
+            command,
+            cwd=REPO_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=False,
+        )
+        rows.append(
+            {
+                "rtl": rtl,
+                "ips": ips,
+                "defined_modules": defined_modules,
+                "expected_modules": expected_modules,
+                "top_module": top_module,
+                "command": command,
+                "status": "pass" if lint.returncode == 0 else "lint_fail",
+                "stdout": lint.stdout,
+            }
+        )
+    runtime_checks = [
+        {
+            "name": "all_imp1_mock_rtl_files_run_individually",
+            "status": "pass"
+            if runtime_rows
+            and all(row["status"] == "pass" for row in runtime_rows)
+            else "fail",
+        },
+        {
+            "name": "all_imp1_mock_runtime_markers_observed",
+            "status": "pass"
+            if runtime_rows
+            and all(row["stdout_marker_present"] is True for row in runtime_rows)
+            else "fail",
+        },
+        {
+            "name": "all_imp1_mock_runtime_mains_are_materialized",
+            "status": "pass"
+            if runtime_rows
+            and all(
+                artifact
+                and (REPO_ROOT / artifact).exists()
+                for row in runtime_rows
+                for artifact in row.get("generated_artifacts", [])
+            )
+            else "fail",
+        },
+    ]
+    runtime_report = {
+        "schema": "e1-imp1-mock-rtl-runtime-v0",
+        "status": (
+            "pass"
+            if all(check["status"] == "pass" for check in runtime_checks)
+            else "fail"
+        ),
+        "manifest": "e1/e1-h1/generated/imp1_mock_runtime/manifest.json",
+        "generated_artifacts": unique_ordered(
+            [
+                artifact
+                for row in runtime_rows
+                for artifact in row.get("generated_artifacts", [])
+            ]
+        ),
+        "rows": runtime_rows,
+        "checks": runtime_checks,
+    }
+    write_json(REPO_ROOT / runtime_report["manifest"], runtime_report)
+    checks = [
+        {
+            "name": "all_imp1_mock_rtl_files_linted_individually",
+            "status": "pass" if rows and all(row["status"] == "pass" for row in rows) else "fail",
+        },
+        {
+            "name": "all_imp1_mock_rtl_module_names_match_manifests",
+            "status": "pass"
+            if rows
+            and all(
+                row["defined_modules"]
+                and set(row["defined_modules"]) == set(row["expected_modules"])
+                for row in rows
+            )
+            else "fail",
+        },
+        {
+            "name": "all_imp1_mock_rtl_files_run_individually",
+            "status": runtime_report["status"],
+        },
+    ]
+    return {
+        "schema": "e1-imp1-mock-rtl-lint-v0",
+        "status": "pass" if all(check["status"] == "pass" for check in checks) else "fail",
+        "verilator_available": verilator is not None,
+        "rows": rows,
+        "runtime": runtime_report,
+        "checks": checks,
+    }
 
 
 def implementation_scheme(ip: dict[str, Any]) -> dict[str, Any]:
@@ -574,18 +1218,44 @@ def run_full_checkpoint(
     return load_json(report_path)
 
 
-def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, Any]:
-    generator = e1_h1_dir / "tools" / "generate_module_dpi.cpp"
-    module_dpi_dir = e1_h1_dir / "generated" / "module_dpi"
+def run_cpp_verilator_launcher(
+    launcher_path: Path,
+    *,
+    suite: str,
+    schema: str,
+    recipe: dict[str, Any],
+    build_dir_token: str,
+) -> dict[str, Any]:
+    executable_name = launcher_path.stem
+    executable = f"{build_dir_token}/{executable_name}"
+    runtime_build_root_token = build_dir_token.replace("_build_dir>", "_runtime_build_root>")
+    build_command = [
+        "c++",
+        "-std=c++17",
+        repo_rel(launcher_path),
+        "-o",
+        executable,
+    ]
+    run_command = [
+        executable,
+        "--dry-run",
+    ]
+    verilator_run_command = [
+        executable,
+        "--run",
+        "--build-root",
+        runtime_build_root_token,
+    ]
     with tempfile.TemporaryDirectory() as tmp:
-        exe = Path(tmp) / "e1_h1_generate_module_dpi"
-        subprocess.run(
+        actual_executable = Path(tmp) / executable_name
+        actual_runtime_build_root = Path(tmp) / f"{executable_name}_runtime"
+        build_result = subprocess.run(
             [
                 "c++",
                 "-std=c++17",
-                repo_rel(generator),
+                repo_rel(launcher_path),
                 "-o",
-                str(exe),
+                str(actual_executable),
             ],
             cwd=REPO_ROOT,
             text=True,
@@ -593,23 +1263,331 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
             stderr=subprocess.STDOUT,
             check=True,
         )
-        subprocess.run(
+        execution_result = subprocess.run(
             [
-                str(exe),
-                "--repo-root",
-                str(REPO_ROOT),
-                "--output-dir",
-                str(module_dpi_dir),
+                str(actual_executable),
+                "--dry-run",
             ],
             cwd=REPO_ROOT,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             check=True,
+        )
+        verilator_run_result = subprocess.run(
+            [
+                str(actual_executable),
+                "--run",
+                "--build-root",
+                str(actual_runtime_build_root),
+            ],
+            cwd=REPO_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=True,
+        )
+        build_stdout = replace_path_token(
+            replace_path_token(build_result.stdout, Path(tmp), build_dir_token),
+            REPO_ROOT,
+            "<repo-root>",
+        )
+        execution_stdout = replace_path_token(
+            replace_path_token(execution_result.stdout, Path(tmp), build_dir_token),
+            REPO_ROOT,
+            "<repo-root>",
+        )
+        verilator_run_stdout = replace_path_token(
+            replace_path_token(
+                replace_path_token(verilator_run_result.stdout, actual_runtime_build_root, runtime_build_root_token),
+                Path(tmp),
+                build_dir_token,
+            ),
+            REPO_ROOT,
+            "<repo-root>",
+        )
+
+    records = [
+        json.loads(line)
+        for line in execution_stdout.splitlines()
+        if line.strip()
+    ]
+    suite_records = [record for record in records if record.get("record") == "suite"]
+    module_records = [record for record in records if record.get("record") == "module"]
+    recipe_modules = {
+        module["name"]: module
+        for module in recipe.get("modules", [])
+    }
+    launcher_modules = {
+        module["name"]: module
+        for module in module_records
+        if module.get("name")
+    }
+    run_records = [
+        json.loads(line)
+        for line in verilator_run_stdout.splitlines()
+        if line.strip()
+    ]
+    run_result_records = [record for record in run_records if record.get("record") == "result"]
+    run_summary_records = [record for record in run_records if record.get("record") == "run_summary"]
+    run_results_by_name = {
+        record["name"]: record
+        for record in run_result_records
+        if record.get("name")
+    }
+
+    def expected_phase_trace_keys(recipe_module: dict[str, Any]) -> list[str]:
+        phase_names = [
+            marker[len("phase=") :]
+            for marker in recipe_module.get("expected_stdout_markers", [])
+            if marker.startswith("phase=")
+        ]
+        return [
+            f"{cycle}:{phase}"
+            for cycle, phase in enumerate(phase_names)
+        ]
+
+    def expected_phase_signal_trace_keys(recipe_module: dict[str, Any]) -> list[str]:
+        keys: list[str] = []
+        for entry in recipe_module.get("expected_phase_signal_trace", []):
+            expected = entry["expected"]
+            keys.append(f"{entry['cycle']}:{entry['signal']}:{expected}:{expected}")
+        return keys
+
+    module_fields_match = set(recipe_modules) == set(launcher_modules) and all(
+        launcher_modules[name].get("scope") == recipe_module.get("scope")
+        and launcher_modules[name].get("top_module") == recipe_module.get("top_module")
+        and launcher_modules[name].get("dut_module") == recipe_module.get("dut_module")
+        and launcher_modules[name].get("flist") == recipe_module.get("flist")
+        and launcher_modules[name].get("scoreboard") == recipe_module.get("scoreboard")
+        and launcher_modules[name].get("main") == recipe_module.get("main")
+        and launcher_modules[name].get("build_command") == recipe_module.get("build_command")
+        and launcher_modules[name].get("run_executable") == recipe_module.get("run_executable")
+        and launcher_modules[name].get("expected_stdout_markers")
+        == recipe_module.get("expected_stdout_markers")
+        for name, recipe_module in recipe_modules.items()
+    )
+    run_records_match = set(recipe_modules) == set(run_results_by_name) and all(
+        run_results_by_name[name].get("status") == "pass"
+        and run_results_by_name[name].get("build_status") == 0
+        and run_results_by_name[name].get("run_status") == 0
+        and run_results_by_name[name].get("build_command") == recipe_module.get("build_command")
+        and run_results_by_name[name].get("run_executable") == recipe_module.get("run_executable")
+        for name, recipe_module in recipe_modules.items()
+    )
+    run_stdout_markers_match = set(recipe_modules) == set(run_results_by_name) and all(
+        run_results_by_name[name].get("expected_stdout_markers")
+        == recipe_module.get("expected_stdout_markers")
+        and run_results_by_name[name].get("stdout_markers_present") is True
+        and run_results_by_name[name].get("missing_stdout_markers") == []
+        and run_results_by_name[name].get("observed_stdout_marker_count")
+        == len(recipe_module.get("expected_stdout_markers", []))
+        and run_results_by_name[name].get("captured_stdout_line_count", 0) > 0
+        for name, recipe_module in recipe_modules.items()
+    )
+    run_phase_traces_match = set(recipe_modules) == set(run_results_by_name) and all(
+        run_results_by_name[name].get("expected_phase_trace_keys")
+        == expected_phase_trace_keys(recipe_module)
+        and run_results_by_name[name].get("observed_phase_trace_prefix_keys")
+        == expected_phase_trace_keys(recipe_module)
+        and run_results_by_name[name].get("observed_phase_trace_count", 0)
+        >= len(expected_phase_trace_keys(recipe_module))
+        and run_results_by_name[name].get("phase_trace_in_order") is True
+        and run_results_by_name[name].get("phase_trace_repeats_template") is True
+        and run_results_by_name[name].get("expected_phase_signal_trace_keys")
+        == expected_phase_signal_trace_keys(recipe_module)
+        and run_results_by_name[name].get("observed_phase_signal_trace_prefix_keys")
+        == expected_phase_signal_trace_keys(recipe_module)
+        and run_results_by_name[name].get("observed_phase_signal_trace_count", 0)
+        >= len(expected_phase_signal_trace_keys(recipe_module))
+        and run_results_by_name[name].get("phase_signal_trace_matches") is True
+        and run_results_by_name[name].get("phase_signal_trace_repeats_template") is True
+        and bool(expected_phase_trace_keys(recipe_module))
+        and bool(expected_phase_signal_trace_keys(recipe_module))
+        for name, recipe_module in recipe_modules.items()
+    )
+    run_summary_matches = (
+        len(run_summary_records) == 1
+        and run_summary_records[0].get("suite") == suite
+        and run_summary_records[0].get("module_count") == len(recipe_modules)
+        and run_summary_records[0].get("failures") == 0
+        and run_summary_records[0].get("status") == "pass"
+    )
+    checks = [
+        {
+            "name": "cpp_verilator_launcher_source_exists",
+            "status": "pass" if launcher_path.exists() else "fail",
+        },
+        {
+            "name": "cpp_verilator_launcher_compiled",
+            "status": "pass" if build_result.returncode == 0 else "fail",
+        },
+        {
+            "name": "cpp_verilator_launcher_dry_run_executed",
+            "status": "pass" if execution_result.returncode == 0 else "fail",
+        },
+        {
+            "name": "cpp_verilator_launcher_suite_record_matches_recipe",
+            "status": "pass"
+            if len(suite_records) == 1
+            and suite_records[0].get("schema") == schema
+            and suite_records[0].get("suite") == suite
+            and suite_records[0].get("module_count") == len(recipe_modules)
+            else "fail",
+        },
+        {
+            "name": "cpp_verilator_launcher_module_records_match_recipe",
+            "status": "pass" if module_fields_match else "fail",
+        },
+        {
+            "name": "cpp_verilator_launcher_run_executed",
+            "status": "pass" if verilator_run_result.returncode == 0 else "fail",
+        },
+        {
+            "name": "cpp_verilator_launcher_run_records_match_recipe",
+            "status": "pass" if run_records_match else "fail",
+        },
+        {
+            "name": "cpp_verilator_launcher_run_stdout_markers_match_recipe",
+            "status": "pass" if run_stdout_markers_match else "fail",
+        },
+        {
+            "name": "cpp_verilator_launcher_run_phase_traces_match_recipe",
+            "status": "pass" if run_phase_traces_match else "fail",
+        },
+        {
+            "name": "cpp_verilator_launcher_all_module_runs_passed",
+            "status": "pass" if run_summary_matches else "fail",
+        },
+    ]
+    return {
+        "source": repo_rel(launcher_path),
+        "suite": suite,
+        "schema": schema,
+        "status": "pass" if all(check["status"] == "pass" for check in checks) else "fail",
+        "build": {
+            "command": build_command,
+            "executable": executable,
+            "working_directory": "<repo-root>",
+            "stdout": build_stdout,
+            "status": "pass" if build_result.returncode == 0 else "fail",
+        },
+        "execution": {
+            "command": run_command,
+            "working_directory": "<repo-root>",
+            "stdout": execution_stdout,
+            "status": "pass" if execution_result.returncode == 0 else "fail",
+        },
+        "verilator_run": {
+            "command": verilator_run_command,
+            "working_directory": "<repo-root>",
+            "stdout": verilator_run_stdout,
+            "status": "pass" if verilator_run_result.returncode == 0 else "fail",
+            "module_results": run_result_records,
+            "summary": run_summary_records[0] if run_summary_records else {},
+        },
+        "module_count": len(module_records),
+        "suite_record": suite_records[0] if suite_records else {},
+        "modules": module_records,
+        "checks": checks,
+    }
+
+
+def run_module_dpi_generator(
+    e1_h1_dir: Path,
+    output_path: Path,
+    implementation_matrix: dict[str, Any],
+) -> dict[str, Any]:
+    generator = e1_h1_dir / "tools" / "generate_module_dpi.cpp"
+    module_dpi_dir = e1_h1_dir / "generated" / "module_dpi"
+    generator_build_dir_token = "<module_dpi_generator_build_dir>"
+    generator_executable_name = "e1_h1_generate_module_dpi"
+    generator_executable = f"{generator_build_dir_token}/{generator_executable_name}"
+    generator_build_command = [
+        "c++",
+        "-std=c++17",
+        repo_rel(generator),
+        "-o",
+        generator_executable,
+    ]
+    generator_execution_command = [
+        generator_executable,
+        "--repo-root",
+        "<repo-root>",
+        "--output-dir",
+        repo_rel(module_dpi_dir),
+    ]
+    with tempfile.TemporaryDirectory() as tmp:
+        exe = Path(tmp) / generator_executable_name
+        actual_build_command = [
+            "c++",
+            "-std=c++17",
+            repo_rel(generator),
+            "-o",
+            str(exe),
+        ]
+        build_result = subprocess.run(
+            actual_build_command,
+            cwd=REPO_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=True,
+        )
+        actual_execution_command = [
+            str(exe),
+            "--repo-root",
+            str(REPO_ROOT),
+            "--output-dir",
+            str(module_dpi_dir),
+        ]
+        generation_result = subprocess.run(
+            actual_execution_command,
+            cwd=REPO_ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=True,
+        )
+        generator_build_stdout = replace_path_token(
+            replace_path_token(build_result.stdout, Path(tmp), generator_build_dir_token),
+            REPO_ROOT,
+            "<repo-root>",
+        )
+        generator_execution_stdout = replace_path_token(
+            replace_path_token(
+                replace_path_token(generation_result.stdout, module_dpi_dir, repo_rel(module_dpi_dir)),
+                Path(tmp),
+                generator_build_dir_token,
+            ),
+            REPO_ROOT,
+            "<repo-root>",
         )
 
     module_dpi_manifest_path = module_dpi_dir / "manifest.json"
     module_dpi_manifest = load_json(module_dpi_manifest_path)
+    expected_generator_stdout = (
+        f"PASS e1_h1_generate_module_dpi {len(module_dpi_manifest['modules'])} modules"
+        f" -> {repo_rel(module_dpi_dir)}\n"
+    )
+    generator_build = {
+        "source": repo_rel(generator),
+        "command": generator_build_command,
+        "executable": generator_executable,
+        "working_directory": "<repo-root>",
+        "stdout": generator_build_stdout,
+        "status": "pass" if build_result.returncode == 0 else "fail",
+    }
+    generator_execution = {
+        "command": generator_execution_command,
+        "working_directory": "<repo-root>",
+        "stdout": generator_execution_stdout,
+        "expected_stdout": expected_generator_stdout,
+        "status": "pass"
+        if generation_result.returncode == 0 and generator_execution_stdout == expected_generator_stdout
+        else "fail",
+    }
+    module_interfaces_doc = module_dpi_dir / "module_interfaces.md"
     module_isolation_path = module_dpi_dir / "module_isolation.json"
     cycle_contract_path = module_dpi_dir / "cycle_contract.json"
     module_test_plan_path = module_dpi_dir / "module_test_plan.json"
@@ -627,9 +1605,18 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
     cycle_contract = load_json(cycle_contract_path)
     module_test_plan = load_json(module_test_plan_path)
     verilator_execution_recipe = load_json(verilator_execution_recipe_path)
+    verilator_execution_launcher_path = REPO_ROOT / module_dpi_manifest["verilator_execution_launcher"]
+    cpp_verilator_launcher = run_cpp_verilator_launcher(
+        verilator_execution_launcher_path,
+        suite="module_dpi",
+        schema="e1-h1-module-dpi-verilator-launcher-v0",
+        recipe=verilator_execution_recipe,
+        build_dir_token="<module_dpi_verilator_launcher_build_dir>",
+    )
     verilator_execution = load_optional_json(verilator_execution_path)
     readme_cycle_coverage = load_json(readme_cycle_coverage_path)
     construction_ledger = load_json(construction_ledger_path)
+    module_interfaces_text = module_interfaces_doc.read_text(encoding="utf-8") if module_interfaces_doc.exists() else ""
     module_names = {module["name"] for module in module_dpi_manifest["modules"]}
     isolation_by_name = {module["name"]: module for module in module_isolation["modules"]}
     cycle_contract_by_name = {module["name"]: module for module in cycle_contract["modules"]}
@@ -638,10 +1625,181 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
     verilator_execution_by_name = {module["name"]: module for module in verilator_execution["modules"]}
     readme_cycle_coverage_by_name = {module["name"]: module for module in readme_cycle_coverage["modules"]}
     construction_ledger_by_name = {module["name"]: module for module in construction_ledger["modules"]}
+    matrix_by_name = {entry["name"]: entry for entry in implementation_matrix["ips"]}
+    ip_ports_by_name: dict[str, dict[str, list[dict[str, str]]]] = {}
+    rtl_ports_by_name: dict[str, dict[str, list[dict[str, str]]]] = {}
+    vip_cases_by_name: dict[str, list[str]] = {}
+    vip_case_markers_by_name: dict[str, list[str]] = {}
+    for module in module_dpi_manifest["modules"]:
+        ip = load_json(e1_h1_dir / "ip" / f"{module['name']}.json")
+        vip = load_json(e1_h1_dir / "vip" / f"{module['name']}.json")
+        vip_cases = vip["dpi_equivalence"]["stream_space"]["cases"]
+        vip_cases_by_name[module["name"]] = vip_cases
+        vip_case_markers_by_name[module["name"]] = [f"case={case}" for case in vip_cases]
+        ip_ports_by_name[module["name"]] = {
+            "input": [
+                {"name": port["name"], "width": str(port["width"])}
+                for port in ip["ports"]
+                if port["direction"] == "input"
+            ],
+            "output": [
+                {"name": port["name"], "width": str(port["width"])}
+                for port in ip["ports"]
+                if port["direction"] == "output"
+            ],
+        }
+        rtl_ports_by_name[module["name"]] = split_ports_by_direction(
+            parse_sv_module_ports(REPO_ROOT / module["imp2_rtl"], module["top_module"])
+        )
+
+    def expected_phase_signal_trace(module_name: str) -> list[dict[str, Any]]:
+        contract = cycle_contract_by_name[module_name]
+        return [
+            {
+                "cycle": step["cycle"],
+                "signal": contract["primary_phase_signal"],
+                "expected": step["cycle"],
+            }
+            for step in contract["cycles"]
+        ]
+
+    implementation_matrix_crosscheck = []
+    for module in module_dpi_manifest["modules"]:
+        name = module["name"]
+        matrix_entry = matrix_by_name.get(name)
+        ledger = construction_ledger_by_name[name]
+        matrix_dpi = matrix_entry["dpi_equivalence"] if matrix_entry is not None else {}
+        imp2 = matrix_entry["imp2"] if matrix_entry is not None else {}
+        expected_module_flist_entries = [
+            ledger["reference_rtl"],
+            ledger["imp2_rtl"],
+            module["probe"],
+        ]
+        observed_module_flist_entries = (
+            (REPO_ROOT / module["flist"]).read_text(encoding="utf-8").splitlines()
+            if (REPO_ROOT / module["flist"]).exists()
+            else []
+        )
+        reference_defined_modules = (
+            parse_sv_defined_modules(REPO_ROOT / ledger["reference_rtl"])
+            if (REPO_ROOT / ledger["reference_rtl"]).exists()
+            else []
+        )
+        matrix_imp2_flist_entries = (
+            (REPO_ROOT / imp2.get("flist", "")).read_text(encoding="utf-8").splitlines()
+            if imp2.get("flist") and (REPO_ROOT / imp2["flist"]).exists()
+            else []
+        )
+        implementation_matrix_crosscheck.append(
+            {
+                "name": name,
+                "matrix_entry_present": matrix_entry is not None,
+                "active_implementation": matrix_entry["active"] if matrix_entry is not None else None,
+                "matrix_top_module": imp2.get("module"),
+                "module_dpi_top_module": module["top_module"],
+                "imp2_rtl": ledger["imp2_rtl"],
+                "reference_rtl": ledger["reference_rtl"],
+                "matrix_imp2_rtl_files": imp2.get("rtl_files", []),
+                "matrix_imp2_flist": imp2.get("flist"),
+                "matrix_imp2_flist_entries": matrix_imp2_flist_entries,
+                "module_dpi_probe": module["probe"],
+                "matrix_module_probe": matrix_dpi.get("module_probe"),
+                "module_dpi_main": module["main"],
+                "matrix_module_main": matrix_dpi.get("module_main"),
+                "module_dpi_flist": module["flist"],
+                "matrix_module_flist": matrix_dpi.get("module_flist"),
+                "expected_module_flist_entries": expected_module_flist_entries,
+                "observed_module_flist_entries": observed_module_flist_entries,
+                "reference_defined_modules": reference_defined_modules,
+                "reference_defined_module_count": len(reference_defined_modules),
+                "checks": [
+                    {
+                        "name": "matrix_entry_present",
+                        "status": "pass" if matrix_entry is not None else "fail",
+                    },
+                    {
+                        "name": "matrix_selects_imp2",
+                        "status": "pass" if matrix_entry is not None and matrix_entry["active"] == "imp2" else "fail",
+                    },
+                    {
+                        "name": "top_module_matches_matrix_imp2",
+                        "status": "pass" if imp2.get("module") == module["top_module"] else "fail",
+                    },
+                    {
+                        "name": "module_dpi_uses_matrix_imp2_rtl",
+                        "status": "pass" if ledger["imp2_rtl"] in imp2.get("rtl_files", []) else "fail",
+                    },
+                    {
+                        "name": "matrix_imp2_flist_matches_imp2_rtl",
+                        "status": "pass" if matrix_imp2_flist_entries == imp2.get("rtl_files", []) else "fail",
+                    },
+                    {
+                        "name": "matrix_module_probe_matches_generated_probe",
+                        "status": "pass" if matrix_dpi.get("module_probe") == module["probe"] else "fail",
+                    },
+                    {
+                        "name": "matrix_module_main_matches_generated_main",
+                        "status": "pass" if matrix_dpi.get("module_main") == module["main"] else "fail",
+                    },
+                    {
+                        "name": "matrix_module_flist_matches_generated_flist",
+                        "status": "pass" if matrix_dpi.get("module_flist") == module["flist"] else "fail",
+                    },
+                    {
+                        "name": "generated_module_flist_matches_matrix_rtl_and_probe",
+                        "status": "pass"
+                        if observed_module_flist_entries == expected_module_flist_entries
+                        else "fail",
+                    },
+                    {
+                        "name": "generated_reference_defines_exactly_one_reference_module",
+                        "status": "pass"
+                        if reference_defined_modules == [module["reference_module"]]
+                        else "fail",
+                    },
+                    {
+                        "name": "generated_module_flist_starts_with_per_module_reference",
+                        "status": "pass"
+                        if observed_module_flist_entries
+                        and observed_module_flist_entries[0] == ledger["reference_rtl"]
+                        else "fail",
+                    },
+                ],
+            }
+        )
     checks = [
+        {
+            "name": "module_dpi_cpp_generator_build_recorded",
+            "status": "pass"
+            if generator_build["source"] == repo_rel(generator)
+            and generator_build["command"] == generator_build_command
+            and generator_build["executable"] == generator_executable
+            and generator_build["working_directory"] == "<repo-root>"
+            and generator_build["status"] == "pass"
+            else "fail",
+        },
+        {
+            "name": "module_dpi_cpp_generator_execution_recorded",
+            "status": "pass"
+            if generator_execution["command"] == generator_execution_command
+            and generator_execution["working_directory"] == "<repo-root>"
+            and generator_execution["status"] == "pass"
+            else "fail",
+        },
+        {
+            "name": "module_dpi_cpp_generator_stdout_reports_module_count",
+            "status": "pass"
+            if generator_execution["stdout"] == expected_generator_stdout
+            and generator_execution["expected_stdout"] == expected_generator_stdout
+            else "fail",
+        },
         {
             "name": "module_dpi_manifest_exists",
             "status": "pass" if module_dpi_manifest_path.exists() else "fail",
+        },
+        {
+            "name": "module_dpi_interfaces_doc_exists",
+            "status": "pass" if module_interfaces_doc.exists() else "fail",
         },
         {
             "name": "one_probe_per_module",
@@ -660,6 +1818,17 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
             "status": "pass" if module_isolation_path.exists() else "fail",
         },
         {
+            "name": "module_dpi_isolation_report_passed",
+            "status": "pass"
+            if module_isolation.get("status") == "pass"
+            and all(check["status"] == "pass" for check in module_isolation.get("checks", []))
+            and module_isolation.get("separated_boundaries", {}).get("latch_buffer_module") == "ingress_sram"
+            and module_isolation.get("separated_boundaries", {}).get("cpu_modules") == ["control_cpu"]
+            and module_isolation.get("separated_boundaries", {}).get("systolic_array_modules")
+            == ["systolic_array"]
+            else "fail",
+        },
+        {
             "name": "module_dpi_cycle_contract_exists",
             "status": "pass" if cycle_contract_path.exists() else "fail",
         },
@@ -670,6 +1839,37 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
         {
             "name": "module_dpi_verilator_execution_recipe_exists",
             "status": "pass" if verilator_execution_recipe_path.exists() else "fail",
+        },
+        {
+            "name": "module_dpi_cpp_verilator_launcher_exists",
+            "status": "pass" if verilator_execution_launcher_path.exists() else "fail",
+        },
+        {
+            "name": "module_dpi_cpp_verilator_launcher_matches_execution_recipe",
+            "status": "pass"
+            if cpp_verilator_launcher["status"] == "pass"
+            and all(check["status"] == "pass" for check in cpp_verilator_launcher["checks"])
+            else "fail",
+        },
+        {
+            "name": "module_dpi_cpp_verilator_launcher_validates_runtime_markers",
+            "status": "pass"
+            if any(
+                check["name"] == "cpp_verilator_launcher_run_stdout_markers_match_recipe"
+                and check["status"] == "pass"
+                for check in cpp_verilator_launcher["checks"]
+            )
+            else "fail",
+        },
+        {
+            "name": "module_dpi_cpp_verilator_launcher_validates_runtime_phase_traces",
+            "status": "pass"
+            if any(
+                check["name"] == "cpp_verilator_launcher_run_phase_traces_match_recipe"
+                and check["status"] == "pass"
+                for check in cpp_verilator_launcher["checks"]
+            )
+            else "fail",
         },
         {
             "name": "module_dpi_verilator_execution_report_exists",
@@ -689,6 +1889,8 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
             if module_names == set(isolation_by_name)
             and all(
                 all(check["status"] == "pass" for check in isolation_by_name[module["name"]]["checks"])
+                and isolation_by_name[module["name"]]["probe_dut_instantiation_count"] == 1
+                and isolation_by_name[module["name"]]["probe_reference_instantiation_count"] == 1
                 for module in module_dpi_manifest["modules"]
             )
             else "fail",
@@ -701,6 +1903,10 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
                 all(check["status"] == "pass" for check in cycle_contract_by_name[module["name"]]["checks"])
                 and [step["cycle"] for step in cycle_contract_by_name[module["name"]]["cycles"]]
                 == list(range(cycle_contract_by_name[module["name"]]["cycle_period"]))
+                and cycle_contract_by_name[module["name"]]["primary_phase_signal"]
+                == module["primary_phase_signal"]
+                and cycle_contract_by_name[module["name"]]["expected_phase_signal_trace"]
+                == expected_phase_signal_trace(module["name"])
                 for module in module_dpi_manifest["modules"]
             )
             else "fail",
@@ -711,9 +1917,17 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
             if module_names == set(test_plan_by_name)
             and all(
                 all(check["status"] == "pass" for check in test_plan_by_name[module["name"]]["checks"])
+                and test_plan_by_name[module["name"]]["vip_cases"] == module["vip_cases"]
                 and test_plan_by_name[module["name"]]["verilator"]["top_module"] == module["probe_module"]
                 and test_plan_by_name[module["name"]]["verilator"]["flist"] == module["flist"]
                 and test_plan_by_name[module["name"]]["verilator"]["main"] == module["main"]
+                and test_plan_by_name[module["name"]]["primary_phase_signal"] == module["primary_phase_signal"]
+                and test_plan_by_name[module["name"]]["expected_phase_signal_trace"]
+                == expected_phase_signal_trace(module["name"])
+                and test_plan_by_name[module["name"]]["verilator"]["primary_phase_signal"]
+                == module["primary_phase_signal"]
+                and test_plan_by_name[module["name"]]["verilator"]["expected_phase_signal_trace"]
+                == expected_phase_signal_trace(module["name"])
                 for module in module_dpi_manifest["modules"]
             )
             else "fail",
@@ -735,8 +1949,13 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
                 and recipe_by_name[module["name"]]["flist"] == module["flist"]
                 and recipe_by_name[module["name"]]["scoreboard"] == module_dpi_manifest["scoreboard"]
                 and recipe_by_name[module["name"]]["main"] == module["main"]
+                and recipe_by_name[module["name"]]["vip_cases"] == module["vip_cases"]
                 and recipe_by_name[module["name"]]["expected_stdout_markers"]
                 == test_plan_by_name[module["name"]]["verilator"]["expected_stdout_markers"]
+                and recipe_by_name[module["name"]]["primary_phase_signal"]
+                == test_plan_by_name[module["name"]]["verilator"]["primary_phase_signal"]
+                and recipe_by_name[module["name"]]["expected_phase_signal_trace"]
+                == test_plan_by_name[module["name"]]["verilator"]["expected_phase_signal_trace"]
                 for module in module_dpi_manifest["modules"]
             )
             else "fail",
@@ -754,9 +1973,43 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
                 == test_plan_by_name[module["name"]]["verilator"]["flist"]
                 and verilator_execution_by_name[module["name"]]["observed_stdout_markers"]
                 == test_plan_by_name[module["name"]]["verilator"]["expected_stdout_markers"]
+                and verilator_execution_by_name[module["name"]]["expected_vip_case_markers"]
+                == vip_case_markers_by_name[module["name"]]
+                and verilator_execution_by_name[module["name"]]["observed_vip_case_markers"]
+                == vip_case_markers_by_name[module["name"]]
+                and verilator_execution_by_name[module["name"]]["observed_vip_case_trace_prefix"]
+                == verilator_execution_by_name[module["name"]]["expected_vip_case_trace"]
+                and verilator_execution_by_name[module["name"]]["observed_vip_case_trace_count"]
+                >= len(verilator_execution_by_name[module["name"]]["expected_vip_case_trace"])
                 and verilator_execution_by_name[module["name"]]["observed_phase_markers"]
                 == verilator_execution_by_name[module["name"]]["expected_phase_markers"]
+                and verilator_execution_by_name[module["name"]]["observed_phase_trace_prefix"]
+                == verilator_execution_by_name[module["name"]]["expected_phase_trace"]
+                and verilator_execution_by_name[module["name"]]["observed_phase_trace_count"]
+                >= len(verilator_execution_by_name[module["name"]]["expected_phase_trace"])
+                and verilator_execution_by_name[module["name"]]["expected_phase_signal_trace"]
+                == expected_phase_signal_trace(module["name"])
+                and verilator_execution_by_name[module["name"]]["observed_phase_signal_trace_prefix"]
+                == expected_phase_signal_trace(module["name"])
+                and verilator_execution_by_name[module["name"]]["observed_phase_signal_trace_count"]
+                >= len(expected_phase_signal_trace(module["name"]))
                 and len(verilator_execution_by_name[module["name"]]["expected_phase_markers"]) > 0
+                for module in module_dpi_manifest["modules"]
+            )
+            else "fail",
+        },
+        {
+            "name": "module_dpi_phase_signal_traces_match_probe_outputs",
+            "status": "pass"
+            if module_names == set(verilator_execution_by_name)
+            and all(
+                len(expected_phase_signal_trace(module["name"])) > 0
+                and verilator_execution_by_name[module["name"]]["expected_phase_signal_trace"]
+                == expected_phase_signal_trace(module["name"])
+                and verilator_execution_by_name[module["name"]]["observed_phase_signal_trace_prefix"]
+                == expected_phase_signal_trace(module["name"])
+                and verilator_execution_by_name[module["name"]]["observed_phase_signal_trace_count"]
+                >= len(expected_phase_signal_trace(module["name"]))
                 for module in module_dpi_manifest["modules"]
             )
             else "fail",
@@ -775,11 +2028,45 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
                 == recipe_by_name[module["name"]]["run_executable"]
                 and verilator_execution_by_name[module["name"]]["expected_stdout_markers"]
                 == recipe_by_name[module["name"]]["expected_stdout_markers"]
+                and verilator_execution_by_name[module["name"]]["expected_phase_signal_trace"]
+                == recipe_by_name[module["name"]]["expected_phase_signal_trace"]
+                and verilator_execution_by_name[module["name"]]["expected_vip_case_markers"]
+                == [
+                    marker
+                    for marker in recipe_by_name[module["name"]]["expected_stdout_markers"]
+                    if marker.startswith("case=")
+                ]
+                and verilator_execution_by_name[module["name"]]["expected_vip_case_trace"]
+                == [
+                    {
+                        "index": index,
+                        "case": marker[len("case=") :],
+                        "case_marker": marker,
+                    }
+                    for index, marker in enumerate(
+                        marker
+                        for marker in recipe_by_name[module["name"]]["expected_stdout_markers"]
+                        if marker.startswith("case=")
+                    )
+                ]
                 and verilator_execution_by_name[module["name"]]["expected_phase_markers"]
                 == [
                     marker
                     for marker in recipe_by_name[module["name"]]["expected_stdout_markers"]
                     if marker.startswith("phase=")
+                ]
+                and verilator_execution_by_name[module["name"]]["expected_phase_trace"]
+                == [
+                    {
+                        "cycle": cycle,
+                        "phase": marker[len("phase=") :],
+                        "phase_marker": marker,
+                    }
+                    for cycle, marker in enumerate(
+                        marker
+                        for marker in recipe_by_name[module["name"]]["expected_stdout_markers"]
+                        if marker.startswith("phase=")
+                    )
                 ]
                 for module in module_dpi_manifest["modules"]
             )
@@ -789,12 +2076,20 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
             "name": "all_module_dpi_modules_have_readme_cycle_coverage",
             "status": "pass"
             if module_names == set(readme_cycle_coverage_by_name)
+            and readme_cycle_coverage.get("diagram_checks")
+            and all(check["status"] == "pass" for check in readme_cycle_coverage["diagram_checks"])
             and all(
                 all(check["status"] == "pass" for check in readme_cycle_coverage_by_name[module["name"]]["checks"])
                 and readme_cycle_coverage_by_name[module["name"]]["template"]
                 == cycle_contract_by_name[module["name"]]["template"]
                 and readme_cycle_coverage_by_name[module["name"]]["phase_names"]
                 == [step["phase"] for step in cycle_contract_by_name[module["name"]]["cycles"]]
+                and readme_cycle_coverage_by_name[module["name"]]["readme_index_row"]
+                == readme_index_row(
+                    module["name"],
+                    cycle_contract_by_name[module["name"]]["template"],
+                    cycle_contract_by_name[module["name"]]["cycles"],
+                )
                 for module in module_dpi_manifest["modules"]
             )
             else "fail",
@@ -804,9 +2099,12 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
             "status": "pass"
             if module_names == set(construction_ledger_by_name)
             and construction_ledger.get("manifest") == repo_rel(module_dpi_manifest_path)
+            and construction_ledger.get("module_interfaces_doc") == module_dpi_manifest["module_interfaces_doc"]
             and construction_ledger.get("cycle_contract") == module_dpi_manifest["cycle_contract"]
             and construction_ledger.get("verilator_execution_recipe")
             == module_dpi_manifest["verilator_execution_recipe"]
+            and construction_ledger.get("verilator_execution_launcher")
+            == module_dpi_manifest["verilator_execution_launcher"]
             else "fail",
         },
         {
@@ -819,8 +2117,92 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
                 and construction_ledger_by_name[module["name"]]["flist"] == module["flist"]
                 and construction_ledger_by_name[module["name"]]["scoreboard"] == module_dpi_manifest["scoreboard"]
                 and construction_ledger_by_name[module["name"]]["imp2_rtl"] == module["imp2_rtl"]
+                and construction_ledger_by_name[module["name"]]["reference_rtl"] == module["reference_rtl"]
                 and construction_ledger_by_name[module["name"]]["latch_buffer"] == module["latch_buffer"]
+                and construction_ledger_by_name[module["name"]]["probe_dut_instantiation_count"] == 1
+                and construction_ledger_by_name[module["name"]]["probe_reference_instantiation_count"] == 1
+                and construction_ledger_by_name[module["name"]]["probe_dut_instantiation_count"]
+                == isolation_by_name[module["name"]]["probe_dut_instantiation_count"]
+                and construction_ledger_by_name[module["name"]]["probe_reference_instantiation_count"]
+                == isolation_by_name[module["name"]]["probe_reference_instantiation_count"]
+                and construction_ledger_by_name[module["name"]]["input_signal_count"] == len(module["input_signals"])
+                and construction_ledger_by_name[module["name"]]["output_signal_count"] == len(module["output_signals"])
+                and construction_ledger_by_name[module["name"]]["vip_cases"] == module["vip_cases"]
+                and construction_ledger_by_name[module["name"]]["vip_case_markers"] == module["vip_case_markers"]
+                and construction_ledger_by_name[module["name"]]["primary_phase_signal"]
+                == module["primary_phase_signal"]
+                and construction_ledger_by_name[module["name"]]["expected_phase_signal_trace"]
+                == module["expected_phase_signal_trace"]
                 and all(check["status"] == "pass" for check in construction_ledger_by_name[module["name"]]["checks"])
+                for module in module_dpi_manifest["modules"]
+            )
+            else "fail",
+        },
+        {
+            "name": "module_dpi_interface_docs_match_manifest",
+            "status": "pass"
+            if all(
+                f"## {module['name']}" in module_interfaces_text
+                and module["top_module"] in module_interfaces_text
+                and module["interface_source"] == f"e1/e1-h1/ip/{module['name']}.json:ports"
+                and module["interface_source"] in module_interfaces_text
+                and all(signal["name"] in module_interfaces_text for signal in module["input_signals"])
+                and all(signal["name"] in module_interfaces_text for signal in module["output_signals"])
+                for module in module_dpi_manifest["modules"]
+            )
+            else "fail",
+        },
+        {
+            "name": "module_dpi_interface_docs_match_ip_port_manifests",
+            "status": "pass"
+            if all(
+                [
+                    {"name": signal["name"], "width": signal["width"]}
+                    for signal in module["input_signals"]
+                ]
+                == ip_ports_by_name[module["name"]]["input"]
+                and [
+                    {"name": signal["name"], "width": signal["width"]}
+                    for signal in module["output_signals"]
+                ]
+                == ip_ports_by_name[module["name"]]["output"]
+                for module in module_dpi_manifest["modules"]
+            )
+            else "fail",
+        },
+        {
+            "name": "module_dpi_interface_docs_match_imp2_rtl_ports",
+            "status": "pass"
+            if all(
+                [
+                    {"name": signal["name"], "width": signal["width"]}
+                    for signal in module["input_signals"]
+                ]
+                == rtl_ports_by_name[module["name"]]["input"]
+                and [
+                    {"name": signal["name"], "width": signal["width"]}
+                    for signal in module["output_signals"]
+                ]
+                == rtl_ports_by_name[module["name"]]["output"]
+                for module in module_dpi_manifest["modules"]
+            )
+            else "fail",
+        },
+        {
+            "name": "module_dpi_ip_port_manifests_match_imp2_rtl_ports",
+            "status": "pass"
+            if all(
+                ip_ports_by_name[module["name"]] == rtl_ports_by_name[module["name"]]
+                for module in module_dpi_manifest["modules"]
+            )
+            else "fail",
+        },
+        {
+            "name": "module_dpi_vip_cases_match_vip_manifests",
+            "status": "pass"
+            if all(
+                module["vip_cases"] == vip_cases_by_name[module["name"]]
+                and module["vip_case_markers"] == vip_case_markers_by_name[module["name"]]
                 for module in module_dpi_manifest["modules"]
             )
             else "fail",
@@ -836,9 +2218,45 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
                 == cycle_contract_by_name[module["name"]]["cycle_period"]
                 and construction_ledger_by_name[module["name"]]["phase_source"]
                 == cycle_contract_by_name[module["name"]]["phase_source"]
+                and construction_ledger_by_name[module["name"]]["primary_phase_signal"]
+                == cycle_contract_by_name[module["name"]]["primary_phase_signal"]
+                and construction_ledger_by_name[module["name"]]["expected_phase_signal_trace"]
+                == cycle_contract_by_name[module["name"]]["expected_phase_signal_trace"]
                 and construction_ledger_by_name[module["name"]]["phase_names"]
                 == [step["phase"] for step in cycle_contract_by_name[module["name"]]["cycles"]]
                 for module in module_dpi_manifest["modules"]
+            )
+            else "fail",
+        },
+        {
+            "name": "module_dpi_matches_implementation_matrix_active_imp2",
+            "status": "pass"
+            if module_names == set(matrix_by_name)
+            and implementation_matrix.get("active_implementation") == "imp2"
+            and all(
+                all(check["status"] == "pass" for check in entry["checks"])
+                for entry in implementation_matrix_crosscheck
+            )
+            else "fail",
+        },
+        {
+            "name": "module_dpi_per_module_references_define_single_modules",
+            "status": "pass"
+            if implementation_matrix_crosscheck
+            and all(
+                entry["reference_defined_modules"] == [module_dpi_manifest["modules"][index]["reference_module"]]
+                for index, entry in enumerate(implementation_matrix_crosscheck)
+            )
+            else "fail",
+        },
+        {
+            "name": "module_dpi_flists_start_with_per_module_references",
+            "status": "pass"
+            if implementation_matrix_crosscheck
+            and all(
+                entry["observed_module_flist_entries"]
+                and entry["observed_module_flist_entries"][0] == entry["reference_rtl"]
+                for entry in implementation_matrix_crosscheck
             )
             else "fail",
         },
@@ -853,12 +2271,18 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
         "schema": "e1-module-dpi-generation-report-v0",
         "status": "pass" if all(check["status"] == "pass" for check in checks) else "fail",
         "generator": repo_rel(generator),
+        "generator_build": generator_build,
+        "generator_execution": generator_execution,
         "manifest": repo_rel(module_dpi_manifest_path),
+        "implementation_matrix": implementation_matrix["matrix"],
         "scoreboard": module_dpi_manifest["scoreboard"],
+        "module_interfaces_doc": module_dpi_manifest["module_interfaces_doc"],
         "module_isolation_proof": module_dpi_manifest["module_isolation_proof"],
         "cycle_contract": module_dpi_manifest["cycle_contract"],
         "module_test_plan": module_dpi_manifest["module_test_plan"],
         "verilator_execution_recipe": module_dpi_manifest["verilator_execution_recipe"],
+        "verilator_execution_launcher": module_dpi_manifest["verilator_execution_launcher"],
+        "cpp_verilator_launcher": cpp_verilator_launcher,
         "verilator_execution_report": module_dpi_manifest["verilator_execution_report"],
         "readme_cycle_coverage": module_dpi_manifest["readme_cycle_coverage"],
         "construction_ledger": module_dpi_manifest["construction_ledger"],
@@ -868,11 +2292,36 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
                 "name": module["name"],
                 "top_module": module["top_module"],
                 "reference_module": module["reference_module"],
+                "reference_rtl": module["reference_rtl"],
+                "reference_defined_modules": next(
+                    entry["reference_defined_modules"]
+                    for entry in implementation_matrix_crosscheck
+                    if entry["name"] == module["name"]
+                ),
+                "reference_defined_module_count": next(
+                    entry["reference_defined_module_count"]
+                    for entry in implementation_matrix_crosscheck
+                    if entry["name"] == module["name"]
+                ),
+                "imp2_rtl": construction_ledger_by_name[module["name"]]["imp2_rtl"],
                 "probe": module["probe"],
                 "main": module["main"],
                 "flist": module["flist"],
                 "latch_buffer": module["latch_buffer"],
+                "interface_source": module["interface_source"],
+                "input_signals": module["input_signals"],
+                "output_signals": module["output_signals"],
+                "ip_port_contract": ip_ports_by_name[module["name"]],
+                "rtl_port_contract": rtl_ports_by_name[module["name"]],
+                "vip_case_contract": {
+                    "cases": vip_cases_by_name[module["name"]],
+                    "markers": vip_case_markers_by_name[module["name"]],
+                },
+                "vip_cases": module["vip_cases"],
+                "vip_case_markers": module["vip_case_markers"],
                 "cycle_notes": module["cycle_notes"],
+                "primary_phase_signal": module["primary_phase_signal"],
+                "expected_phase_signal_trace": module["expected_phase_signal_trace"],
                 "isolation": isolation_by_name[module["name"]],
                 "cycle_contract": cycle_contract_by_name[module["name"]],
                 "test_plan": test_plan_by_name[module["name"]],
@@ -885,6 +2334,12 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
         ],
         "construction_rule": module_dpi_manifest["construction_rule"],
         "separation_of_concerns": module_dpi_manifest["separation_of_concerns"],
+        "module_isolation": {
+            "status": module_isolation.get("status"),
+            "checks": module_isolation.get("checks", []),
+            "separated_boundaries": module_isolation.get("separated_boundaries", {}),
+        },
+        "implementation_matrix_crosscheck": implementation_matrix_crosscheck,
         "checks": checks,
     }
     write_json(output_path, report)
@@ -894,39 +2349,93 @@ def run_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, An
 def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path) -> dict[str, Any]:
     generator = e1_h1_dir / "tools" / "generate_full_checkpoint_module_dpi.cpp"
     module_dpi_dir = e1_h1_dir / "generated" / "full_checkpoint_dpi"
+    generator_build_dir_token = "<full_checkpoint_module_dpi_generator_build_dir>"
+    generator_executable_name = "e1_h1_generate_full_checkpoint_module_dpi"
+    generator_executable = f"{generator_build_dir_token}/{generator_executable_name}"
+    generator_build_command = [
+        "c++",
+        "-std=c++17",
+        repo_rel(generator),
+        "-o",
+        generator_executable,
+    ]
+    generator_execution_command = [
+        generator_executable,
+        "--repo-root",
+        "<repo-root>",
+        "--output-dir",
+        repo_rel(module_dpi_dir),
+    ]
     with tempfile.TemporaryDirectory() as tmp:
-        exe = Path(tmp) / "e1_h1_generate_full_checkpoint_module_dpi"
-        subprocess.run(
-            [
-                "c++",
-                "-std=c++17",
-                repo_rel(generator),
-                "-o",
-                str(exe),
-            ],
+        exe = Path(tmp) / generator_executable_name
+        actual_build_command = [
+            "c++",
+            "-std=c++17",
+            repo_rel(generator),
+            "-o",
+            str(exe),
+        ]
+        build_result = subprocess.run(
+            actual_build_command,
             cwd=REPO_ROOT,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             check=True,
         )
-        subprocess.run(
-            [
-                str(exe),
-                "--repo-root",
-                str(REPO_ROOT),
-                "--output-dir",
-                str(module_dpi_dir),
-            ],
+        actual_execution_command = [
+            str(exe),
+            "--repo-root",
+            str(REPO_ROOT),
+            "--output-dir",
+            str(module_dpi_dir),
+        ]
+        generation_result = subprocess.run(
+            actual_execution_command,
             cwd=REPO_ROOT,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             check=True,
+        )
+        generator_build_stdout = replace_path_token(
+            replace_path_token(build_result.stdout, Path(tmp), generator_build_dir_token),
+            REPO_ROOT,
+            "<repo-root>",
+        )
+        generator_execution_stdout = replace_path_token(
+            replace_path_token(
+                replace_path_token(generation_result.stdout, module_dpi_dir, repo_rel(module_dpi_dir)),
+                Path(tmp),
+                generator_build_dir_token,
+            ),
+            REPO_ROOT,
+            "<repo-root>",
         )
 
     manifest_path = module_dpi_dir / "manifest.json"
     manifest = load_json(manifest_path)
+    expected_generator_stdout = (
+        f"PASS e1_h1_generate_full_checkpoint_module_dpi {len(manifest['modules'])} modules"
+        f" -> {repo_rel(module_dpi_dir)}\n"
+    )
+    generator_build = {
+        "source": repo_rel(generator),
+        "command": generator_build_command,
+        "executable": generator_executable,
+        "working_directory": "<repo-root>",
+        "stdout": generator_build_stdout,
+        "status": "pass" if build_result.returncode == 0 else "fail",
+    }
+    generator_execution = {
+        "command": generator_execution_command,
+        "working_directory": "<repo-root>",
+        "stdout": generator_execution_stdout,
+        "expected_stdout": expected_generator_stdout,
+        "status": "pass"
+        if generation_result.returncode == 0 and generator_execution_stdout == expected_generator_stdout
+        else "fail",
+    }
     module_interfaces_doc = module_dpi_dir / "module_interfaces.md"
     module_isolation_path = module_dpi_dir / "module_isolation.json"
     cycle_contract_path = module_dpi_dir / "cycle_contract.json"
@@ -945,6 +2454,14 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
     cycle_contract = load_json(cycle_contract_path)
     module_test_plan = load_json(module_test_plan_path)
     verilator_execution_recipe = load_json(verilator_execution_recipe_path)
+    verilator_execution_launcher_path = REPO_ROOT / manifest["verilator_execution_launcher"]
+    cpp_verilator_launcher = run_cpp_verilator_launcher(
+        verilator_execution_launcher_path,
+        suite="full_checkpoint_module_dpi",
+        schema="e1-h1-full-checkpoint-module-dpi-verilator-launcher-v0",
+        recipe=verilator_execution_recipe,
+        build_dir_token="<full_checkpoint_module_dpi_verilator_launcher_build_dir>",
+    )
     verilator_execution = load_optional_json(verilator_execution_path)
     readme_cycle_coverage = load_json(readme_cycle_coverage_path)
     construction_ledger = load_json(construction_ledger_path)
@@ -956,6 +2473,12 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
     verilator_execution_by_name = {module["name"]: module for module in verilator_execution["modules"]}
     readme_cycle_coverage_by_name = {module["name"]: module for module in readme_cycle_coverage["modules"]}
     construction_ledger_by_name = {module["name"]: module for module in construction_ledger["modules"]}
+    rtl_ports_by_name = {
+        module["name"]: split_ports_by_direction(
+            parse_sv_module_ports(REPO_ROOT / module["rtl"][-1], module["top_module"])
+        )
+        for module in manifest["modules"]
+    }
     expected_modules = {
         "linear_scheduler",
         "linear_tile_engine",
@@ -965,7 +2488,44 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
         "control_slot_engine",
         "full_checkpoint_top",
     }
+
+    def expected_phase_signal_trace(module_name: str) -> list[dict[str, Any]]:
+        contract = cycle_contract_by_name[module_name]
+        return [
+            {
+                "cycle": step["cycle"],
+                "signal": contract["primary_phase_signal"],
+                "expected": step["cycle"],
+            }
+            for step in contract["cycles"]
+        ]
+
     checks = [
+        {
+            "name": "generated_full_checkpoint_cpp_generator_build_recorded",
+            "status": "pass"
+            if generator_build["source"] == repo_rel(generator)
+            and generator_build["command"] == generator_build_command
+            and generator_build["executable"] == generator_executable
+            and generator_build["working_directory"] == "<repo-root>"
+            and generator_build["status"] == "pass"
+            else "fail",
+        },
+        {
+            "name": "generated_full_checkpoint_cpp_generator_execution_recorded",
+            "status": "pass"
+            if generator_execution["command"] == generator_execution_command
+            and generator_execution["working_directory"] == "<repo-root>"
+            and generator_execution["status"] == "pass"
+            else "fail",
+        },
+        {
+            "name": "generated_full_checkpoint_cpp_generator_stdout_reports_module_count",
+            "status": "pass"
+            if generator_execution["stdout"] == expected_generator_stdout
+            and generator_execution["expected_stdout"] == expected_generator_stdout
+            else "fail",
+        },
         {
             "name": "full_checkpoint_module_dpi_manifest_exists",
             "status": "pass" if manifest_path.exists() else "fail",
@@ -995,6 +2555,17 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
             "status": "pass" if module_isolation_path.exists() else "fail",
         },
         {
+            "name": "generated_full_checkpoint_isolation_report_passed",
+            "status": "pass"
+            if module_isolation.get("status") == "pass"
+            and all(check["status"] == "pass" for check in module_isolation.get("checks", []))
+            and module_isolation.get("separated_boundaries", {}).get("latch_buffer_rtl")
+            == "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv"
+            and module_isolation.get("separated_boundaries", {}).get("systolic_array_rtl")
+            == "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
+            else "fail",
+        },
+        {
             "name": "generated_full_checkpoint_cycle_contract_exists",
             "status": "pass" if cycle_contract_path.exists() else "fail",
         },
@@ -1005,6 +2576,37 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
         {
             "name": "generated_full_checkpoint_verilator_execution_recipe_exists",
             "status": "pass" if verilator_execution_recipe_path.exists() else "fail",
+        },
+        {
+            "name": "generated_full_checkpoint_cpp_verilator_launcher_exists",
+            "status": "pass" if verilator_execution_launcher_path.exists() else "fail",
+        },
+        {
+            "name": "generated_full_checkpoint_cpp_verilator_launcher_matches_execution_recipe",
+            "status": "pass"
+            if cpp_verilator_launcher["status"] == "pass"
+            and all(check["status"] == "pass" for check in cpp_verilator_launcher["checks"])
+            else "fail",
+        },
+        {
+            "name": "generated_full_checkpoint_cpp_verilator_launcher_validates_runtime_markers",
+            "status": "pass"
+            if any(
+                check["name"] == "cpp_verilator_launcher_run_stdout_markers_match_recipe"
+                and check["status"] == "pass"
+                for check in cpp_verilator_launcher["checks"]
+            )
+            else "fail",
+        },
+        {
+            "name": "generated_full_checkpoint_cpp_verilator_launcher_validates_runtime_phase_traces",
+            "status": "pass"
+            if any(
+                check["name"] == "cpp_verilator_launcher_run_phase_traces_match_recipe"
+                and check["status"] == "pass"
+                for check in cpp_verilator_launcher["checks"]
+            )
+            else "fail",
         },
         {
             "name": "generated_full_checkpoint_verilator_execution_report_exists",
@@ -1025,11 +2627,30 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
             else "fail",
         },
         {
+            "name": "generated_full_checkpoint_interface_docs_match_rtl_ports",
+            "status": "pass"
+            if all(
+                [
+                    {"name": signal["name"], "width": signal["width"]}
+                    for signal in module["input_signals"]
+                ]
+                == rtl_ports_by_name[module["name"]]["input"]
+                and [
+                    {"name": signal["name"], "width": signal["width"]}
+                    for signal in module["output_signals"]
+                ]
+                == rtl_ports_by_name[module["name"]]["output"]
+                for module in manifest["modules"]
+            )
+            else "fail",
+        },
+        {
             "name": "all_generated_full_checkpoint_modules_have_isolation_proofs",
             "status": "pass"
             if module_names == set(isolation_by_name)
             and all(
                 all(check["status"] == "pass" for check in isolation_by_name[module["name"]]["checks"])
+                and isolation_by_name[module["name"]]["probe_dut_instantiation_count"] == 1
                 for module in manifest["modules"]
             )
             else "fail",
@@ -1042,6 +2663,10 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
                 all(check["status"] == "pass" for check in cycle_contract_by_name[module["name"]]["checks"])
                 and [step["cycle"] for step in cycle_contract_by_name[module["name"]]["cycles"]]
                 == list(range(cycle_contract_by_name[module["name"]]["cycle_period"]))
+                and cycle_contract_by_name[module["name"]]["primary_phase_signal"]
+                in cycle_contract_by_name[module["name"]]["phase_signals"]
+                and cycle_contract_by_name[module["name"]]["expected_phase_signal_trace"]
+                == expected_phase_signal_trace(module["name"])
                 for module in manifest["modules"]
             )
             else "fail",
@@ -1055,6 +2680,14 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
                 and test_plan_by_name[module["name"]]["verilator"]["top_module"] == module["probe_module"]
                 and test_plan_by_name[module["name"]]["verilator"]["flist"] == module["flist"]
                 and test_plan_by_name[module["name"]]["verilator"]["main"] == module["main"]
+                and test_plan_by_name[module["name"]]["primary_phase_signal"]
+                == cycle_contract_by_name[module["name"]]["primary_phase_signal"]
+                and test_plan_by_name[module["name"]]["expected_phase_signal_trace"]
+                == expected_phase_signal_trace(module["name"])
+                and test_plan_by_name[module["name"]]["verilator"]["primary_phase_signal"]
+                == cycle_contract_by_name[module["name"]]["primary_phase_signal"]
+                and test_plan_by_name[module["name"]]["verilator"]["expected_phase_signal_trace"]
+                == expected_phase_signal_trace(module["name"])
                 for module in manifest["modules"]
             )
             else "fail",
@@ -1078,6 +2711,10 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
                 and recipe_by_name[module["name"]]["main"] == module["main"]
                 and recipe_by_name[module["name"]]["expected_stdout_markers"]
                 == test_plan_by_name[module["name"]]["verilator"]["expected_stdout_markers"]
+                and recipe_by_name[module["name"]]["primary_phase_signal"]
+                == test_plan_by_name[module["name"]]["verilator"]["primary_phase_signal"]
+                and recipe_by_name[module["name"]]["expected_phase_signal_trace"]
+                == test_plan_by_name[module["name"]]["verilator"]["expected_phase_signal_trace"]
                 for module in manifest["modules"]
             )
             else "fail",
@@ -1097,7 +2734,33 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
                 == test_plan_by_name[module["name"]]["verilator"]["expected_stdout_markers"]
                 and verilator_execution_by_name[module["name"]]["observed_phase_markers"]
                 == verilator_execution_by_name[module["name"]]["expected_phase_markers"]
+                and verilator_execution_by_name[module["name"]]["observed_phase_trace_prefix"]
+                == verilator_execution_by_name[module["name"]]["expected_phase_trace"]
+                and verilator_execution_by_name[module["name"]]["observed_phase_trace_count"]
+                >= len(verilator_execution_by_name[module["name"]]["expected_phase_trace"])
+                and verilator_execution_by_name[module["name"]]["expected_phase_signal_trace"]
+                == expected_phase_signal_trace(module["name"])
+                and verilator_execution_by_name[module["name"]]["observed_phase_signal_trace_prefix"]
+                == expected_phase_signal_trace(module["name"])
+                and verilator_execution_by_name[module["name"]]["observed_phase_signal_trace_count"]
+                >= len(expected_phase_signal_trace(module["name"]))
                 and len(verilator_execution_by_name[module["name"]]["expected_phase_markers"]) > 0
+                for module in manifest["modules"]
+            )
+            else "fail",
+        },
+        {
+            "name": "full_checkpoint_module_dpi_phase_signal_traces_match_rtl_outputs",
+            "status": "pass"
+            if module_names == set(verilator_execution_by_name)
+            and all(
+                len(expected_phase_signal_trace(module["name"])) > 0
+                and verilator_execution_by_name[module["name"]]["expected_phase_signal_trace"]
+                == expected_phase_signal_trace(module["name"])
+                and verilator_execution_by_name[module["name"]]["observed_phase_signal_trace_prefix"]
+                == expected_phase_signal_trace(module["name"])
+                and verilator_execution_by_name[module["name"]]["observed_phase_signal_trace_count"]
+                >= len(expected_phase_signal_trace(module["name"]))
                 for module in manifest["modules"]
             )
             else "fail",
@@ -1115,11 +2778,26 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
                 == recipe_by_name[module["name"]]["run_executable"]
                 and verilator_execution_by_name[module["name"]]["expected_stdout_markers"]
                 == recipe_by_name[module["name"]]["expected_stdout_markers"]
+                and verilator_execution_by_name[module["name"]]["expected_phase_signal_trace"]
+                == recipe_by_name[module["name"]]["expected_phase_signal_trace"]
                 and verilator_execution_by_name[module["name"]]["expected_phase_markers"]
                 == [
                     marker
                     for marker in recipe_by_name[module["name"]]["expected_stdout_markers"]
                     if marker.startswith("phase=")
+                ]
+                and verilator_execution_by_name[module["name"]]["expected_phase_trace"]
+                == [
+                    {
+                        "cycle": cycle,
+                        "phase": marker[len("phase=") :],
+                        "phase_marker": marker,
+                    }
+                    for cycle, marker in enumerate(
+                        marker
+                        for marker in recipe_by_name[module["name"]]["expected_stdout_markers"]
+                        if marker.startswith("phase=")
+                    )
                 ]
                 for module in manifest["modules"]
             )
@@ -1129,12 +2807,20 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
             "name": "all_generated_full_checkpoint_modules_have_readme_cycle_coverage",
             "status": "pass"
             if module_names == set(readme_cycle_coverage_by_name)
+            and readme_cycle_coverage.get("diagram_checks")
+            and all(check["status"] == "pass" for check in readme_cycle_coverage["diagram_checks"])
             and all(
                 all(check["status"] == "pass" for check in readme_cycle_coverage_by_name[module["name"]]["checks"])
                 and readme_cycle_coverage_by_name[module["name"]]["template"]
                 == cycle_contract_by_name[module["name"]]["template"]
                 and readme_cycle_coverage_by_name[module["name"]]["phase_names"]
                 == [step["phase"] for step in cycle_contract_by_name[module["name"]]["cycles"]]
+                and readme_cycle_coverage_by_name[module["name"]]["readme_index_row"]
+                == readme_index_row(
+                    module["name"],
+                    cycle_contract_by_name[module["name"]]["template"],
+                    cycle_contract_by_name[module["name"]]["cycles"],
+                )
                 for module in manifest["modules"]
             )
             else "fail",
@@ -1147,6 +2833,7 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
             and construction_ledger.get("module_interfaces_doc") == manifest["module_interfaces_doc"]
             and construction_ledger.get("cycle_contract") == manifest["cycle_contract"]
             and construction_ledger.get("verilator_execution_recipe") == manifest["verilator_execution_recipe"]
+            and construction_ledger.get("verilator_execution_launcher") == manifest["verilator_execution_launcher"]
             else "fail",
         },
         {
@@ -1158,7 +2845,16 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
                 and construction_ledger_by_name[module["name"]]["main"] == module["main"]
                 and construction_ledger_by_name[module["name"]]["flist"] == module["flist"]
                 and construction_ledger_by_name[module["name"]]["scoreboard"] == manifest["scoreboard"]
-                and construction_ledger_by_name[module["name"]]["rtl"] == module["rtl"]
+                and construction_ledger_by_name[module["name"]]["rtl"] == module["module_only_flist_rtl"]
+                and construction_ledger_by_name[module["name"]]["composed_rtl_dependencies"]
+                == module["composed_rtl_dependencies"]
+                and construction_ledger_by_name[module["name"]]["child_stub_modules"]
+                == module["child_stub_modules"]
+                and construction_ledger_by_name[module["name"]]["primary_phase_signal"]
+                == module["primary_phase_signal"]
+                and construction_ledger_by_name[module["name"]]["expected_phase_signal_trace"]
+                == module["expected_phase_signal_trace"]
+                and construction_ledger_by_name[module["name"]]["probe_dut_instantiation_count"] == 1
                 and construction_ledger_by_name[module["name"]]["input_signal_count"]
                 == len(module["input_signals"])
                 and construction_ledger_by_name[module["name"]]["output_signal_count"]
@@ -1179,6 +2875,10 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
                 == cycle_contract_by_name[module["name"]]["cycle_period"]
                 and construction_ledger_by_name[module["name"]]["phase_signals"]
                 == cycle_contract_by_name[module["name"]]["phase_signals"]
+                and construction_ledger_by_name[module["name"]]["primary_phase_signal"]
+                == cycle_contract_by_name[module["name"]]["primary_phase_signal"]
+                and construction_ledger_by_name[module["name"]]["expected_phase_signal_trace"]
+                == cycle_contract_by_name[module["name"]]["expected_phase_signal_trace"]
                 and construction_ledger_by_name[module["name"]]["phase_names"]
                 == [step["phase"] for step in cycle_contract_by_name[module["name"]]["cycles"]]
                 for module in manifest["modules"]
@@ -1190,8 +2890,16 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
             "status": "pass"
             if any(
                 module["name"] == "full_checkpoint_top"
-                and "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv" in module["rtl"]
-                and "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv" in module["rtl"]
+                and "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_slot_engine.sv"
+                in module["composed_rtl_dependencies"]
+                and "e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_control_slot_engine.sv"
+                in module["composed_rtl_dependencies"]
+                and set(module["child_stub_modules"])
+                == {
+                    "e1_h1_tinyllama_graph_sequencer",
+                    "e1_h1_tinyllama_linear_slot_engine",
+                    "e1_h1_tinyllama_control_slot_engine",
+                }
                 for module in manifest["modules"]
             )
             else "fail",
@@ -1201,6 +2909,8 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
         "schema": "e1-full-checkpoint-module-dpi-generation-report-v0",
         "status": "pass" if all(check["status"] == "pass" for check in checks) else "fail",
         "generator": repo_rel(generator),
+        "generator_build": generator_build,
+        "generator_execution": generator_execution,
         "manifest": repo_rel(manifest_path),
         "scoreboard": manifest["scoreboard"],
         "module_interfaces_doc": manifest["module_interfaces_doc"],
@@ -1208,10 +2918,17 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
         "cycle_contract": manifest["cycle_contract"],
         "module_test_plan": manifest["module_test_plan"],
         "verilator_execution_recipe": manifest["verilator_execution_recipe"],
+        "verilator_execution_launcher": manifest["verilator_execution_launcher"],
+        "cpp_verilator_launcher": cpp_verilator_launcher,
         "verilator_execution_report": manifest["verilator_execution_report"],
         "readme_cycle_coverage": manifest["readme_cycle_coverage"],
         "construction_ledger": manifest["construction_ledger"],
         "module_count": len(manifest["modules"]),
+        "module_isolation": {
+            "status": module_isolation.get("status"),
+            "checks": module_isolation.get("checks", []),
+            "separated_boundaries": module_isolation.get("separated_boundaries", {}),
+        },
         "modules": [
             {
                 "name": module["name"],
@@ -1221,9 +2938,15 @@ def run_full_checkpoint_module_dpi_generator(e1_h1_dir: Path, output_path: Path)
                 "main": module["main"],
                 "flist": module["flist"],
                 "rtl": module["rtl"],
+                "module_only_flist_rtl": module["module_only_flist_rtl"],
+                "composed_rtl_dependencies": module["composed_rtl_dependencies"],
+                "child_stub_modules": module["child_stub_modules"],
                 "cycle_notes": module["cycle_notes"],
                 "input_signals": module["input_signals"],
                 "output_signals": module["output_signals"],
+                "primary_phase_signal": module["primary_phase_signal"],
+                "expected_phase_signal_trace": module["expected_phase_signal_trace"],
+                "rtl_port_contract": rtl_ports_by_name[module["name"]],
                 "isolation": isolation_by_name[module["name"]],
                 "cycle_contract": cycle_contract_by_name[module["name"]],
                 "test_plan": test_plan_by_name[module["name"]],
@@ -1404,7 +3127,7 @@ def emit_full_checkpoint_rtl_lowering_plan(
                 "input_tiles": ceil_div(input_width, depth),
                 "output_tiles": ceil_div(output_width, cols),
             },
-            "status": "planned_with_active_imp2_rtl",
+            "status": "mapped_to_active_imp2_rtl",
         }
 
     def control_op(name: str, kind: str) -> dict[str, Any]:
@@ -1414,7 +3137,7 @@ def emit_full_checkpoint_rtl_lowering_plan(
             "ip": "control_cpu",
             "rtl_files": ips_by_name["control_cpu"]["imp2"]["rtl_files"],
             "module_dpi_probe": module_dpi_by_name["control_cpu"]["probe"],
-            "status": "planned_with_active_imp2_rtl",
+            "status": "mapped_to_active_imp2_rtl",
         }
 
     layer_template = [
@@ -1473,6 +3196,18 @@ def emit_full_checkpoint_rtl_lowering_plan(
             else "fail",
         },
         {
+            "name": "all_ops_have_active_imp2_rtl_and_module_dpi",
+            "status": "pass"
+            if all(
+                op["status"] == "mapped_to_active_imp2_rtl"
+                and op["rtl_files"]
+                and all("/rtl/imp2/" in path for path in op["rtl_files"])
+                and op["module_dpi_probe"]
+                for op in layer_template
+            )
+            else "fail",
+        },
+        {
             "name": "latch_buffer_available",
             "status": "pass" if module_dpi_by_name["ingress_sram"]["latch_buffer"] else "fail",
         },
@@ -1493,15 +3228,16 @@ def emit_full_checkpoint_rtl_lowering_plan(
     ]
     plan = {
         "schema": "e1-full-checkpoint-rtl-lowering-plan-v0",
-        "status": "planned" if all(check["status"] == "pass" for check in checks) else "incomplete",
+        "status": "pass" if all(check["status"] == "pass" for check in checks) else "fail",
         "model_id": manifest["model_id"],
         "source": manifest["source"],
         "checkpoint_shape": shape,
         "architecture_id": architecture["architecture_id"],
+        "full_checkpoint_layer_to_rtl_contract": True,
         "full_checkpoint_graph_lowering": False,
         "full_checkpoint_rtl_execution": False,
-        "truth_boundary": "shape_complete_layer_plan_only",
-        "note": "This plans the full TinyLlama checkpoint layer inventory against active imp2 RTL modules and module-DPI proof collateral. It does not yet prove full StableHLO export, full op legalization, or full RTL execution of the checkpoint graph.",
+        "truth_boundary": "shape_complete_layer_to_rtl_module_contract",
+        "note": "This is the shape-complete TinyLlama layer-to-RTL module contract consumed by the later command-stream, graph-sequencing, RTL-top, and construction-certificate passes. It does not itself claim live full-checkpoint StableHLO export, full checkpoint RTL execution, or numeric output equivalence.",
         "array_tile_shape": {
             "rows": rows,
             "cols": cols,
@@ -1523,12 +3259,11 @@ def emit_full_checkpoint_rtl_lowering_plan(
             "reduced_fixture_rtl_lowering": "e1/generated/pipeline/15_rtl_lowering.json",
         },
         "construction_checks": checks,
-        "remaining_to_execute_full_rtl": [
-            "Export the full checkpoint graph to StableHLO instead of using only the checked-in reduced fixture.",
-            "Legalize full Llama ops including RMSNorm, RoPE, attention softmax, cache updates, and SiLU multiply into explicit CPU/control and systolic-array schedules.",
-            "Allocate all checkpoint weights and KV/cache tensors across the configurable SRAM hierarchy and Ethernet ingress stream.",
-            "Generate full device code that emits every layer command sequence, not only the first tile smoke.",
-            "Run generated full-graph RTL or hybrid RTL/C++ execution under Verilator and compare against the checkpoint source-of-truth output.",
+        "remaining_to_prove_full_semantics": [
+            "Export the live full checkpoint graph to StableHLO when checkpoint dependencies and cache are present.",
+            "Legalize full Llama numeric semantics including RMSNorm, RoPE, attention softmax, KV/cache updates, and SiLU multiply into bit-checked CPU/control and systolic-array schedules.",
+            "Bind checkpoint weights and KV/cache tensor contents to the configurable SRAM hierarchy and Ethernet ingress stream.",
+            "Compare generated full-graph RTL or hybrid RTL/C++ execution against the checkpoint source-of-truth output.",
         ],
     }
     write_json(output_path, plan)
@@ -1635,6 +3370,8 @@ constexpr std::uint32_t kLayerOutputStride = 0x00100000u;
 constexpr std::uint32_t kOpInputStride = 0x00010000u;
 constexpr std::uint32_t kOpWeightStride = 0x00100000u;
 constexpr std::uint32_t kOpOutputStride = 0x00010000u;
+constexpr std::uint64_t kCommandDigestOffsetBasis = 1469598103934665603ull;
+constexpr std::uint64_t kCommandDigestPrime = 1099511628211ull;
 
 static constexpr LinearOpPlan kLinearOps[kLinearOpCount] = {{
 {op_initializers}
@@ -1682,6 +3419,43 @@ inline TileCommand command_for(
   }};
 }}
 
+inline std::uint64_t mix_digest_u32(std::uint64_t digest, std::uint32_t value) {{
+  for (std::uint32_t shift = 0; shift < 32; shift += 8) {{
+    digest ^= static_cast<std::uint8_t>((value >> shift) & 0xffu);
+    digest *= kCommandDigestPrime;
+  }}
+  return digest;
+}}
+
+inline std::uint64_t mix_tile_command_digest(
+    std::uint64_t digest,
+    const TileCommand& command) {{
+  digest = mix_digest_u32(digest, command.input_addr);
+  digest = mix_digest_u32(digest, command.weight_addr);
+  digest = mix_digest_u32(digest, command.output_addr);
+  digest = mix_digest_u32(digest, command.rows);
+  digest = mix_digest_u32(digest, command.cols);
+  digest = mix_digest_u32(digest, command.depth);
+  return digest;
+}}
+
+inline std::uint64_t command_stream_digest() {{
+  std::uint64_t digest = kCommandDigestOffsetBasis;
+  for (std::uint32_t layer = 0; layer < kLayerCount; ++layer) {{
+    for (std::uint32_t op_index = 0; op_index < kLinearOpCount; ++op_index) {{
+      const LinearOpPlan& op = kLinearOps[op_index];
+      for (std::uint32_t output_tile = 0; output_tile < op.output_tiles; ++output_tile) {{
+        for (std::uint32_t input_tile = 0; input_tile < op.input_tiles; ++input_tile) {{
+          digest = mix_tile_command_digest(
+              digest,
+              command_for(layer, op_index, input_tile, output_tile));
+        }}
+      }}
+    }}
+  }}
+  return digest;
+}}
+
 }}  // namespace e1_device::tinyllama_full
 
 #endif  // E1_CODE_PROGRAM_E1_TINYLLAMA_FULL_SCHEDULE_HPP
@@ -1713,6 +3487,7 @@ int main() {{
       kLinearOpCount == {len(linear_ops)}u &&
       commands_per_layer() == {commands_per_layer}ull &&
       total_tile_commands() == {total_commands}ull &&
+      command_stream_digest() != kCommandDigestOffsetBasis &&
       kLinearOps[0].input_tiles == {first_op['input_tiles']}u &&
       kLinearOps[0].output_tiles == {first_op['output_tiles']}u &&
       kLinearOps[{last_op_index}].input_tiles == {last_op['input_tiles']}u &&
@@ -1735,6 +3510,7 @@ int main() {{
       << "  \\"linear_ops_per_layer\\": " << kLinearOpCount << ",\\n"
       << "  \\"commands_per_layer\\": " << commands_per_layer() << ",\\n"
       << "  \\"total_tile_commands\\": " << total_tile_commands() << ",\\n"
+      << "  \\"payload_digest\\": " << command_stream_digest() << ",\\n"
       << "  \\"first_input_addr\\": " << first.input_addr << ",\\n"
       << "  \\"last_output_addr\\": " << last.output_addr << "\\n"
       << "}}\\n";
@@ -1772,7 +3548,11 @@ int main() {{
         )
     smoke = json.loads(result.stdout)
     checks = [
-        {"name": "full_checkpoint_plan_is_shape_complete", "status": full_checkpoint_rtl_lowering["status"]},
+        {
+            "name": "full_checkpoint_layer_to_rtl_contract_passed",
+            "status": "pass" if full_checkpoint_rtl_lowering["status"] == "pass" else "fail",
+            "source_status": full_checkpoint_rtl_lowering["status"],
+        },
         {"name": "command_stream_smoke", "status": smoke["status"]},
         {
             "name": "all_linear_ops_have_tile_commands",
@@ -1782,10 +3562,14 @@ int main() {{
             "name": "command_count_matches_plan",
             "status": "pass" if smoke["total_tile_commands"] == total_commands else "fail",
         },
+        {
+            "name": "payload_digest_generated_by_cpp_schedule",
+            "status": "pass" if int(smoke["payload_digest"]) != 1469598103934665603 else "fail",
+        },
     ]
     report = {
         "schema": "e1-full-checkpoint-command-stream-v0",
-        "status": "pass" if all(check["status"] in {"pass", "planned"} for check in checks) else "fail",
+        "status": "pass" if all(check["status"] == "pass" for check in checks) else "fail",
         "model_id": manifest["model_id"],
         "truth_boundary": "compressed_tile_command_stream",
         "full_checkpoint_graph_lowering": False,
@@ -1796,6 +3580,8 @@ int main() {{
         "linear_ops": linear_ops,
         "commands_per_layer": commands_per_layer,
         "total_tile_commands": total_commands,
+        "payload_digest": smoke["payload_digest"],
+        "payload_digest_source": "e1_device::tinyllama_full::command_stream_digest",
         "smoke": smoke,
         "checks": checks,
     }
@@ -2370,7 +4156,8 @@ module e1_h1_tinyllama_linear_tile_engine (
   output logic        buffer_array_ready_o,
   output logic [63:0] buffer_array_data_o,
   output logic        array_done_o,
-  output logic        array_debug_busy_o
+  output logic        array_debug_busy_o,
+  output logic [31:0] array_result_digest_o
 );
 
   logic scheduler_done;
@@ -2433,7 +4220,8 @@ module e1_h1_tinyllama_linear_tile_engine (
     .input_data_i(buffer_array_data_o),
     .done_o(array_done_o),
     .error_o(array_error),
-    .debug_busy_o(array_debug_busy_o)
+    .debug_busy_o(array_debug_busy_o),
+    .result_digest_o(array_result_digest_o)
   );
 
   assign done_o = scheduler_done;
@@ -3489,6 +5277,16 @@ def emit_full_checkpoint_rtl_top(
         f"      3'd{index}: output_tiles_for = 9'd{int(op['output_tiles'])};"
         for index, op in enumerate(linear_ops)
     )
+    control_slot_entries = [
+        entry for entry in graph_sequencer["slot_entries"] if entry["kind"] != "linear"
+    ]
+    control_ops_per_layer = len(control_slot_entries)
+    expected_control_index_array = ", ".join(
+        str(int(entry["control_op_index"])) for entry in control_slot_entries
+    )
+    expected_control_kind_array = ", ".join(
+        str(int(entry["control_kind"])) for entry in control_slot_entries
+    )
 
     write_text(
         linear_slot_path,
@@ -3530,7 +5328,8 @@ module e1_h1_tinyllama_linear_slot_engine #(
   output logic        buffer_array_ready_o,
   output logic [63:0] buffer_array_data_o,
   output logic        array_done_o,
-  output logic        array_debug_busy_o
+  output logic        array_debug_busy_o,
+  output logic [31:0] array_result_digest_o
 );
 
   localparam logic [31:0] InputBase = 32'h0100_0000;
@@ -3662,7 +5461,8 @@ module e1_h1_tinyllama_linear_slot_engine #(
     .input_data_i(buffer_array_data_o),
     .done_o(array_done_o),
     .error_o(array_error),
-    .debug_busy_o(array_debug_busy_o)
+    .debug_busy_o(array_debug_busy_o),
+    .result_digest_o(array_result_digest_o)
   );
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
@@ -3865,6 +5665,7 @@ module e1_h1_tinyllama_full_checkpoint_top #(
   output logic        buffer_array_ready_o,
   output logic        array_done_o,
   output logic        array_debug_busy_o,
+  output logic [31:0] array_result_digest_o,
   output logic        debug_scheduler_cmd_valid_o,
   output logic        debug_array_cmd_valid_o,
   output logic        debug_array_cmd_ready_o,
@@ -3877,7 +5678,12 @@ module e1_h1_tinyllama_full_checkpoint_top #(
   output logic [31:0] debug_linear_layer_o,
   output logic [2:0]  debug_linear_op_index_o,
   output logic [8:0]  debug_linear_input_tile_o,
-  output logic [8:0]  debug_linear_output_tile_o
+  output logic [8:0]  debug_linear_output_tile_o,
+  output logic        debug_control_valid_o,
+  output logic        debug_control_commit_o,
+  output logic [31:0] debug_control_layer_o,
+  output logic [2:0]  debug_control_op_index_o,
+  output logic [3:0]  debug_control_kind_o
 );
 
   logic        graph_slot_valid;
@@ -3931,6 +5737,11 @@ module e1_h1_tinyllama_full_checkpoint_top #(
   assign debug_linear_op_index_o = linear_op_index;
   assign debug_linear_input_tile_o = linear_input_tile;
   assign debug_linear_output_tile_o = linear_output_tile;
+  assign debug_control_valid_o = control_valid;
+  assign debug_control_commit_o = control_commit;
+  assign debug_control_layer_o = control_layer;
+  assign debug_control_op_index_o = control_op_index;
+  assign debug_control_kind_o = control_kind;
 
   e1_h1_tinyllama_graph_sequencer u_graph_sequencer (
     .clk_i(clk_i),
@@ -3989,7 +5800,8 @@ module e1_h1_tinyllama_full_checkpoint_top #(
     .buffer_array_ready_o(buffer_array_ready_o),
     .buffer_array_data_o(buffer_array_data),
     .array_done_o(array_done_o),
-    .array_debug_busy_o(array_debug_busy_o)
+    .array_debug_busy_o(array_debug_busy_o),
+    .array_result_digest_o(array_result_digest_o)
   );
 
   e1_h1_tinyllama_control_slot_engine u_control_slot_engine (
@@ -4028,18 +5840,13 @@ module e1_h1_tinyllama_full_checkpoint_top #(
     end
   end
 
-  logic [139:0] unused_debug;
+  logic [98:0] unused_debug;
   assign unused_debug = {
     graph_busy,
     graph_slot_valid,
     linear_slot_expected_commands,
-    control_valid,
-    control_commit,
     buffer_array_data,
-    scheduler_cmd_valid,
-    control_layer,
-    control_op_index,
-    control_kind
+    scheduler_cmd_valid
   };
 
 endmodule
@@ -4200,9 +6007,14 @@ constexpr std::uint32_t kLayers = {layers};
 constexpr std::uint32_t kTotalGraphSlots = {total_graph_slots};
 constexpr std::uint32_t kTotalLinearSlots = {total_linear_slots};
 constexpr std::uint32_t kTotalControlSlots = {total_control_slots};
+constexpr std::uint32_t kControlOpsPerLayer = {control_ops_per_layer};
 constexpr std::uint32_t kSmokeMaxTilesPerLinearSlot = 0;
 constexpr std::uint32_t kExpectedLinearCommands = {full_linear_commands};
 constexpr std::uint64_t kCycleLimit = {full_execution_cycle_limit}ull;
+constexpr std::uint8_t kControlIndex[kControlOpsPerLayer] = {{{expected_control_index_array}}};
+constexpr std::uint8_t kControlKind[kControlOpsPerLayer] = {{{expected_control_kind_array}}};
+constexpr std::uint64_t kControlDigestOffsetBasis = 1469598103934665603ull;
+constexpr std::uint64_t kControlDigestPrime = 1099511628211ull;
 
 void tick(VerilatedContext& context, Ve1_h1_tinyllama_full_checkpoint_top& top) {{
   top.clk_i = 0;
@@ -4237,6 +6049,124 @@ void advance(std::uint32_t& layer,
   }}
   op_index = 0;
   ++layer;
+}}
+
+std::uint64_t mix_control_word(std::uint64_t digest, std::uint32_t word) {{
+  digest ^= word;
+  digest *= kControlDigestPrime;
+  return digest;
+}}
+
+std::uint64_t mix_control_slot_digest(std::uint64_t digest,
+                                      std::uint32_t layer,
+                                      std::uint32_t control_op_index,
+                                      std::uint32_t control_kind) {{
+  digest = mix_control_word(digest, layer);
+  digest = mix_control_word(digest, control_op_index);
+  digest = mix_control_word(digest, control_kind);
+  return digest;
+}}
+
+std::uint64_t expected_control_digest() {{
+  std::uint64_t digest = kControlDigestOffsetBasis;
+  for (std::uint32_t layer = 0; layer < kLayers; ++layer) {{
+    for (std::uint32_t slot = 0; slot < kControlOpsPerLayer; ++slot) {{
+      digest = mix_control_slot_digest(digest, layer, kControlIndex[slot], kControlKind[slot]);
+    }}
+  }}
+  return digest;
+}}
+
+struct LinearTraceAnchor {{
+  bool valid = false;
+  std::uint64_t cycle = 0;
+  std::uint32_t command_index = 0;
+  std::uint32_t layer = 0;
+  std::uint32_t op_index = 0;
+  std::uint32_t input_tile = 0;
+  std::uint32_t output_tile = 0;
+  e1_device::tinyllama_full::TileCommand expected{{}};
+  e1_device::tinyllama_full::TileCommand observed{{}};
+}};
+
+struct ControlTraceAnchor {{
+  bool valid = false;
+  std::uint64_t cycle = 0;
+  std::uint32_t control_index = 0;
+  std::uint32_t layer = 0;
+  std::uint32_t slot = 0;
+  std::uint32_t op_index = 0;
+  std::uint32_t kind = 0;
+}};
+
+void print_tile_command_json(const e1_device::tinyllama_full::TileCommand& command) {{
+  std::cout
+      << "{{\\"input_addr\\": " << command.input_addr
+      << ", \\"weight_addr\\": " << command.weight_addr
+      << ", \\"output_addr\\": " << command.output_addr
+      << ", \\"rows\\": " << command.rows
+      << ", \\"cols\\": " << command.cols
+      << ", \\"depth\\": " << command.depth
+      << "}}";
+}}
+
+void print_linear_trace_anchor_json(const LinearTraceAnchor& anchor) {{
+  std::cout
+      << "{{\\"valid\\": " << (anchor.valid ? "true" : "false")
+      << ", \\"cycle\\": " << anchor.cycle
+      << ", \\"command_index\\": " << anchor.command_index
+      << ", \\"layer\\": " << anchor.layer
+      << ", \\"op_index\\": " << anchor.op_index
+      << ", \\"input_tile\\": " << anchor.input_tile
+      << ", \\"output_tile\\": " << anchor.output_tile
+      << ", \\"expected\\": ";
+  print_tile_command_json(anchor.expected);
+  std::cout << ", \\"observed\\": ";
+  print_tile_command_json(anchor.observed);
+  std::cout << "}}";
+}}
+
+void print_control_trace_anchor_json(const ControlTraceAnchor& anchor) {{
+  std::cout
+      << "{{\\"valid\\": " << (anchor.valid ? "true" : "false")
+      << ", \\"cycle\\": " << anchor.cycle
+      << ", \\"control_index\\": " << anchor.control_index
+      << ", \\"layer\\": " << anchor.layer
+      << ", \\"slot\\": " << anchor.slot
+      << ", \\"op_index\\": " << anchor.op_index
+      << ", \\"kind\\": " << anchor.kind
+      << "}}";
+}}
+
+void print_linear_op_trace_coverage_json(const std::uint64_t* counts) {{
+  using namespace e1_device::tinyllama_full;
+  std::cout << "[";
+  for (std::uint32_t op = 0; op < kLinearOpCount; ++op) {{
+    const std::uint64_t expected = kLayers * tile_count(kLinearOps[op]);
+    std::cout
+        << (op == 0 ? "" : ", ")
+        << "{{\\"op_index\\": " << op
+        << ", \\"name\\": \\"" << kLinearOps[op].name << "\\""
+        << ", \\"observed_commands\\": " << counts[op]
+        << ", \\"expected_commands\\": " << expected
+        << "}}";
+  }}
+  std::cout << "]";
+}}
+
+void print_control_slot_trace_coverage_json(const std::uint32_t* counts) {{
+  std::cout << "[";
+  for (std::uint32_t slot = 0; slot < kControlOpsPerLayer; ++slot) {{
+    std::cout
+        << (slot == 0 ? "" : ", ")
+        << "{{\\"slot\\": " << slot
+        << ", \\"op_index\\": " << static_cast<unsigned>(kControlIndex[slot])
+        << ", \\"kind\\": " << static_cast<unsigned>(kControlKind[slot])
+        << ", \\"observed_payloads\\": " << counts[slot]
+        << ", \\"expected_payloads\\": " << kLayers
+        << "}}";
+  }}
+  std::cout << "]";
 }}
 
 }}  // namespace
@@ -4275,11 +6205,22 @@ int main(int argc, char** argv) {{
   std::uint32_t checked_payloads = 0;
   std::uint32_t checked_phase1_scheduler_valids = 0;
   std::uint32_t checked_phase6_array_dones = 0;
+  std::uint32_t checked_control_payloads = 0;
+  std::uint32_t checked_control_commits = 0;
   std::uint32_t layer = 0;
   std::uint32_t op_index = 0;
   std::uint32_t input_tile = 0;
   std::uint32_t output_tile = 0;
+  std::uint64_t accepted_payload_digest =
+      e1_device::tinyllama_full::kCommandDigestOffsetBasis;
+  std::uint64_t accepted_control_digest = kControlDigestOffsetBasis;
   std::uint64_t cycles = 0;
+  LinearTraceAnchor first_linear_anchor;
+  LinearTraceAnchor last_linear_anchor;
+  ControlTraceAnchor first_control_anchor;
+  ControlTraceAnchor last_control_anchor;
+  std::uint64_t linear_op_command_counts[e1_device::tinyllama_full::kLinearOpCount] = {{}};
+  std::uint32_t control_slot_payload_counts[kControlOpsPerLayer] = {{}};
 
   for (; cycles < kCycleLimit && !top.done_o; ++cycles) {{
     top.stream_valid_i = 1;
@@ -4315,6 +6256,48 @@ int main(int argc, char** argv) {{
       }}
       ++checked_phase1_scheduler_valids;
     }}
+    if (top.debug_control_valid_o) {{
+      if (top.control_cycle_phase_o != 0) {{
+        fail("control valid outside phase 0");
+      }}
+      if (checked_control_payloads >= kTotalControlSlots) {{
+        fail("unexpected extra control payload");
+      }} else {{
+        const std::uint32_t expected_layer = checked_control_payloads / kControlOpsPerLayer;
+        const std::uint32_t expected_slot = checked_control_payloads % kControlOpsPerLayer;
+        if (top.debug_control_layer_o != expected_layer ||
+            top.debug_control_op_index_o != kControlIndex[expected_slot] ||
+            top.debug_control_kind_o != kControlKind[expected_slot]) {{
+          fail("control slot payload does not match generated graph schedule");
+        }}
+        accepted_control_digest = mix_control_slot_digest(
+            accepted_control_digest,
+            top.debug_control_layer_o,
+            top.debug_control_op_index_o,
+            top.debug_control_kind_o);
+        const ControlTraceAnchor anchor{{
+            true,
+            cycles,
+            checked_control_payloads,
+            top.debug_control_layer_o,
+            expected_slot,
+            top.debug_control_op_index_o,
+            top.debug_control_kind_o,
+        }};
+        if (!first_control_anchor.valid) {{
+          first_control_anchor = anchor;
+        }}
+        last_control_anchor = anchor;
+        ++control_slot_payload_counts[expected_slot];
+        ++checked_control_payloads;
+      }}
+    }}
+    if (top.debug_control_commit_o) {{
+      if (top.control_cycle_phase_o != 3) {{
+        fail("control commit outside phase 3");
+      }}
+      ++checked_control_commits;
+    }}
     if (top.debug_array_cmd_valid_o && !top.debug_scheduler_cmd_valid_o) {{
       fail("array command valid without scheduler command valid");
     }}
@@ -4324,18 +6307,44 @@ int main(int argc, char** argv) {{
     if (top.debug_array_cmd_valid_o && top.debug_array_cmd_ready_o) {{
       using namespace e1_device::tinyllama_full;
       const TileCommand expected = command_for(layer, op_index, input_tile, output_tile);
-      if (top.debug_cmd_input_addr_o != expected.input_addr ||
-          top.debug_cmd_weight_addr_o != expected.weight_addr ||
-          top.debug_cmd_output_addr_o != expected.output_addr ||
-          top.debug_cmd_rows_o != expected.rows ||
-          top.debug_cmd_cols_o != expected.cols ||
-          top.debug_cmd_depth_o != expected.depth ||
+      const TileCommand observed{{
+          top.debug_cmd_input_addr_o,
+          top.debug_cmd_weight_addr_o,
+          top.debug_cmd_output_addr_o,
+          static_cast<std::uint16_t>(top.debug_cmd_rows_o),
+          static_cast<std::uint16_t>(top.debug_cmd_cols_o),
+          static_cast<std::uint16_t>(top.debug_cmd_depth_o),
+      }};
+      if (observed.input_addr != expected.input_addr ||
+          observed.weight_addr != expected.weight_addr ||
+          observed.output_addr != expected.output_addr ||
+          observed.rows != expected.rows ||
+          observed.cols != expected.cols ||
+          observed.depth != expected.depth ||
           top.debug_linear_layer_o != layer ||
           top.debug_linear_op_index_o != op_index ||
           top.debug_linear_input_tile_o != input_tile ||
           top.debug_linear_output_tile_o != output_tile) {{
         fail("full top command payload does not match generated schedule");
       }}
+      const std::uint32_t command_index = checked_payloads;
+      const LinearTraceAnchor anchor{{
+          true,
+          cycles,
+          command_index,
+          layer,
+          op_index,
+          input_tile,
+          output_tile,
+          expected,
+          observed,
+      }};
+      if (!first_linear_anchor.valid) {{
+        first_linear_anchor = anchor;
+      }}
+      last_linear_anchor = anchor;
+      ++linear_op_command_counts[op_index];
+      accepted_payload_digest = mix_tile_command_digest(accepted_payload_digest, observed);
       ++checked_payloads;
       advance(layer, op_index, input_tile, output_tile);
     }}
@@ -4373,11 +6382,38 @@ int main(int argc, char** argv) {{
   if (checked_phase6_array_dones != kExpectedLinearCommands) {{
     fail("phase 6 array-done count mismatch");
   }}
+  const std::uint64_t expected_payload_digest =
+      e1_device::tinyllama_full::command_stream_digest();
+  if (accepted_payload_digest != expected_payload_digest) {{
+    fail("accepted payload digest mismatch");
+  }}
   if (top.issued_control_ops_o != kTotalControlSlots) {{
     fail("control op count mismatch");
   }}
+  if (checked_control_payloads != kTotalControlSlots) {{
+    fail("checked control payload count mismatch");
+  }}
+  if (checked_control_commits != kTotalControlSlots) {{
+    fail("checked control commit count mismatch");
+  }}
+  const std::uint64_t expected_control_payload_digest = expected_control_digest();
+  if (accepted_control_digest != expected_control_payload_digest) {{
+    fail("accepted control payload digest mismatch");
+  }}
   if (!saw_latched_hold || !saw_array_consume || !saw_linear_busy || !saw_control_busy) {{
     fail("full RTL top did not exercise separated engines and latch buffer");
+  }}
+  for (std::uint32_t op = 0; op < e1_device::tinyllama_full::kLinearOpCount; ++op) {{
+    const std::uint64_t expected =
+        kLayers * e1_device::tinyllama_full::tile_count(e1_device::tinyllama_full::kLinearOps[op]);
+    if (linear_op_command_counts[op] != expected) {{
+      fail("linear op trace coverage count mismatch");
+    }}
+  }}
+  for (std::uint32_t slot = 0; slot < kControlOpsPerLayer; ++slot) {{
+    if (control_slot_payload_counts[slot] != kLayers) {{
+      fail("control slot trace coverage count mismatch");
+    }}
   }}
 
   std::cout
@@ -4392,14 +6428,36 @@ int main(int argc, char** argv) {{
       << "  \\"issued_linear_commands\\": " << top.issued_linear_commands_o << ",\\n"
       << "  \\"expected_linear_commands\\": " << kExpectedLinearCommands << ",\\n"
       << "  \\"checked_command_payloads\\": " << checked_payloads << ",\\n"
+      << "  \\"expected_payload_digest\\": " << expected_payload_digest << ",\\n"
+      << "  \\"accepted_payload_digest\\": " << accepted_payload_digest << ",\\n"
       << "  \\"checked_phase1_scheduler_valids\\": " << checked_phase1_scheduler_valids << ",\\n"
       << "  \\"checked_phase6_array_dones\\": " << checked_phase6_array_dones << ",\\n"
+      << "  \\"checked_control_payloads\\": " << checked_control_payloads << ",\\n"
+      << "  \\"checked_control_commits\\": " << checked_control_commits << ",\\n"
+      << "  \\"expected_control_digest\\": " << expected_control_payload_digest << ",\\n"
+      << "  \\"accepted_control_digest\\": " << accepted_control_digest << ",\\n"
       << "  \\"issued_control_ops\\": " << top.issued_control_ops_o << ",\\n"
       << "  \\"issued_graph_slots\\": " << top.issued_graph_slots_o << ",\\n"
       << "  \\"cycles\\": " << cycles << ",\\n"
       << "  \\"cycle_limit\\": " << kCycleLimit << ",\\n"
       << "  \\"saw_latched_hold\\": " << (saw_latched_hold ? "true" : "false") << ",\\n"
-      << "  \\"saw_array_consume\\": " << (saw_array_consume ? "true" : "false") << "\\n"
+      << "  \\"saw_array_consume\\": " << (saw_array_consume ? "true" : "false") << ",\\n"
+      << "  \\"linear_trace_anchors\\": {{\\"first\\": ";
+  print_linear_trace_anchor_json(first_linear_anchor);
+  std::cout << ", \\"last\\": ";
+  print_linear_trace_anchor_json(last_linear_anchor);
+  std::cout << "}},\\n"
+      << "  \\"control_trace_anchors\\": {{\\"first\\": ";
+  print_control_trace_anchor_json(first_control_anchor);
+  std::cout << ", \\"last\\": ";
+  print_control_trace_anchor_json(last_control_anchor);
+  std::cout << "}},\\n"
+      << "  \\"linear_op_trace_coverage\\": ";
+  print_linear_op_trace_coverage_json(linear_op_command_counts);
+  std::cout << ",\\n"
+      << "  \\"control_slot_trace_coverage\\": ";
+  print_control_slot_trace_coverage_json(control_slot_payload_counts);
+  std::cout << "\\n"
       << "}}\\n";
 
   return pass ? 0 : 1;
@@ -4416,6 +6474,121 @@ int main(int argc, char** argv) {{
         repo_rel(top_path),
     ]
     write_text(flist_path, "\n".join(flist_entries + [""]))
+    verilator_execution = run_full_checkpoint_top_verilator(
+        flist_path,
+        tb_path,
+        full_tb_path,
+    )
+    smoke_execution = verilator_execution.get("smoke", {})
+    full_command_execution = verilator_execution.get("full_command", {})
+    full_command_payload_digest_check = (
+        full_command_execution.get("accepted_payload_digest") == command_stream["payload_digest"]
+        and full_command_execution.get("expected_payload_digest") == command_stream["payload_digest"]
+    )
+    full_command_payload_schedule_check = (
+        full_command_execution.get("checked_command_payloads") == full_linear_commands
+        and full_command_execution.get("issued_linear_commands") == full_linear_commands
+    )
+    full_command_cycle_phase_check = (
+        full_command_execution.get("checked_phase1_scheduler_valids") == full_linear_commands
+        and full_command_execution.get("checked_phase6_array_dones") == full_linear_commands
+    )
+    full_command_control_schedule_check = (
+        full_command_execution.get("checked_control_payloads") == total_control_slots
+        and full_command_execution.get("checked_control_commits") == total_control_slots
+        and full_command_execution.get("issued_control_ops") == total_control_slots
+    )
+    full_command_control_digest_check = (
+        full_command_execution.get("accepted_control_digest")
+        == full_command_execution.get("expected_control_digest")
+        and int(full_command_execution.get("accepted_control_digest", 0)) != 0
+    )
+    linear_trace_anchors = full_command_execution.get("linear_trace_anchors", {})
+    first_linear_anchor = linear_trace_anchors.get("first", {})
+    last_linear_anchor = linear_trace_anchors.get("last", {})
+    control_trace_anchors = full_command_execution.get("control_trace_anchors", {})
+    first_control_anchor = control_trace_anchors.get("first", {})
+    last_control_anchor = control_trace_anchors.get("last", {})
+    last_linear_op = command_stream["linear_ops"][-1]
+    full_command_trace_anchor_check = (
+        first_linear_anchor.get("valid") is True
+        and last_linear_anchor.get("valid") is True
+        and first_linear_anchor.get("command_index") == 0
+        and first_linear_anchor.get("layer") == 0
+        and first_linear_anchor.get("op_index") == 0
+        and first_linear_anchor.get("input_tile") == 0
+        and first_linear_anchor.get("output_tile") == 0
+        and first_linear_anchor.get("expected") == first_linear_anchor.get("observed")
+        and last_linear_anchor.get("command_index") == full_linear_commands - 1
+        and last_linear_anchor.get("layer") == layers - 1
+        and last_linear_anchor.get("op_index") == len(command_stream["linear_ops"]) - 1
+        and last_linear_anchor.get("input_tile") == int(last_linear_op["input_tiles"]) - 1
+        and last_linear_anchor.get("output_tile") == int(last_linear_op["output_tiles"]) - 1
+        and last_linear_anchor.get("expected") == last_linear_anchor.get("observed")
+        and int(first_linear_anchor.get("cycle", -1)) < int(last_linear_anchor.get("cycle", -1))
+        and first_control_anchor.get("valid") is True
+        and last_control_anchor.get("valid") is True
+        and first_control_anchor.get("control_index") == 0
+        and first_control_anchor.get("layer") == 0
+        and first_control_anchor.get("slot") == 0
+        and last_control_anchor.get("control_index") == total_control_slots - 1
+        and last_control_anchor.get("layer") == layers - 1
+        and last_control_anchor.get("slot") == control_ops_per_layer - 1
+        and int(first_control_anchor.get("cycle", -1)) < int(last_control_anchor.get("cycle", -1))
+    )
+    linear_op_trace_coverage = full_command_execution.get("linear_op_trace_coverage", [])
+    control_slot_trace_coverage = full_command_execution.get("control_slot_trace_coverage", [])
+    linear_op_trace_by_index = {
+        int(entry.get("op_index", -1)): entry for entry in linear_op_trace_coverage
+    }
+    control_slot_trace_by_slot = {
+        int(entry.get("slot", -1)): entry for entry in control_slot_trace_coverage
+    }
+    full_command_per_op_trace_coverage_check = (
+        len(linear_op_trace_coverage) == len(command_stream["linear_ops"])
+        and len(control_slot_trace_coverage) == control_ops_per_layer
+        and all(
+            linear_op_trace_by_index.get(index, {}).get("name") == op["name"]
+            and linear_op_trace_by_index.get(index, {}).get("observed_commands")
+            == layers * int(op["input_tiles"]) * int(op["output_tiles"])
+            and linear_op_trace_by_index.get(index, {}).get("expected_commands")
+            == layers * int(op["input_tiles"]) * int(op["output_tiles"])
+            for index, op in enumerate(command_stream["linear_ops"])
+        )
+        and all(
+            control_slot_trace_by_slot.get(slot, {}).get("op_index")
+            == int(entry["control_op_index"])
+            and control_slot_trace_by_slot.get(slot, {}).get("kind")
+            == int(entry["control_kind"])
+            and control_slot_trace_by_slot.get(slot, {}).get("observed_payloads") == layers
+            and control_slot_trace_by_slot.get(slot, {}).get("expected_payloads") == layers
+            for slot, entry in enumerate(control_slot_entries)
+        )
+    )
+    bounded_top_execution_check = (
+        verilator_execution.get("status") == "pass"
+        and smoke_execution.get("status") == "pass"
+        and smoke_execution.get("issued_linear_commands") == smoke_linear_commands
+        and smoke_execution.get("issued_graph_slots") == total_graph_slots
+    )
+    full_command_top_execution_check = (
+        verilator_execution.get("status") == "pass"
+        and full_command_execution.get("status") == "pass"
+        and full_command_execution.get("issued_linear_commands") == full_linear_commands
+        and full_command_execution.get("issued_graph_slots") == total_graph_slots
+        and full_command_execution.get("cycles", full_execution_cycle_limit + 1) < full_execution_cycle_limit
+    )
+    full_checkpoint_structural_rtl_execution = (
+        bounded_top_execution_check
+        and full_command_top_execution_check
+        and full_command_payload_schedule_check
+        and full_command_payload_digest_check
+        and full_command_cycle_phase_check
+        and full_command_control_schedule_check
+        and full_command_control_digest_check
+        and full_command_trace_anchor_check
+        and full_command_per_op_trace_coverage_check
+    )
 
     phase_template = [
         {"cycle": 0, "module": "graph_sequencer", "phase": "present next graph slot"},
@@ -4461,12 +6634,44 @@ int main(int argc, char** argv) {{
             "status": "pass" if full_linear_commands == int(command_stream["total_tile_commands"]) else "fail",
         },
         {
+            "name": "bounded_top_verilator_execution_passed",
+            "status": "pass" if bounded_top_execution_check else "fail",
+        },
+        {
+            "name": "full_command_top_verilator_execution_passed",
+            "status": "pass" if full_command_top_execution_check else "fail",
+        },
+        {
             "name": "full_command_payloads_checked_against_cpp_schedule",
-            "status": "pass",
+            "status": "pass" if full_command_payload_schedule_check else "fail",
+        },
+        {
+            "name": "full_command_payload_digest_checked_against_cpp_schedule",
+            "status": "pass" if full_command_payload_digest_check else "fail",
         },
         {
             "name": "full_command_cycle_phases_checked",
-            "status": "pass",
+            "status": "pass" if full_command_cycle_phase_check else "fail",
+        },
+        {
+            "name": "full_command_control_payloads_checked_against_graph_schedule",
+            "status": "pass" if full_command_control_schedule_check else "fail",
+        },
+        {
+            "name": "full_command_control_payload_digest_checked",
+            "status": "pass" if full_command_control_digest_check else "fail",
+        },
+        {
+            "name": "full_command_trace_anchors_match_cpp_schedule",
+            "status": "pass" if full_command_trace_anchor_check else "fail",
+        },
+        {
+            "name": "full_command_per_op_trace_coverage_matches_cpp_schedule",
+            "status": "pass" if full_command_per_op_trace_coverage_check else "fail",
+        },
+        {
+            "name": "full_checkpoint_structural_rtl_execution_reported",
+            "status": "pass" if full_checkpoint_structural_rtl_execution else "fail",
         },
         {
             "name": "phase_template_names_each_cycle",
@@ -4480,8 +6685,12 @@ int main(int argc, char** argv) {{
         "truth_boundary": "ordered_graph_slot_dispatch_to_slot_scoped_rtl_engines",
         "full_checkpoint_ordered_graph_integrated_rtl": True,
         "full_checkpoint_graph_lowering": True,
-        "full_checkpoint_rtl_execution": False,
-        "full_checkpoint_command_stream_rtl_execution": True,
+        "full_checkpoint_rtl_execution": full_checkpoint_structural_rtl_execution,
+        "full_checkpoint_rtl_execution_scope": (
+            "structural_graph_slot_and_command_stream_verilator_execution_without_tensor_numeric_equivalence"
+        ),
+        "full_checkpoint_structural_rtl_execution": full_checkpoint_structural_rtl_execution,
+        "full_checkpoint_command_stream_rtl_execution": full_checkpoint_structural_rtl_execution,
         "full_checkpoint_numeric_output_equivalence": False,
         "top_rtl": repo_rel(top_path),
         "linear_slot_engine_rtl": repo_rel(linear_slot_path),
@@ -4502,15 +6711,43 @@ int main(int argc, char** argv) {{
         "full_top_verilator_parameter": "-GSmokeMaxTilesPerLinearSlot=0",
         "full_expected_linear_commands": full_linear_commands,
         "full_execution_cycle_limit": full_execution_cycle_limit,
-        "full_command_count_rtl_execution": True,
-        "full_command_payload_schedule_check": True,
-        "full_command_cycle_phase_check": True,
+        "verilator_execution": verilator_execution,
+        "bounded_smoke_verilator_report": smoke_execution,
+        "full_command_verilator_report": full_command_execution,
+        "full_command_count_rtl_execution": full_command_top_execution_check,
+        "full_command_payload_schedule_check": full_command_payload_schedule_check,
+        "full_command_payload_digest_check": full_command_payload_digest_check,
+        "full_command_payload_digest": command_stream["payload_digest"],
+        "full_command_cycle_phase_check": full_command_cycle_phase_check,
+        "full_command_control_schedule_check": full_command_control_schedule_check,
+        "full_command_control_digest_check": full_command_control_digest_check,
+        "full_command_control_digest": full_command_execution.get("accepted_control_digest"),
+        "full_command_trace_anchor_check": full_command_trace_anchor_check,
+        "full_command_trace_anchors": {
+            "linear": linear_trace_anchors,
+            "control": control_trace_anchors,
+        },
+        "full_command_per_op_trace_coverage_check": full_command_per_op_trace_coverage_check,
+        "full_command_per_op_trace_coverage": {
+            "linear_ops": linear_op_trace_coverage,
+            "control_slots": control_slot_trace_coverage,
+        },
         "full_command_payload_schedule": "e1/code/program/e1_tinyllama_full_schedule.hpp",
+        "full_checkpoint_structural_rtl_execution_note": (
+            "Structural RTL execution means the bounded graph-slot smoke and full-command "
+            "Verilator runs both passed, every planned command reached the selected RTL "
+            "slot-engine path, linear command payloads and digest matched the generated C++ "
+            "schedule, CPU/control slot payloads and digest matched the generated graph "
+            "schedule, and documented phase checks passed. It is not a TinyLlama output "
+            "tensor equivalence claim."
+        ),
         "full_command_count_rtl_execution_note": (
             "Runs every planned linear tile command through generated RTL control/handshake paths; "
-            "checks every command payload against the generated C++ schedule; checks the "
+            "checks every command payload and the accepted payload digest against the "
+            "generated C++ schedule; checks the "
             "phase 1 scheduler-valid, phase 2 array-handshake, and phase 6 array-done "
-            "sequence for every command; "
+            "sequence for every command; checks every CPU/control slot payload and commit "
+            "against the generated graph schedule; "
             "does not yet prove TinyLlama numeric output equivalence."
         ),
         "phase_template": phase_template,
@@ -4591,9 +6828,26 @@ def emit_full_checkpoint_graph_rtl_lowering_proof(
     }
     readme_path = "e1/e1-h1/docs/modules/README.md"
     readme_text = (REPO_ROOT / readme_path).read_text(encoding="utf-8")
+    readme_diagram_snippets = [
+        "Cycle      control_cpu module       ingress_sram latch buffer        systolic_array module",
+        "Tile cycle  control_cpu responsibility        ingress_sram latch buffer      systolic_array responsibility",
+        "Control cycle  control_cpu responsibility",
+        "Graph cycle  control_cpu responsibility",
+        "Top cycle  graph_sequencer responsibility       selected slot engine",
+    ]
     readme_cycle_coverage = {
         "readme": readme_path,
         "section": "Full Graph Slot Cycle Coverage",
+        "diagram_section": "Cycle Diagram",
+        "diagram_snippets": readme_diagram_snippets,
+        "diagram_checks": [
+            {
+                "name": "readme_cycle_diagram_snippet_present",
+                "snippet": snippet,
+                "status": "pass" if snippet in readme_text else "fail",
+            }
+            for snippet in readme_diagram_snippets
+        ],
         "templates": [
             {
                 "template": template,
@@ -4644,7 +6898,7 @@ def emit_full_checkpoint_graph_rtl_lowering_proof(
     checks = [
         {
             "name": "full_checkpoint_layer_plan_shape_complete",
-            "status": "pass" if full_checkpoint_rtl_lowering["status"] == "planned" else "fail",
+            "status": "pass" if full_checkpoint_rtl_lowering["status"] == "pass" else "fail",
         },
         {"name": "command_stream_generated", "status": command_stream["status"]},
         {"name": "linear_cycle_scheduler_generated", "status": rtl_cycle["status"]},
@@ -4655,6 +6909,10 @@ def emit_full_checkpoint_graph_rtl_lowering_proof(
         {
             "name": "top_report_marks_full_graph_lowering",
             "status": "pass" if rtl_top["full_checkpoint_graph_lowering"] else "fail",
+        },
+        {
+            "name": "top_report_marks_full_checkpoint_structural_rtl_execution",
+            "status": "pass" if rtl_top["full_checkpoint_structural_rtl_execution"] else "fail",
         },
         {
             "name": "ordered_graph_slot_count_matches_layer_plan",
@@ -4696,26 +6954,55 @@ def emit_full_checkpoint_graph_rtl_lowering_proof(
             else "fail",
         },
         {
+            "name": "readme_contains_required_cycle_diagram_snippets",
+            "status": "pass"
+            if all(check["status"] == "pass" for check in readme_cycle_coverage["diagram_checks"])
+            else "fail",
+        },
+        {
             "name": "all_referenced_rtl_artifacts_exist",
             "status": "pass" if all((REPO_ROOT / path).exists() for path in artifact_paths) else "fail",
         },
         {
             "name": "full_linear_command_stream_runs_through_rtl_top",
-            "status": "pass" if rtl_top["full_command_count_rtl_execution"] else "fail",
+            "status": "pass"
+            if rtl_top["full_checkpoint_structural_rtl_execution"]
+            and rtl_top["full_command_count_rtl_execution"]
+            and rtl_top["verilator_execution"]["status"] == "pass"
+            else "fail",
         },
         {
             "name": "full_command_payloads_checked_against_cpp_schedule",
             "status": "pass" if rtl_top["full_command_payload_schedule_check"] else "fail",
         },
         {
+            "name": "full_command_payload_digest_checked_against_cpp_schedule",
+            "status": "pass" if rtl_top["full_command_payload_digest_check"] else "fail",
+        },
+        {
             "name": "full_command_cycle_phases_checked",
             "status": "pass" if rtl_top["full_command_cycle_phase_check"] else "fail",
         },
         {
+            "name": "full_command_control_payloads_checked_against_graph_schedule",
+            "status": "pass"
+            if rtl_top["full_command_control_schedule_check"]
+            and rtl_top["full_command_control_digest_check"]
+            else "fail",
+        },
+        {
+            "name": "full_command_trace_anchors_match_cpp_schedule",
+            "status": "pass" if rtl_top["full_command_trace_anchor_check"] else "fail",
+        },
+        {
+            "name": "full_command_per_op_trace_coverage_matches_cpp_schedule",
+            "status": "pass" if rtl_top["full_command_per_op_trace_coverage_check"] else "fail",
+        },
+        {
             "name": "numeric_output_equivalence_not_claimed",
             "status": "pass"
-            if not rtl_top["full_checkpoint_rtl_execution"]
-            and not rtl_top["full_checkpoint_numeric_output_equivalence"]
+            if not rtl_top["full_checkpoint_numeric_output_equivalence"]
+            and "without_tensor_numeric_equivalence" in rtl_top["full_checkpoint_rtl_execution_scope"]
             else "fail",
         },
     ]
@@ -4726,8 +7013,10 @@ def emit_full_checkpoint_graph_rtl_lowering_proof(
         "model_id": manifest["model_id"],
         "truth_boundary": "full_graph_slot_dispatch_and_linear_command_stream_rtl_lowering",
         "full_checkpoint_graph_lowering": status == "pass",
-        "full_checkpoint_rtl_execution": False,
-        "full_checkpoint_command_stream_rtl_execution": rtl_top["full_command_count_rtl_execution"],
+        "full_checkpoint_rtl_execution": status == "pass" and rtl_top["full_checkpoint_rtl_execution"],
+        "full_checkpoint_rtl_execution_scope": rtl_top["full_checkpoint_rtl_execution_scope"],
+        "full_checkpoint_structural_rtl_execution": rtl_top["full_checkpoint_structural_rtl_execution"],
+        "full_checkpoint_command_stream_rtl_execution": rtl_top["full_checkpoint_command_stream_rtl_execution"],
         "full_checkpoint_numeric_output_equivalence": False,
         "graph": {
             "layers": full_checkpoint_rtl_lowering["aggregate"]["layers"],
@@ -4745,6 +7034,11 @@ def emit_full_checkpoint_graph_rtl_lowering_proof(
             "full_verilator_tb": rtl_top["full_verilator_tb"],
             "full_top_verilator_parameter": rtl_top["full_top_verilator_parameter"],
             "payload_schedule": rtl_top["full_command_payload_schedule"],
+            "payload_digest": rtl_top["full_command_payload_digest"],
+            "control_payload_digest": rtl_top["full_command_control_digest"],
+            "structural_rtl_execution": rtl_top["full_checkpoint_structural_rtl_execution"],
+            "verilator_execution_status": rtl_top["verilator_execution"]["status"],
+            "full_command_verilator_report": rtl_top["full_command_verilator_report"],
         },
         "rtl_artifacts": {
             "top": rtl_top["top_rtl"],
@@ -4770,6 +7064,8 @@ def emit_full_checkpoint_graph_rtl_lowering_proof(
             "No TinyLlama numeric output equivalence is claimed by this proof.",
             "No full StableHLO live checkpoint export is required by this deterministic preflight proof.",
             "Control/elementwise arithmetic kernels remain represented as CPU/control RTL scheduling boundaries.",
+            "Structural RTL execution checks dispatch, handshakes, command payloads, digest, and cycle phases; it does not compare TinyLlama output tensors.",
+            "CPU/control slot payload and commit checks prove graph-schedule identity, not arithmetic equivalence for control kernels.",
         ],
         "checks": checks,
     }
@@ -4785,6 +7081,21 @@ def emit_full_graph_module_dpi_binding(
 ) -> dict[str, Any]:
     base_by_name = {module["name"]: module for module in module_dpi_report["modules"]}
     generated_by_name = {module["name"]: module for module in full_checkpoint_module_dpi["modules"]}
+    base_cpp_launcher_by_name = {
+        result["name"]: result
+        for result in module_dpi_report.get("cpp_verilator_launcher", {})
+        .get("verilator_run", {})
+        .get("module_results", [])
+        if result.get("name")
+    }
+    generated_cpp_launcher_by_name = {
+        result["name"]: result
+        for result in full_checkpoint_module_dpi.get("cpp_verilator_launcher", {})
+        .get("verilator_run", {})
+        .get("module_results", [])
+        if result.get("name")
+    }
+    all_base_modules = [module["name"] for module in module_dpi_report["modules"]]
     required_base_modules = ["control_cpu", "ingress_sram", "systolic_array"]
     required_generated_modules = [
         "linear_scheduler",
@@ -4799,6 +7110,151 @@ def emit_full_graph_module_dpi_binding(
         "e1_h1_tinyllama_linear_slot_engine": "linear_slot_engine",
         "e1_h1_tinyllama_control_slot_engine": "control_slot_engine",
     }
+    generated_by_top_module = {
+        module["top_module"]: module for module in full_checkpoint_module_dpi["modules"]
+    }
+    base_by_top_module = {module["top_module"]: module for module in module_dpi_report["modules"]}
+
+    def expected_phase_trace_keys(recipe: dict[str, Any]) -> list[str]:
+        phase_names = [
+            marker[len("phase=") :]
+            for marker in recipe.get("expected_stdout_markers", [])
+            if marker.startswith("phase=")
+        ]
+        return [
+            f"{cycle}:{phase}"
+            for cycle, phase in enumerate(phase_names)
+        ]
+
+    def expected_phase_signal_trace_keys(recipe: dict[str, Any]) -> list[str]:
+        keys: list[str] = []
+        for entry in recipe.get("expected_phase_signal_trace", []):
+            expected = entry["expected"]
+            keys.append(f"{entry['cycle']}:{entry['signal']}:{expected}:{expected}")
+        return keys
+
+    def cpp_launcher_result_summary(result: dict[str, Any] | None) -> dict[str, Any] | None:
+        if result is None:
+            return None
+        return {
+            "build_command": result.get("build_command"),
+            "expected_stdout_markers": result.get("expected_stdout_markers", []),
+            "expected_phase_trace_keys": result.get("expected_phase_trace_keys", []),
+            "observed_phase_trace_prefix_keys": result.get("observed_phase_trace_prefix_keys", []),
+            "expected_phase_signal_trace_keys": result.get("expected_phase_signal_trace_keys", []),
+            "observed_phase_signal_trace_prefix_keys": result.get(
+                "observed_phase_signal_trace_prefix_keys",
+                [],
+            ),
+            "name": result.get("name"),
+            "status": result.get("status"),
+            "run_executable": result.get("run_executable"),
+            "stdout_markers_present": result.get("stdout_markers_present"),
+            "missing_stdout_markers": result.get("missing_stdout_markers", []),
+            "phase_trace_in_order": result.get("phase_trace_in_order"),
+            "phase_trace_repeats_template": result.get("phase_trace_repeats_template"),
+            "phase_signal_trace_matches": result.get("phase_signal_trace_matches"),
+            "phase_signal_trace_repeats_template": result.get("phase_signal_trace_repeats_template"),
+            "observed_phase_trace_count": result.get("observed_phase_trace_count"),
+            "observed_phase_signal_trace_count": result.get("observed_phase_signal_trace_count"),
+        }
+
+    def cpp_launcher_result_passed(result: dict[str, Any] | None) -> bool:
+        return (
+            result is not None
+            and result.get("status") == "pass"
+            and result.get("stdout_markers_present") is True
+            and result.get("missing_stdout_markers") == []
+            and result.get("phase_trace_in_order") is True
+            and result.get("phase_trace_repeats_template") is True
+            and result.get("phase_signal_trace_matches") is True
+            and result.get("phase_signal_trace_repeats_template") is True
+            and bool(result.get("expected_phase_trace_keys"))
+            and result.get("observed_phase_trace_prefix_keys")
+            == result.get("expected_phase_trace_keys")
+            and int(result.get("observed_phase_trace_count") or 0) > 0
+            and bool(result.get("expected_phase_signal_trace_keys"))
+            and result.get("observed_phase_signal_trace_prefix_keys")
+            == result.get("expected_phase_signal_trace_keys")
+            and int(result.get("observed_phase_signal_trace_count") or 0) > 0
+        )
+
+    def cpp_launcher_result_matches_recipe(
+        result: dict[str, Any] | None,
+        recipe: dict[str, Any] | None,
+    ) -> bool:
+        return (
+            result is not None
+            and recipe is not None
+            and result.get("name") == recipe.get("name")
+            and result.get("build_command") == recipe.get("build_command")
+            and result.get("run_executable") == recipe.get("run_executable")
+            and result.get("expected_stdout_markers") == recipe.get("expected_stdout_markers")
+            and result.get("expected_phase_trace_keys") == expected_phase_trace_keys(recipe)
+            and result.get("observed_phase_trace_prefix_keys") == expected_phase_trace_keys(recipe)
+            and result.get("expected_phase_signal_trace_keys")
+            == expected_phase_signal_trace_keys(recipe)
+            and result.get("observed_phase_signal_trace_prefix_keys")
+            == expected_phase_signal_trace_keys(recipe)
+        )
+
+    def cycle_contract_phase_keys(cycle_contract: dict[str, Any] | None) -> list[str]:
+        if cycle_contract is None:
+            return []
+        return [
+            f"{step['cycle']}:{step['phase']}"
+            for step in cycle_contract.get("cycles", [])
+        ]
+
+    def readme_cycle_phase_keys(readme_cycle_coverage: dict[str, Any] | None) -> list[str]:
+        if readme_cycle_coverage is None:
+            return []
+        return [
+            f"{cycle}:{phase}"
+            for cycle, phase in enumerate(readme_cycle_coverage.get("phase_names", []))
+        ]
+
+    def cpp_launcher_readme_cycle_proof(
+        *,
+        cycle_contract: dict[str, Any] | None,
+        readme_cycle_coverage: dict[str, Any] | None,
+        result: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        contract_keys = cycle_contract_phase_keys(cycle_contract)
+        readme_keys = readme_cycle_phase_keys(readme_cycle_coverage)
+        expected_launcher_keys = result.get("expected_phase_trace_keys", []) if result else []
+        observed_launcher_keys = result.get("observed_phase_trace_prefix_keys", []) if result else []
+        status = (
+            bool(contract_keys)
+            and contract_keys == readme_keys
+            and expected_launcher_keys == readme_keys
+            and observed_launcher_keys == readme_keys
+        )
+        return {
+            "status": "pass" if status else "fail",
+            "readme": "e1/e1-h1/docs/modules/README.md",
+            "readme_index": readme_cycle_coverage.get("readme_index")
+            if readme_cycle_coverage
+            else None,
+            "readme_index_row": readme_cycle_coverage.get("readme_index_row")
+            if readme_cycle_coverage
+            else None,
+            "cycle_template": cycle_contract.get("template") if cycle_contract else None,
+            "cycle_contract_phase_keys": contract_keys,
+            "readme_phase_keys": readme_keys,
+            "cpp_launcher_expected_phase_keys": expected_launcher_keys,
+            "cpp_launcher_observed_phase_keys": observed_launcher_keys,
+        }
+
+    def cpp_launcher_result_for_module(
+        source_kind: str,
+        module: dict[str, Any] | None,
+    ) -> dict[str, Any] | None:
+        if module is None:
+            return None
+        if source_kind == "separated_base_imp2_rtl":
+            return base_cpp_launcher_by_name.get(module["name"])
+        return generated_cpp_launcher_by_name.get(module["name"])
 
     slot_engine_bindings = []
     for rtl_engine, module_name in slot_engine_modules.items():
@@ -4820,15 +7276,320 @@ def emit_full_graph_module_dpi_binding(
             }
         )
 
+    def module_dpi_coverage_entry(
+        *,
+        source_kind: str,
+        source_module_name: str,
+        sv_module: str,
+        rtl: str,
+        module: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        construction_ledger = module["construction_ledger"] if module is not None else None
+        cycle_contract = module["cycle_contract"] if module is not None else None
+        readme_cycle_coverage = module["readme_cycle_coverage"] if module is not None else None
+        verilator_execution = module["verilator_execution"] if module is not None else None
+        verilator_recipe = module["verilator_execution_recipe"] if module is not None else None
+        cpp_launcher_result = cpp_launcher_result_for_module(source_kind, module)
+        expected_phase_trace = (
+            verilator_execution.get("expected_phase_trace", []) if verilator_execution is not None else []
+        )
+        expected_phase_signal_trace = (
+            verilator_execution.get("expected_phase_signal_trace", [])
+            if verilator_execution is not None
+            else []
+        )
+        probe_dut_instantiation_count = (
+            construction_ledger.get("probe_dut_instantiation_count") if construction_ledger is not None else None
+        )
+        probe_reference_instantiation_count = (
+            construction_ledger.get("probe_reference_instantiation_count") if construction_ledger is not None else None
+        )
+        if module is not None and source_kind == "separated_base_imp2_rtl":
+            selected_dut_rtl = [construction_ledger["imp2_rtl"]]
+            expected_flist_entries = [
+                construction_ledger["reference_rtl"],
+                construction_ledger["imp2_rtl"],
+                module["probe"],
+            ]
+            module_only_flist_scope = "base_imp1_reference_plus_imp2_dut_plus_probe"
+        elif module is not None:
+            selected_dut_rtl = list(construction_ledger["rtl"])
+            expected_flist_entries = [*construction_ledger["rtl"], module["probe"]]
+            module_only_flist_scope = "generated_selected_dut_plus_probe"
+        else:
+            selected_dut_rtl = []
+            expected_flist_entries = []
+            module_only_flist_scope = None
+        flist_path = REPO_ROOT / module["flist"] if module is not None else None
+        observed_flist_entries = (
+            flist_path.read_text(encoding="utf-8").splitlines()
+            if flist_path is not None and flist_path.exists()
+            else []
+        )
+        probe_text = (
+            (REPO_ROOT / module["probe"]).read_text(encoding="utf-8")
+            if module is not None and (REPO_ROOT / module["probe"]).exists()
+            else ""
+        )
+        module_only_flist_rtl = (
+            selected_dut_rtl
+            if source_kind == "separated_base_imp2_rtl"
+            else module.get("module_only_flist_rtl", []) if module is not None else []
+        )
+        composed_rtl_dependencies = module.get("composed_rtl_dependencies", []) if module is not None else []
+        child_stub_modules = module.get("child_stub_modules", []) if module is not None else []
+        module_only_flist_boundary_exact = (
+            bool(expected_flist_entries) and observed_flist_entries == expected_flist_entries
+        )
+        generated_module_only_flist_exact = (
+            module_only_flist_boundary_exact
+            if source_kind == "generated_full_checkpoint_rtl"
+            else None
+        )
+        base_module_only_flist_exact = (
+            module_only_flist_boundary_exact
+            if source_kind == "separated_base_imp2_rtl"
+            else None
+        )
+        selected_dut_rtl_in_flist = bool(selected_dut_rtl) and all(
+            rtl_path in observed_flist_entries for rtl_path in selected_dut_rtl
+        )
+        composed_dependencies_absent_from_flist = all(
+            dependency not in observed_flist_entries
+            for dependency in composed_rtl_dependencies
+        )
+        child_stubs_present_in_probe = all(
+            f"module {child_stub}" in probe_text
+            for child_stub in child_stub_modules
+        )
+        flist_exact_match = bool(expected_flist_entries) and observed_flist_entries == expected_flist_entries
+        exact_probe_instantiation_counts = (
+            probe_dut_instantiation_count == 1
+            and (probe_reference_instantiation_count in {None, 1})
+        )
+        cycle_contract_checks_pass = (
+            cycle_contract is not None
+            and all(check["status"] == "pass" for check in cycle_contract["checks"])
+            and [step["cycle"] for step in cycle_contract["cycles"]]
+            == list(range(cycle_contract["cycle_period"]))
+        )
+        readme_cycle_checks_pass = (
+            readme_cycle_coverage is not None
+            and all(check["status"] == "pass" for check in readme_cycle_coverage["checks"])
+            and cycle_contract is not None
+            and readme_cycle_coverage["phase_names"] == [step["phase"] for step in cycle_contract["cycles"]]
+        )
+        phase_trace_checks_pass = (
+            verilator_execution is not None
+            and bool(expected_phase_trace)
+            and verilator_execution.get("observed_phase_trace_prefix") == expected_phase_trace
+            and verilator_execution.get("observed_phase_trace_count", 0) >= len(expected_phase_trace)
+        )
+        phase_signal_trace_checks_pass = (
+            verilator_execution is not None
+            and (
+                not expected_phase_signal_trace
+                or (
+                    verilator_execution.get("observed_phase_signal_trace_prefix")
+                    == expected_phase_signal_trace
+                    and verilator_execution.get("observed_phase_signal_trace_count", 0)
+                    >= len(expected_phase_signal_trace)
+                )
+            )
+        )
+        return {
+            "source_kind": source_kind,
+            "source_module_name": source_module_name,
+            "sv_module": sv_module,
+            "rtl": rtl,
+            "covered": module is not None,
+            "module_dpi_name": module["name"] if module is not None else None,
+            "probe": module["probe"] if module is not None else None,
+            "flist": module["flist"] if module is not None else None,
+            "recipe": module["verilator_execution_recipe"] if module is not None else None,
+            "construction_ledger": construction_ledger,
+            "cycle_template": cycle_contract["template"] if cycle_contract is not None else None,
+            "phase_names": [step["phase"] for step in cycle_contract["cycles"]]
+            if cycle_contract is not None
+            else [],
+            "readme_index_row": readme_cycle_coverage["readme_index_row"]
+            if readme_cycle_coverage is not None
+            else None,
+            "probe_dut_instantiation_count": probe_dut_instantiation_count,
+            "probe_reference_instantiation_count": probe_reference_instantiation_count,
+            "module_only_flist_scope": module_only_flist_scope,
+            "selected_dut_rtl": selected_dut_rtl,
+            "expected_flist_entries": expected_flist_entries,
+            "observed_flist_entries": observed_flist_entries,
+            "flist_exact_match": flist_exact_match,
+            "module_only_flist_boundary_exact": module_only_flist_boundary_exact,
+            "module_only_flist_rtl": module_only_flist_rtl,
+            "selected_dut_rtl_in_flist": selected_dut_rtl_in_flist,
+            "composed_rtl_dependencies": composed_rtl_dependencies,
+            "child_stub_modules": child_stub_modules,
+            "generated_module_only_flist_exact": generated_module_only_flist_exact,
+            "base_module_only_flist_exact": base_module_only_flist_exact,
+            "composed_dependencies_absent_from_flist": composed_dependencies_absent_from_flist,
+            "child_stubs_present_in_probe": child_stubs_present_in_probe,
+            "verilator_status": verilator_execution["status"] if verilator_execution is not None else None,
+            "ledger_checks_pass": (
+                module is not None
+                and all(check["status"] == "pass" for check in module["construction_ledger"]["checks"])
+            ),
+            "exact_probe_instantiation_counts": exact_probe_instantiation_counts,
+            "cycle_contract_checks_pass": cycle_contract_checks_pass,
+            "readme_cycle_checks_pass": readme_cycle_checks_pass,
+            "phase_trace_checks_pass": phase_trace_checks_pass,
+            "phase_signal_trace_checks_pass": phase_signal_trace_checks_pass,
+            "cpp_launcher_result": cpp_launcher_result_summary(cpp_launcher_result),
+            "cpp_launcher_readme_cycle_proof": cpp_launcher_readme_cycle_proof(
+                cycle_contract=cycle_contract,
+                readme_cycle_coverage=readme_cycle_coverage,
+                result=cpp_launcher_result,
+            ),
+            "cpp_launcher_readme_cycle_checks_pass": (
+                cpp_launcher_readme_cycle_proof(
+                    cycle_contract=cycle_contract,
+                    readme_cycle_coverage=readme_cycle_coverage,
+                    result=cpp_launcher_result,
+                )["status"]
+                == "pass"
+            ),
+            "cpp_launcher_recipe_checks_pass": cpp_launcher_result_matches_recipe(
+                cpp_launcher_result,
+                verilator_recipe,
+            ),
+            "cpp_launcher_checks_pass": (
+                cpp_launcher_result_passed(cpp_launcher_result)
+                and cpp_launcher_result_matches_recipe(cpp_launcher_result, verilator_recipe)
+            ),
+            "recipe_checks_pass": (
+                module is not None
+                and module["verilator_execution"]["build_command"]
+                == module["verilator_execution_recipe"]["build_command"]
+                and module["verilator_execution"]["run_executable"]
+                == module["verilator_execution_recipe"]["run_executable"]
+            ),
+        }
+
+    generated_rtl_paths = unique_ordered(
+        [
+            rtl
+            for module in full_checkpoint_module_dpi["modules"]
+            for rtl in module["rtl"]
+            if rtl.startswith("e1/e1-h1/generated/full_checkpoint/") and rtl.endswith(".sv")
+        ]
+    )
+    generated_full_checkpoint_sv_inventory = sorted(
+        repo_rel(path)
+        for path in (REPO_ROOT / "e1/e1-h1/generated/full_checkpoint").glob("*.sv")
+    )
+    generated_full_checkpoint_sv_inventory_modules = [
+        {"rtl": rtl, "defined_modules": parse_sv_defined_modules(REPO_ROOT / rtl)}
+        for rtl in generated_full_checkpoint_sv_inventory
+    ]
+    generated_rtl_module_coverage = []
+    for rtl in generated_rtl_paths:
+        for sv_module in parse_sv_defined_modules(REPO_ROOT / rtl):
+            module = generated_by_top_module.get(sv_module)
+            generated_rtl_module_coverage.append(
+                module_dpi_coverage_entry(
+                    source_kind="generated_full_checkpoint_rtl",
+                    source_module_name=module["name"] if module is not None else sv_module,
+                    sv_module=sv_module,
+                    rtl=rtl,
+                    module=module,
+                )
+            )
+
+    base_imp2_sv_inventory = sorted(
+        repo_rel(path)
+        for path in (REPO_ROOT / "e1/e1-h1/rtl/imp2").glob("*.sv")
+    )
+    base_imp2_sv_inventory_modules = [
+        {"rtl": rtl, "defined_modules": parse_sv_defined_modules(REPO_ROOT / rtl)}
+        for rtl in base_imp2_sv_inventory
+    ]
+    base_rtl_module_coverage = []
+    for module_name in required_base_modules:
+        module = base_by_name.get(module_name)
+        rtl = module["construction_ledger"]["imp2_rtl"] if module is not None else None
+        sv_modules = parse_sv_defined_modules(REPO_ROOT / rtl) if rtl is not None else []
+        for sv_module in sv_modules:
+            base_rtl_module_coverage.append(
+                module_dpi_coverage_entry(
+                    source_kind="separated_base_imp2_rtl",
+                    source_module_name=module_name,
+                    sv_module=sv_module,
+                    rtl=rtl,
+                    module=base_by_top_module.get(sv_module),
+                )
+            )
+
+    source_derived_module_dpi_coverage = [
+        *generated_rtl_module_coverage,
+        *base_rtl_module_coverage,
+    ]
+
+    generated_child_stub_boundary = []
     generated_module_bindings = []
     for module_name in required_generated_modules:
         module = generated_by_name.get(module_name)
+        flist_path = REPO_ROOT / module["flist"] if module is not None else None
+        observed_flist_entries = (
+            flist_path.read_text(encoding="utf-8").splitlines()
+            if flist_path is not None and flist_path.exists()
+            else []
+        )
+        probe_text = (
+            (REPO_ROOT / module["probe"]).read_text(encoding="utf-8")
+            if module is not None and (REPO_ROOT / module["probe"]).exists()
+            else ""
+        )
+        expected_flist_entries = (
+            [*module["module_only_flist_rtl"], module["probe"]]
+            if module is not None
+            else []
+        )
+        child_stubs_present_in_probe = (
+            module is not None
+            and all(f"module {child}" in probe_text for child in module["child_stub_modules"])
+        )
+        composed_dependencies_absent_from_flist = (
+            module is not None
+            and all(
+                dependency not in observed_flist_entries
+                for dependency in module["composed_rtl_dependencies"]
+            )
+        )
+        boundary_entry = {
+            "name": module_name,
+            "present": module is not None,
+            "top_module": module["top_module"] if module is not None else None,
+            "rtl": module["rtl"] if module is not None else [],
+            "selected_dut_rtl": module["module_only_flist_rtl"] if module is not None else [],
+            "composed_rtl_dependencies": module["composed_rtl_dependencies"] if module is not None else [],
+            "child_stub_modules": module["child_stub_modules"] if module is not None else [],
+            "probe": module["probe"] if module is not None else None,
+            "flist": module["flist"] if module is not None else None,
+            "expected_flist_entries": expected_flist_entries,
+            "observed_flist_entries": observed_flist_entries,
+            "flist_contains_only_selected_dut_and_probe": (
+                bool(expected_flist_entries) and observed_flist_entries == expected_flist_entries
+            ),
+            "composed_dependencies_absent_from_flist": composed_dependencies_absent_from_flist,
+            "child_stubs_present_in_probe": child_stubs_present_in_probe,
+        }
+        generated_child_stub_boundary.append(boundary_entry)
         generated_module_bindings.append(
             {
                 "name": module_name,
                 "present": module is not None,
                 "top_module": module["top_module"] if module is not None else None,
                 "rtl": module["rtl"] if module is not None else [],
+                "module_only_flist_rtl": module["module_only_flist_rtl"] if module is not None else [],
+                "composed_rtl_dependencies": module["composed_rtl_dependencies"] if module is not None else [],
+                "child_stub_modules": module["child_stub_modules"] if module is not None else [],
                 "probe": module["probe"] if module is not None else None,
                 "flist": module["flist"] if module is not None else None,
                 "cycle_contract": module["cycle_contract"] if module is not None else None,
@@ -4836,26 +7597,204 @@ def emit_full_graph_module_dpi_binding(
                 "construction_ledger": module["construction_ledger"] if module is not None else None,
                 "verilator_execution_recipe": module["verilator_execution_recipe"] if module is not None else None,
                 "verilator_execution": module["verilator_execution"] if module is not None else None,
+                "cpp_launcher_result": cpp_launcher_result_summary(
+                    generated_cpp_launcher_by_name.get(module_name)
+                ),
+                "cpp_launcher_readme_cycle_proof": cpp_launcher_readme_cycle_proof(
+                    cycle_contract=module["cycle_contract"] if module is not None else None,
+                    readme_cycle_coverage=module["readme_cycle_coverage"]
+                    if module is not None
+                    else None,
+                    result=generated_cpp_launcher_by_name.get(module_name),
+                ),
+                "cpp_launcher_readme_cycle_checks_pass": (
+                    cpp_launcher_readme_cycle_proof(
+                        cycle_contract=module["cycle_contract"] if module is not None else None,
+                        readme_cycle_coverage=module["readme_cycle_coverage"]
+                        if module is not None
+                        else None,
+                        result=generated_cpp_launcher_by_name.get(module_name),
+                    )["status"]
+                    == "pass"
+                ),
+                "cpp_launcher_recipe_checks_pass": cpp_launcher_result_matches_recipe(
+                    generated_cpp_launcher_by_name.get(module_name),
+                    module["verilator_execution_recipe"] if module is not None else None,
+                ),
+                "cpp_launcher_checks_pass": (
+                    cpp_launcher_result_passed(generated_cpp_launcher_by_name.get(module_name))
+                    and cpp_launcher_result_matches_recipe(
+                        generated_cpp_launcher_by_name.get(module_name),
+                        module["verilator_execution_recipe"] if module is not None else None,
+                    )
+                ),
             }
         )
 
-    base_module_bindings = []
-    for module_name in required_base_modules:
+    def base_module_binding_entry(module_name: str) -> dict[str, Any]:
         module = base_by_name.get(module_name)
-        base_module_bindings.append(
-            {
-                "name": module_name,
-                "present": module is not None,
-                "top_module": module["top_module"] if module is not None else None,
-                "probe": module["probe"] if module is not None else None,
-                "flist": module["flist"] if module is not None else None,
-                "cycle_contract": module["cycle_contract"] if module is not None else None,
-                "readme_cycle_coverage": module["readme_cycle_coverage"] if module is not None else None,
-                "construction_ledger": module["construction_ledger"] if module is not None else None,
-                "verilator_execution_recipe": module["verilator_execution_recipe"] if module is not None else None,
-                "verilator_execution": module["verilator_execution"] if module is not None else None,
-            }
+        construction_ledger = module["construction_ledger"] if module is not None else None
+        cycle_contract = module["cycle_contract"] if module is not None else None
+        readme_cycle_coverage = module["readme_cycle_coverage"] if module is not None else None
+        verilator_execution = module["verilator_execution"] if module is not None else None
+        verilator_recipe = module["verilator_execution_recipe"] if module is not None else None
+        expected_flist_entries = (
+            [
+                construction_ledger["reference_rtl"],
+                construction_ledger["imp2_rtl"],
+                module["probe"],
+            ]
+            if module is not None
+            else []
         )
+        flist_path = REPO_ROOT / module["flist"] if module is not None else None
+        observed_flist_entries = (
+            flist_path.read_text(encoding="utf-8").splitlines()
+            if flist_path is not None and flist_path.exists()
+            else []
+        )
+        expected_phase_trace = (
+            verilator_execution.get("expected_phase_trace", []) if verilator_execution is not None else []
+        )
+        expected_phase_signal_trace = (
+            verilator_execution.get("expected_phase_signal_trace", [])
+            if verilator_execution is not None
+            else []
+        )
+        imp2_rtl = construction_ledger["imp2_rtl"] if construction_ledger is not None else None
+        source_defined_modules = (
+            parse_sv_defined_modules(REPO_ROOT / imp2_rtl)
+            if imp2_rtl is not None and (REPO_ROOT / imp2_rtl).exists()
+            else []
+        )
+        source_defined_modules_include_top = (
+            module is not None and module["top_module"] in source_defined_modules
+        )
+        return {
+            "name": module_name,
+            "present": module is not None,
+            "top_module": module["top_module"] if module is not None else None,
+            "probe": module["probe"] if module is not None else None,
+            "flist": module["flist"] if module is not None else None,
+            "reference_rtl": construction_ledger["reference_rtl"] if construction_ledger is not None else None,
+            "imp2_rtl": imp2_rtl,
+            "source_defined_modules": source_defined_modules,
+            "source_defined_modules_include_top": source_defined_modules_include_top,
+            "expected_flist_entries": expected_flist_entries,
+            "observed_flist_entries": observed_flist_entries,
+            "flist_exact_match": bool(expected_flist_entries)
+            and observed_flist_entries == expected_flist_entries,
+            "probe_dut_instantiation_count": construction_ledger.get("probe_dut_instantiation_count")
+            if construction_ledger is not None
+            else None,
+            "probe_reference_instantiation_count": construction_ledger.get("probe_reference_instantiation_count")
+            if construction_ledger is not None
+            else None,
+            "exact_probe_instantiation_counts": (
+                construction_ledger is not None
+                and construction_ledger.get("probe_dut_instantiation_count") == 1
+                and construction_ledger.get("probe_reference_instantiation_count") == 1
+            ),
+            "cycle_contract": cycle_contract,
+            "readme_cycle_coverage": readme_cycle_coverage,
+            "construction_ledger": construction_ledger,
+            "verilator_execution_recipe": verilator_recipe,
+            "verilator_execution": verilator_execution,
+            "verilator_status": verilator_execution["status"] if verilator_execution is not None else None,
+            "ledger_checks_pass": (
+                construction_ledger is not None
+                and all(check["status"] == "pass" for check in construction_ledger["checks"])
+            ),
+            "recipe_checks_pass": (
+                verilator_execution is not None
+                and verilator_recipe is not None
+                and verilator_execution["build_command"] == verilator_recipe["build_command"]
+                and verilator_execution["run_executable"] == verilator_recipe["run_executable"]
+            ),
+            "cycle_contract_checks_pass": (
+                cycle_contract is not None
+                and all(check["status"] == "pass" for check in cycle_contract["checks"])
+                and [step["cycle"] for step in cycle_contract["cycles"]]
+                == list(range(cycle_contract["cycle_period"]))
+            ),
+            "readme_cycle_checks_pass": (
+                readme_cycle_coverage is not None
+                and cycle_contract is not None
+                and all(check["status"] == "pass" for check in readme_cycle_coverage["checks"])
+                and readme_cycle_coverage["phase_names"] == [step["phase"] for step in cycle_contract["cycles"]]
+            ),
+            "phase_trace_checks_pass": (
+                verilator_execution is not None
+                and bool(expected_phase_trace)
+                and verilator_execution["observed_phase_trace_prefix"] == expected_phase_trace
+                and verilator_execution["observed_phase_trace_count"] >= len(expected_phase_trace)
+            ),
+            "phase_signal_trace_checks_pass": (
+                verilator_execution is not None
+                and bool(expected_phase_signal_trace)
+                and verilator_execution["observed_phase_signal_trace_prefix"] == expected_phase_signal_trace
+                and verilator_execution["observed_phase_signal_trace_count"] >= len(expected_phase_signal_trace)
+            ),
+            "cpp_launcher_result": cpp_launcher_result_summary(
+                base_cpp_launcher_by_name.get(module_name)
+            ),
+            "cpp_launcher_readme_cycle_proof": cpp_launcher_readme_cycle_proof(
+                cycle_contract=cycle_contract,
+                readme_cycle_coverage=readme_cycle_coverage,
+                result=base_cpp_launcher_by_name.get(module_name),
+            ),
+            "cpp_launcher_readme_cycle_checks_pass": (
+                cpp_launcher_readme_cycle_proof(
+                    cycle_contract=cycle_contract,
+                    readme_cycle_coverage=readme_cycle_coverage,
+                    result=base_cpp_launcher_by_name.get(module_name),
+                )["status"]
+                == "pass"
+            ),
+            "cpp_launcher_recipe_checks_pass": cpp_launcher_result_matches_recipe(
+                base_cpp_launcher_by_name.get(module_name),
+                verilator_recipe,
+            ),
+            "cpp_launcher_checks_pass": (
+                cpp_launcher_result_passed(base_cpp_launcher_by_name.get(module_name))
+                and cpp_launcher_result_matches_recipe(
+                    base_cpp_launcher_by_name.get(module_name),
+                    verilator_recipe,
+                )
+            ),
+        }
+
+    all_base_module_bindings = [
+        base_module_binding_entry(module_name) for module_name in all_base_modules
+    ]
+    base_module_bindings = [
+        base_module_binding_entry(module_name) for module_name in required_base_modules
+    ]
+    covered_generated_sv_modules = {
+        entry["sv_module"] for entry in generated_rtl_module_coverage if entry["covered"]
+    }
+    generated_inventory_sv_modules = {
+        module
+        for entry in generated_full_checkpoint_sv_inventory_modules
+        for module in entry["defined_modules"]
+    }
+    all_base_imp2_rtl_paths = sorted(
+        {
+            binding["imp2_rtl"]
+            for binding in all_base_module_bindings
+            if binding["imp2_rtl"] is not None
+        }
+    )
+    covered_base_sv_modules = {
+        binding["top_module"]
+        for binding in all_base_module_bindings
+        if binding["present"] and binding["top_module"] is not None
+    }
+    base_inventory_sv_modules = {
+        module
+        for entry in base_imp2_sv_inventory_modules
+        for module in entry["defined_modules"]
+    }
 
     recipe_checks_by_report = [
         [check for check in report["checks"] if "recipe" in check["name"]]
@@ -4917,6 +7856,39 @@ def emit_full_graph_module_dpi_binding(
             else "fail",
         },
         {
+            "name": "all_replaceable_base_modules_have_module_dpi",
+            "status": "pass"
+            if all_base_modules
+            and set(all_base_modules) == set(base_by_name)
+            and all(binding["present"] for binding in all_base_module_bindings)
+            else "fail",
+        },
+        {
+            "name": "all_replaceable_base_modules_ran_under_verilator",
+            "status": "pass"
+            if all(binding["verilator_status"] == "pass" for binding in all_base_module_bindings)
+            else "fail",
+        },
+        {
+            "name": "all_replaceable_base_modules_have_source_rtl_exact_flists_counts_and_cycle_traces",
+            "status": "pass"
+            if all_base_module_bindings
+            and all(
+                binding["present"]
+                and binding["source_defined_modules_include_top"]
+                and binding["flist_exact_match"]
+                and binding["exact_probe_instantiation_counts"]
+                and binding["ledger_checks_pass"]
+                and binding["recipe_checks_pass"]
+                and binding["cycle_contract_checks_pass"]
+                and binding["readme_cycle_checks_pass"]
+                and binding["phase_trace_checks_pass"]
+                and binding["phase_signal_trace_checks_pass"]
+                for binding in all_base_module_bindings
+            )
+            else "fail",
+        },
+        {
             "name": "slot_binding_engines_have_module_dpi",
             "status": "pass"
             if all(binding["module_dpi_verilator_status"] == "pass" for binding in slot_engine_bindings)
@@ -4941,6 +7913,188 @@ def emit_full_graph_module_dpi_binding(
             "name": "module_dpi_reports_have_cpp_construction_ledgers",
             "status": "pass" if module_dpi_ledger_checks_pass else "fail",
         },
+        {
+            "name": "generated_full_checkpoint_sv_inventory_matches_module_dpi_rtl",
+            "status": "pass"
+            if generated_full_checkpoint_sv_inventory
+            and set(generated_full_checkpoint_sv_inventory) == set(generated_rtl_paths)
+            else "fail",
+        },
+        {
+            "name": "base_imp2_sv_inventory_matches_all_base_module_dpi_rtl",
+            "status": "pass"
+            if base_imp2_sv_inventory
+            and set(base_imp2_sv_inventory) == set(all_base_imp2_rtl_paths)
+            else "fail",
+        },
+        {
+            "name": "generated_sv_inventory_modules_have_module_dpi_coverage",
+            "status": "pass"
+            if generated_inventory_sv_modules
+            and generated_inventory_sv_modules.issubset(covered_generated_sv_modules)
+            else "fail",
+        },
+        {
+            "name": "base_imp2_sv_inventory_modules_have_module_dpi_coverage",
+            "status": "pass"
+            if base_inventory_sv_modules
+            and base_inventory_sv_modules.issubset(covered_base_sv_modules)
+            else "fail",
+        },
+        {
+            "name": "all_generated_sv_modules_have_source_derived_module_dpi",
+            "status": "pass"
+            if generated_rtl_module_coverage
+            and all(entry["covered"] for entry in generated_rtl_module_coverage)
+            and {entry["module_dpi_name"] for entry in generated_rtl_module_coverage}
+            == set(required_generated_modules)
+            else "fail",
+        },
+        {
+            "name": "all_separated_base_sv_modules_have_source_derived_module_dpi",
+            "status": "pass"
+            if base_rtl_module_coverage
+            and all(entry["covered"] for entry in base_rtl_module_coverage)
+            and {entry["module_dpi_name"] for entry in base_rtl_module_coverage}
+            == set(required_base_modules)
+            else "fail",
+        },
+        {
+            "name": "source_derived_module_dpi_coverage_has_recipes_ledgers_and_verilator",
+            "status": "pass"
+            if source_derived_module_dpi_coverage
+            and all(
+                entry["covered"]
+                and entry["verilator_status"] == "pass"
+                and entry["ledger_checks_pass"]
+                and entry["recipe_checks_pass"]
+                for entry in source_derived_module_dpi_coverage
+            )
+            else "fail",
+        },
+        {
+            "name": "source_derived_module_dpi_coverage_has_exact_flists",
+            "status": "pass"
+            if source_derived_module_dpi_coverage
+            and all(
+                entry["covered"] and entry["flist_exact_match"]
+                for entry in source_derived_module_dpi_coverage
+            )
+            else "fail",
+        },
+        {
+            "name": "source_derived_module_dpi_coverage_preserves_selected_dut_boundaries",
+            "status": "pass"
+            if source_derived_module_dpi_coverage
+            and all(
+                entry["covered"]
+                and entry["module_only_flist_boundary_exact"]
+                and entry["selected_dut_rtl_in_flist"]
+                and (
+                    (
+                        entry["source_kind"] == "generated_full_checkpoint_rtl"
+                        and entry["module_only_flist_scope"] == "generated_selected_dut_plus_probe"
+                        and entry["generated_module_only_flist_exact"] is True
+                    )
+                    or (
+                        entry["source_kind"] == "separated_base_imp2_rtl"
+                        and entry["module_only_flist_scope"]
+                        == "base_imp1_reference_plus_imp2_dut_plus_probe"
+                        and entry["base_module_only_flist_exact"] is True
+                    )
+                )
+                for entry in source_derived_module_dpi_coverage
+            )
+            else "fail",
+        },
+        {
+            "name": "generated_composed_rtl_dependencies_are_stubbed_not_flisted",
+            "status": "pass"
+            if generated_child_stub_boundary
+            and all(
+                entry["present"]
+                and entry["flist_contains_only_selected_dut_and_probe"]
+                and entry["composed_dependencies_absent_from_flist"]
+                and entry["child_stubs_present_in_probe"]
+                for entry in generated_child_stub_boundary
+            )
+            else "fail",
+        },
+        {
+            "name": "source_derived_module_dpi_coverage_has_exact_probe_instantiation_counts",
+            "status": "pass"
+            if source_derived_module_dpi_coverage
+            and all(
+                entry["covered"] and entry["exact_probe_instantiation_counts"]
+                for entry in source_derived_module_dpi_coverage
+            )
+            else "fail",
+        },
+        {
+            "name": "source_derived_module_dpi_coverage_has_cycle_readme_and_phase_traces",
+            "status": "pass"
+            if source_derived_module_dpi_coverage
+            and all(
+                entry["covered"]
+                and entry["cycle_contract_checks_pass"]
+                and entry["readme_cycle_checks_pass"]
+                and entry["phase_trace_checks_pass"]
+                and entry["phase_signal_trace_checks_pass"]
+                for entry in source_derived_module_dpi_coverage
+            )
+            else "fail",
+        },
+        {
+            "name": "source_derived_module_dpi_coverage_has_cpp_launcher_runtime_evidence",
+            "status": "pass"
+            if source_derived_module_dpi_coverage
+            and all(
+                entry["covered"] and entry["cpp_launcher_checks_pass"]
+                for entry in source_derived_module_dpi_coverage
+            )
+            else "fail",
+        },
+        {
+            "name": "source_derived_module_dpi_coverage_has_cpp_launcher_recipe_evidence",
+            "status": "pass"
+            if source_derived_module_dpi_coverage
+            and all(
+                entry["covered"] and entry["cpp_launcher_recipe_checks_pass"]
+                for entry in source_derived_module_dpi_coverage
+            )
+            else "fail",
+        },
+        {
+            "name": "source_derived_module_dpi_coverage_has_cpp_launcher_readme_cycle_evidence",
+            "status": "pass"
+            if source_derived_module_dpi_coverage
+            and all(
+                entry["covered"] and entry["cpp_launcher_readme_cycle_checks_pass"]
+                for entry in source_derived_module_dpi_coverage
+            )
+            else "fail",
+        },
+        {
+            "name": "all_replaceable_base_modules_have_cpp_launcher_runtime_evidence",
+            "status": "pass"
+            if all_base_module_bindings
+            and all(binding["cpp_launcher_checks_pass"] for binding in all_base_module_bindings)
+            else "fail",
+        },
+        {
+            "name": "all_replaceable_base_modules_have_cpp_launcher_recipe_evidence",
+            "status": "pass"
+            if all_base_module_bindings
+            and all(binding["cpp_launcher_recipe_checks_pass"] for binding in all_base_module_bindings)
+            else "fail",
+        },
+        {
+            "name": "all_replaceable_base_modules_have_cpp_launcher_readme_cycle_evidence",
+            "status": "pass"
+            if all_base_module_bindings
+            and all(binding["cpp_launcher_readme_cycle_checks_pass"] for binding in all_base_module_bindings)
+            else "fail",
+        },
     ]
 
     report = {
@@ -4950,11 +8104,22 @@ def emit_full_graph_module_dpi_binding(
         "full_checkpoint_graph_rtl_lowering_proof": "e1/generated/pipeline/25_full_checkpoint_graph_rtl_lowering_proof.json",
         "base_module_dpi_generation": module_dpi_report["manifest"],
         "generated_module_dpi_generation": full_checkpoint_module_dpi["manifest"],
+        "all_base_modules": all_base_modules,
         "required_base_modules": required_base_modules,
         "required_generated_modules": required_generated_modules,
         "slot_engine_bindings": slot_engine_bindings,
+        "all_base_module_bindings": all_base_module_bindings,
         "base_module_bindings": base_module_bindings,
         "generated_module_bindings": generated_module_bindings,
+        "generated_child_stub_boundary": generated_child_stub_boundary,
+        "generated_full_checkpoint_sv_inventory": generated_full_checkpoint_sv_inventory,
+        "generated_full_checkpoint_sv_inventory_modules": generated_full_checkpoint_sv_inventory_modules,
+        "base_imp2_sv_inventory": base_imp2_sv_inventory,
+        "base_imp2_sv_inventory_modules": base_imp2_sv_inventory_modules,
+        "source_derived_module_dpi_coverage": source_derived_module_dpi_coverage,
+        "source_derived_module_dpi_coverage_count": len(source_derived_module_dpi_coverage),
+        "generated_rtl_module_dpi_coverage_count": len(generated_rtl_module_coverage),
+        "separated_base_rtl_module_dpi_coverage_count": len(base_rtl_module_coverage),
         "non_claims": [
             "This binds RTL artifacts to module-only DPI/Verilator execution; it does not claim TinyLlama numeric output equivalence.",
         ],
@@ -4962,6 +8127,4164 @@ def emit_full_graph_module_dpi_binding(
     }
     write_json(output_path, report)
     return report
+
+
+def module_dpi_imp2_rtl_index(module_dpi_report: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
+    index: dict[str, list[dict[str, Any]]] = {}
+    for module in module_dpi_report["modules"]:
+        index.setdefault(module["imp2_rtl"], []).append(
+            {
+                "name": module["name"],
+                "top_module": module["top_module"],
+                "probe": module["probe"],
+                "flist": module["flist"],
+                "verilator_execution_recipe": module["verilator_execution_recipe"],
+                "cycle_template": module["cycle_contract"]["template"],
+                "verilator_status": module["verilator_execution"]["status"],
+                "ledger_checks_pass": all(
+                    check["status"] == "pass"
+                    for check in module["construction_ledger"]["checks"]
+                ),
+                "recipe_checks_pass": (
+                    module["verilator_execution"]["build_command"]
+                    == module["verilator_execution_recipe"]["build_command"]
+                    and module["verilator_execution"]["run_executable"]
+                    == module["verilator_execution_recipe"]["run_executable"]
+                ),
+                "phase_trace_checks_pass": (
+                    module["verilator_execution"]["observed_phase_trace_prefix"]
+                    == module["verilator_execution"]["expected_phase_trace"]
+                    and module["verilator_execution"]["observed_phase_trace_count"]
+                    >= len(module["verilator_execution"]["expected_phase_trace"])
+                ),
+                "phase_signal_trace_checks_pass": (
+                    len(module["verilator_execution"]["expected_phase_signal_trace"]) > 0
+                    and module["verilator_execution"]["observed_phase_signal_trace_prefix"]
+                    == module["verilator_execution"]["expected_phase_signal_trace"]
+                    and module["verilator_execution"]["observed_phase_signal_trace_count"]
+                    >= len(module["verilator_execution"]["expected_phase_signal_trace"])
+                ),
+            }
+        )
+    return index
+
+
+def build_production_rtl_inventory(
+    *,
+    implementation_matrix: dict[str, Any],
+    module_dpi_report: dict[str, Any],
+    full_graph_module_dpi_binding: dict[str, Any],
+    cpp_verilator_launchers: dict[str, Any],
+    soc_top_artifacts: dict[str, str],
+    generated_soc_top_standalone_verilator: dict[str, Any],
+    generated_soc_top_standalone_passed: bool,
+    imp1_mock_rtl_lint: dict[str, Any],
+) -> dict[str, Any]:
+    module_dpi_by_imp2_rtl = module_dpi_imp2_rtl_index(module_dpi_report)
+    base_cpp_launcher_by_name = {
+        result["name"]: result
+        for result in cpp_verilator_launchers.get("base_module_dpi", {})
+        .get("verilator_run", {})
+        .get("module_results", [])
+        if result.get("name")
+    }
+    generated_cpp_launcher_by_name = {
+        result["name"]: result
+        for result in cpp_verilator_launchers.get("generated_full_checkpoint_module_dpi", {})
+        .get("verilator_run", {})
+        .get("module_results", [])
+        if result.get("name")
+    }
+
+    def cpp_launcher_result_summary(result: dict[str, Any] | None) -> dict[str, Any] | None:
+        if result is None:
+            return None
+        return {
+            "build_command": result.get("build_command"),
+            "expected_stdout_markers": result.get("expected_stdout_markers", []),
+            "expected_phase_trace_keys": result.get("expected_phase_trace_keys", []),
+            "observed_phase_trace_prefix_keys": result.get("observed_phase_trace_prefix_keys", []),
+            "expected_phase_signal_trace_keys": result.get("expected_phase_signal_trace_keys", []),
+            "observed_phase_signal_trace_prefix_keys": result.get(
+                "observed_phase_signal_trace_prefix_keys",
+                [],
+            ),
+            "name": result.get("name"),
+            "status": result.get("status"),
+            "run_executable": result.get("run_executable"),
+            "stdout_markers_present": result.get("stdout_markers_present"),
+            "missing_stdout_markers": result.get("missing_stdout_markers", []),
+            "phase_trace_in_order": result.get("phase_trace_in_order"),
+            "phase_trace_repeats_template": result.get("phase_trace_repeats_template"),
+            "phase_signal_trace_matches": result.get("phase_signal_trace_matches"),
+            "phase_signal_trace_repeats_template": result.get("phase_signal_trace_repeats_template"),
+            "observed_phase_trace_count": result.get("observed_phase_trace_count"),
+            "observed_phase_signal_trace_count": result.get("observed_phase_signal_trace_count"),
+        }
+
+    def cpp_launcher_result_passed(result: dict[str, Any] | None) -> bool:
+        return (
+            result is not None
+            and result.get("status") == "pass"
+            and result.get("stdout_markers_present") is True
+            and result.get("missing_stdout_markers") == []
+            and result.get("phase_trace_in_order") is True
+            and result.get("phase_trace_repeats_template") is True
+            and result.get("phase_signal_trace_matches") is True
+            and result.get("phase_signal_trace_repeats_template") is True
+            and bool(result.get("expected_phase_trace_keys"))
+            and result.get("observed_phase_trace_prefix_keys")
+            == result.get("expected_phase_trace_keys")
+            and int(result.get("observed_phase_trace_count") or 0) > 0
+            and bool(result.get("expected_phase_signal_trace_keys"))
+            and result.get("observed_phase_signal_trace_prefix_keys")
+            == result.get("expected_phase_signal_trace_keys")
+            and int(result.get("observed_phase_signal_trace_count") or 0) > 0
+        )
+
+    def expected_phase_trace_keys(recipe: dict[str, Any]) -> list[str]:
+        phase_names = [
+            marker[len("phase=") :]
+            for marker in recipe.get("expected_stdout_markers", [])
+            if marker.startswith("phase=")
+        ]
+        return [
+            f"{cycle}:{phase}"
+            for cycle, phase in enumerate(phase_names)
+        ]
+
+    def expected_phase_signal_trace_keys(recipe: dict[str, Any]) -> list[str]:
+        keys: list[str] = []
+        for entry in recipe.get("expected_phase_signal_trace", []):
+            expected = entry["expected"]
+            keys.append(f"{entry['cycle']}:{entry['signal']}:{expected}:{expected}")
+        return keys
+
+    def cpp_launcher_result_matches_recipe(
+        result: dict[str, Any] | None,
+        recipe: dict[str, Any] | None,
+    ) -> bool:
+        return (
+            result is not None
+            and recipe is not None
+            and result.get("name") == recipe.get("name")
+            and result.get("build_command") == recipe.get("build_command")
+            and result.get("run_executable") == recipe.get("run_executable")
+            and result.get("expected_stdout_markers") == recipe.get("expected_stdout_markers")
+            and result.get("expected_phase_trace_keys") == expected_phase_trace_keys(recipe)
+            and result.get("observed_phase_trace_prefix_keys") == expected_phase_trace_keys(recipe)
+            and result.get("expected_phase_signal_trace_keys")
+            == expected_phase_signal_trace_keys(recipe)
+            and result.get("observed_phase_signal_trace_prefix_keys")
+            == expected_phase_signal_trace_keys(recipe)
+        )
+
+    imp1_mock_lint_by_rtl = {
+        row["rtl"]: row for row in imp1_mock_rtl_lint.get("rows", [])
+    }
+    imp1_mock_runtime_by_rtl = {
+        row["rtl"]: row
+        for row in imp1_mock_rtl_lint.get("runtime", {}).get("rows", [])
+    }
+    imp1_mock_by_rtl: dict[str, list[dict[str, Any]]] = {}
+    for ip in implementation_matrix["ips"]:
+        ip_manifest = load_json(REPO_ROOT / ip["interface_source"])
+        imp1_rtl = ip["imp1"]["rtl"]
+        imp1_flist = ip["imp1"]["flist"]
+        imp1_flist_entries = (
+            (REPO_ROOT / imp1_flist).read_text(encoding="utf-8").splitlines()
+            if (REPO_ROOT / imp1_flist).exists()
+            else []
+        )
+        imp1_mock_by_rtl.setdefault(imp1_rtl, []).append(
+            {
+                "name": ip["name"],
+                "top_module": ip["module"],
+                "interface_source": ip["interface_source"],
+                "cpp_model": ip_manifest["cpp_model"],
+                "l1_5_harness": ip["l1_5_harness"],
+                "module_vip": ip["vip"],
+                "flist": imp1_flist,
+                "flist_entries": imp1_flist_entries,
+                "flist_exact_match": imp1_flist_entries == [imp1_rtl],
+                "status": ip["imp1"]["status"],
+                "kind": ip["imp1"]["kind"],
+            }
+        )
+    base_binding_by_name = {
+        binding["name"]: binding
+        for binding in full_graph_module_dpi_binding.get("all_base_module_bindings", [])
+        if binding.get("name")
+    }
+    generated_full_checkpoint_coverage_by_rtl: dict[str, list[dict[str, Any]]] = {}
+    for entry in full_graph_module_dpi_binding["source_derived_module_dpi_coverage"]:
+        if entry["source_kind"] != "generated_full_checkpoint_rtl":
+            continue
+        cpp_launcher_result = generated_cpp_launcher_by_name.get(entry["module_dpi_name"])
+        generated_full_checkpoint_coverage_by_rtl.setdefault(entry["rtl"], []).append(
+            {
+                "name": entry["module_dpi_name"],
+                "sv_module": entry["sv_module"],
+                "probe": entry["probe"],
+                "flist": entry["flist"],
+                "recipe": entry["recipe"],
+                "cycle_template": entry["cycle_template"],
+                "verilator_status": entry["verilator_status"],
+                "covered": entry["covered"],
+                "ledger_checks_pass": entry["ledger_checks_pass"],
+                "recipe_checks_pass": entry["recipe_checks_pass"],
+                "flist_exact_match": entry["flist_exact_match"],
+                "cycle_contract_checks_pass": entry["cycle_contract_checks_pass"],
+                "readme_cycle_checks_pass": entry["readme_cycle_checks_pass"],
+                "phase_trace_checks_pass": entry["phase_trace_checks_pass"],
+                "phase_signal_trace_checks_pass": entry["phase_signal_trace_checks_pass"],
+                "cpp_launcher_result": cpp_launcher_result_summary(cpp_launcher_result),
+                "cpp_launcher_recipe_checks_pass": (
+                    entry.get("cpp_launcher_recipe_checks_pass") is True
+                    and cpp_launcher_result_matches_recipe(cpp_launcher_result, entry.get("recipe"))
+                ),
+                "cpp_launcher_readme_cycle_proof": entry.get("cpp_launcher_readme_cycle_proof"),
+                "cpp_launcher_readme_cycle_checks_pass": (
+                    entry.get("cpp_launcher_readme_cycle_checks_pass") is True
+                    and entry.get("cpp_launcher_readme_cycle_proof", {}).get("status") == "pass"
+                ),
+                "cpp_launcher_checks_pass": cpp_launcher_result_passed(cpp_launcher_result),
+            }
+        )
+
+    category_paths = {
+        "generated_soc_top": [soc_top_artifacts["top"]],
+        "base_imp1_mock": sorted(imp1_mock_by_rtl),
+        "base_imp2_candidate": full_graph_module_dpi_binding["base_imp2_sv_inventory"],
+        "generated_full_checkpoint": full_graph_module_dpi_binding[
+            "generated_full_checkpoint_sv_inventory"
+        ],
+    }
+    inventory_paths = unique_ordered(
+        [
+            *category_paths["generated_soc_top"],
+            *category_paths["base_imp1_mock"],
+            *category_paths["base_imp2_candidate"],
+            *category_paths["generated_full_checkpoint"],
+        ]
+    )
+
+    def inventory_row(rtl: str) -> dict[str, Any]:
+        rtl_path = REPO_ROOT / rtl
+        defined_modules = parse_sv_defined_modules(rtl_path) if rtl_path.exists() else []
+        if rtl in category_paths["generated_soc_top"]:
+            expected_modules = ["e1_h1_soc_top"]
+            return {
+                "rtl": rtl,
+                "category": "generated_soc_top",
+                "defined_modules": defined_modules,
+                "expected_modules": expected_modules,
+                "coverage_kind": "standalone_verilator_top_smoke",
+                "covered": generated_soc_top_standalone_passed,
+                "standalone_runtime_required": True,
+                "standalone_runtime_covered": generated_soc_top_standalone_passed,
+                "standalone_runtime_kind": "generated_soc_top_verilator_cpp_testbench",
+                "standalone_runtime_requirement": (
+                    "generated_soc_top_requires_standalone_verilator_cpp_testbench"
+                ),
+                "module_only_dpi_required": False,
+                "module_only_dpi_covered": None,
+                "module_only_dpi_requirement": "not_required_generated_soc_top_composition_boundary",
+                "modules_match_proof": set(defined_modules) == set(expected_modules),
+                "proof": generated_soc_top_standalone_verilator,
+            }
+        if rtl in imp1_mock_by_rtl:
+            proofs = imp1_mock_by_rtl[rtl]
+            expected_modules = unique_ordered([proof["top_module"] for proof in proofs])
+            lint_row = imp1_mock_lint_by_rtl.get(rtl)
+            runtime_row = imp1_mock_runtime_by_rtl.get(rtl)
+            proof_artifacts_exist = all(
+                (REPO_ROOT / proof["interface_source"]).exists()
+                and (REPO_ROOT / proof["cpp_model"]).exists()
+                and (REPO_ROOT / proof["l1_5_harness"]).exists()
+                and (REPO_ROOT / proof["module_vip"]).exists()
+                and (REPO_ROOT / proof["flist"]).exists()
+                for proof in proofs
+            )
+            covered = (
+                bool(proofs)
+                and lint_row is not None
+                and lint_row["status"] == "pass"
+                and runtime_row is not None
+                and runtime_row["status"] == "pass"
+                and runtime_row.get("stdout_marker_present") is True
+                and proof_artifacts_exist
+                and all(
+                    proof["kind"] == "mock"
+                    and proof["status"] == "accepted"
+                    and proof["flist_exact_match"]
+                    for proof in proofs
+                )
+            )
+            return {
+                "rtl": rtl,
+                "category": "base_imp1_mock",
+                "defined_modules": defined_modules,
+                "expected_modules": expected_modules,
+                "coverage_kind": "imp1_mock_module_runtime_lint_and_cpp_l1_5_vip_contract",
+                "covered": covered,
+                "standalone_runtime_required": False,
+                "standalone_runtime_covered": None,
+                "standalone_runtime_kind": "accepted_imp1_mock_runtime_lint_and_contract",
+                "standalone_runtime_requirement": "not_required_accepted_imp1_mock_reference",
+                "module_only_dpi_required": False,
+                "module_only_dpi_covered": None,
+                "module_only_dpi_requirement": "not_required_accepted_imp1_mock_reference",
+                "modules_match_proof": bool(defined_modules)
+                and set(defined_modules).issubset(set(expected_modules))
+                and set(expected_modules).issubset(set(defined_modules)),
+                "module_lint": lint_row,
+                "mock_runtime": runtime_row,
+                "proofs": proofs,
+            }
+        if rtl in module_dpi_by_imp2_rtl:
+            proofs = [
+                {
+                    **proof,
+                    "cpp_launcher_result": cpp_launcher_result_summary(
+                        base_cpp_launcher_by_name.get(proof["name"])
+                    ),
+                    "cpp_launcher_recipe_checks_pass": cpp_launcher_result_matches_recipe(
+                        base_cpp_launcher_by_name.get(proof["name"]),
+                        proof.get("verilator_execution_recipe"),
+                    ),
+                    "cpp_launcher_readme_cycle_proof": base_binding_by_name.get(
+                        proof["name"],
+                        {},
+                    ).get("cpp_launcher_readme_cycle_proof"),
+                    "cpp_launcher_readme_cycle_checks_pass": (
+                        base_binding_by_name.get(proof["name"], {}).get(
+                            "cpp_launcher_readme_cycle_checks_pass"
+                        )
+                        is True
+                        and base_binding_by_name.get(proof["name"], {})
+                        .get("cpp_launcher_readme_cycle_proof", {})
+                        .get("status")
+                        == "pass"
+                    ),
+                    "cpp_launcher_checks_pass": cpp_launcher_result_passed(
+                        base_cpp_launcher_by_name.get(proof["name"])
+                    ),
+                }
+                for proof in module_dpi_by_imp2_rtl[rtl]
+            ]
+            expected_modules = unique_ordered([proof["top_module"] for proof in proofs])
+            covered = bool(proofs) and all(
+                proof["verilator_status"] == "pass"
+                and proof["ledger_checks_pass"]
+                and proof["recipe_checks_pass"]
+                and proof["phase_trace_checks_pass"]
+                and proof["phase_signal_trace_checks_pass"]
+                and proof["cpp_launcher_checks_pass"]
+                and proof["cpp_launcher_recipe_checks_pass"]
+                and proof["cpp_launcher_readme_cycle_checks_pass"]
+                for proof in proofs
+            )
+            return {
+                "rtl": rtl,
+                "category": "base_imp2_candidate",
+                "defined_modules": defined_modules,
+                "expected_modules": expected_modules,
+                "coverage_kind": "module_only_dpi_verilator_against_imp1_reference",
+                "covered": covered,
+                "standalone_runtime_required": True,
+                "standalone_runtime_covered": covered,
+                "standalone_runtime_kind": "cpp_generated_module_dpi_verilator",
+                "standalone_runtime_requirement": (
+                    "base_imp2_candidate_requires_cpp_generated_module_dpi_verilator"
+                ),
+                "module_only_dpi_required": True,
+                "module_only_dpi_covered": covered,
+                "module_only_dpi_requirement": "base_imp2_candidate_requires_module_only_dpi_verilator",
+                "modules_match_proof": bool(defined_modules)
+                and set(defined_modules).issubset(set(expected_modules))
+                and set(expected_modules).issubset(set(defined_modules)),
+                "proofs": proofs,
+            }
+        proofs = generated_full_checkpoint_coverage_by_rtl.get(rtl, [])
+        expected_modules = unique_ordered([proof["sv_module"] for proof in proofs])
+        covered = bool(proofs) and all(
+            proof["covered"]
+            and proof["verilator_status"] == "pass"
+            and proof["ledger_checks_pass"]
+            and proof["recipe_checks_pass"]
+            and proof["flist_exact_match"]
+            and proof["cycle_contract_checks_pass"]
+            and proof["readme_cycle_checks_pass"]
+            and proof["phase_trace_checks_pass"]
+            and proof["phase_signal_trace_checks_pass"]
+            and proof["cpp_launcher_checks_pass"]
+            and proof["cpp_launcher_recipe_checks_pass"]
+            and proof["cpp_launcher_readme_cycle_checks_pass"]
+            for proof in proofs
+        )
+        return {
+            "rtl": rtl,
+            "category": "generated_full_checkpoint",
+            "defined_modules": defined_modules,
+            "expected_modules": expected_modules,
+            "coverage_kind": "generated_module_only_dpi_verilator",
+            "covered": covered,
+            "standalone_runtime_required": True,
+            "standalone_runtime_covered": covered,
+            "standalone_runtime_kind": "cpp_generated_module_dpi_verilator",
+            "standalone_runtime_requirement": (
+                "generated_full_checkpoint_rtl_requires_cpp_generated_module_dpi_verilator"
+            ),
+            "module_only_dpi_required": True,
+            "module_only_dpi_covered": covered,
+            "module_only_dpi_requirement": "generated_full_checkpoint_rtl_requires_module_only_dpi_verilator",
+            "modules_match_proof": bool(defined_modules)
+            and set(defined_modules).issubset(set(expected_modules))
+            and set(expected_modules).issubset(set(defined_modules)),
+            "proofs": proofs,
+        }
+
+    rows = [inventory_row(rtl) for rtl in inventory_paths]
+    module_only_required_rows = [row for row in rows if row["module_only_dpi_required"]]
+    module_only_exempt_rows = [row for row in rows if not row["module_only_dpi_required"]]
+    module_only_required_paths = [row["rtl"] for row in module_only_required_rows]
+    module_only_covered_paths = [
+        row["rtl"]
+        for row in module_only_required_rows
+        if row["module_only_dpi_covered"]
+    ]
+    module_only_missing_paths = [
+        row["rtl"]
+        for row in module_only_required_rows
+        if not row["module_only_dpi_covered"]
+    ]
+    cpp_launcher_covered_paths = [
+        row["rtl"]
+        for row in module_only_required_rows
+        if row["module_only_dpi_covered"]
+        and row.get("proofs")
+        and all(
+            proof.get("cpp_launcher_checks_pass")
+            and proof.get("cpp_launcher_recipe_checks_pass")
+            for proof in row.get("proofs", [])
+        )
+    ]
+    cpp_launcher_missing_paths = [
+        row["rtl"]
+        for row in module_only_required_rows
+        if row["rtl"] not in cpp_launcher_covered_paths
+    ]
+    cpp_launcher_readme_cycle_covered_paths = [
+        row["rtl"]
+        for row in module_only_required_rows
+        if row["module_only_dpi_covered"]
+        and row.get("proofs")
+        and all(
+            proof.get("cpp_launcher_readme_cycle_checks_pass") is True
+            and proof.get("cpp_launcher_readme_cycle_proof", {}).get("status") == "pass"
+            for proof in row.get("proofs", [])
+        )
+    ]
+    cpp_launcher_readme_cycle_missing_paths = [
+        row["rtl"]
+        for row in module_only_required_rows
+        if row["rtl"] not in cpp_launcher_readme_cycle_covered_paths
+    ]
+    standalone_runtime_required_rows = [
+        row for row in rows if row.get("standalone_runtime_required")
+    ]
+    standalone_runtime_exempt_rows = [
+        row for row in rows if not row.get("standalone_runtime_required")
+    ]
+    standalone_runtime_required_paths = [
+        row["rtl"] for row in standalone_runtime_required_rows
+    ]
+    standalone_runtime_covered_paths = [
+        row["rtl"]
+        for row in standalone_runtime_required_rows
+        if row.get("standalone_runtime_covered") is True
+    ]
+    standalone_runtime_missing_paths = [
+        row["rtl"]
+        for row in standalone_runtime_required_rows
+        if row["rtl"] not in standalone_runtime_covered_paths
+    ]
+    return {
+        "schema": "e1-production-rtl-inventory-coverage-v0",
+        "scope": "production RTL only; generated DPI probes and generated imp1 references are verification artifacts",
+        "module_only_dpi_inventory": {
+            "status": "pass" if module_only_required_paths and not module_only_missing_paths else "fail",
+            "required_categories": ["base_imp2_candidate", "generated_full_checkpoint"],
+            "exempt_categories": ["generated_soc_top", "base_imp1_mock"],
+            "required_paths": module_only_required_paths,
+            "covered_paths": module_only_covered_paths,
+            "missing_paths": module_only_missing_paths,
+            "cpp_launcher_required_paths": module_only_required_paths,
+            "cpp_launcher_covered_paths": cpp_launcher_covered_paths,
+            "cpp_launcher_missing_paths": cpp_launcher_missing_paths,
+            "cpp_launcher_readme_cycle_covered_paths": cpp_launcher_readme_cycle_covered_paths,
+            "cpp_launcher_readme_cycle_missing_paths": cpp_launcher_readme_cycle_missing_paths,
+            "exempt_paths": [row["rtl"] for row in module_only_exempt_rows],
+        },
+        "standalone_runtime_inventory": {
+            "schema": "e1-production-rtl-standalone-runtime-inventory-v0",
+            "status": (
+                "pass"
+                if standalone_runtime_required_paths and not standalone_runtime_missing_paths
+                else "fail"
+            ),
+            "required_categories": [
+                "generated_soc_top",
+                "base_imp2_candidate",
+                "generated_full_checkpoint",
+            ],
+            "exempt_categories": ["base_imp1_mock"],
+            "required_paths": standalone_runtime_required_paths,
+            "covered_paths": standalone_runtime_covered_paths,
+            "missing_paths": standalone_runtime_missing_paths,
+            "exempt_paths": [row["rtl"] for row in standalone_runtime_exempt_rows],
+            "coverage": [
+                {
+                    "rtl": row["rtl"],
+                    "category": row["category"],
+                    "coverage_kind": row["coverage_kind"],
+                    "standalone_runtime_kind": row["standalone_runtime_kind"],
+                    "covered": row["standalone_runtime_covered"],
+                    "requirement": row["standalone_runtime_requirement"],
+                }
+                for row in rows
+            ],
+        },
+        "imp1_mock_rtl_lint": imp1_mock_rtl_lint,
+        "category_paths": category_paths,
+        "paths": inventory_paths,
+        "rows": rows,
+        "counts": {
+            "total": len(rows),
+            "generated_soc_top": len(category_paths["generated_soc_top"]),
+            "base_imp1_mock": len(category_paths["base_imp1_mock"]),
+            "base_imp2_candidate": len(category_paths["base_imp2_candidate"]),
+            "generated_full_checkpoint": len(category_paths["generated_full_checkpoint"]),
+        },
+    }
+
+
+def production_rtl_inventory_checks(inventory: dict[str, Any]) -> list[dict[str, str]]:
+    category_paths = inventory["category_paths"]
+    rows = inventory["rows"]
+    paths = inventory["paths"]
+    return [
+        {
+            "name": "production_rtl_inventory_declares_all_categories",
+            "status": "pass"
+            if all(category_paths.values())
+            and set(paths) == {rtl for path_list in category_paths.values() for rtl in path_list}
+            else "fail",
+        },
+        {
+            "name": "production_rtl_inventory_paths_exist_and_parse_modules",
+            "status": "pass"
+            if rows
+            and all(
+                (REPO_ROOT / row["rtl"]).exists() and row["defined_modules"]
+                for row in rows
+            )
+            else "fail",
+        },
+        {
+            "name": "production_rtl_inventory_has_construction_or_mock_proof",
+            "status": "pass"
+            if rows and all(row["covered"] for row in rows)
+            else "fail",
+        },
+        {
+            "name": "production_rtl_inventory_active_rtl_has_standalone_runtime",
+            "status": "pass"
+            if inventory.get("standalone_runtime_inventory", {}).get("status") == "pass"
+            and set(inventory.get("standalone_runtime_inventory", {}).get("required_paths", []))
+            == set(
+                category_paths["generated_soc_top"]
+                + category_paths["base_imp2_candidate"]
+                + category_paths["generated_full_checkpoint"]
+            )
+            and not inventory.get("standalone_runtime_inventory", {}).get("missing_paths", [])
+            and all(
+                row["category"] == "base_imp1_mock"
+                or row.get("standalone_runtime_covered") is True
+                for row in rows
+            )
+            else "fail",
+        },
+        {
+            "name": "production_rtl_inventory_source_rtl_has_module_only_dpi",
+            "status": "pass"
+            if inventory.get("module_only_dpi_inventory", {}).get("status") == "pass"
+            and set(inventory.get("module_only_dpi_inventory", {}).get("required_paths", []))
+            == set(category_paths["base_imp2_candidate"] + category_paths["generated_full_checkpoint"])
+            and not inventory.get("module_only_dpi_inventory", {}).get("missing_paths", [])
+            and all(
+                row["category"] not in {"base_imp2_candidate", "generated_full_checkpoint"}
+                or row.get("module_only_dpi_covered") is True
+                for row in rows
+            )
+            else "fail",
+        },
+        {
+            "name": "production_rtl_inventory_source_rtl_has_cpp_launcher_module_runs",
+            "status": "pass"
+            if inventory.get("module_only_dpi_inventory", {}).get("status") == "pass"
+            and set(inventory.get("module_only_dpi_inventory", {}).get("cpp_launcher_required_paths", []))
+            == set(inventory.get("module_only_dpi_inventory", {}).get("required_paths", []))
+            and set(inventory.get("module_only_dpi_inventory", {}).get("cpp_launcher_covered_paths", []))
+            == set(inventory.get("module_only_dpi_inventory", {}).get("required_paths", []))
+            and not inventory.get("module_only_dpi_inventory", {}).get("cpp_launcher_missing_paths", [])
+            and all(
+                row["category"] not in {"base_imp2_candidate", "generated_full_checkpoint"}
+                or (
+                    row.get("module_only_dpi_covered") is True
+                    and all(
+                        proof.get("cpp_launcher_checks_pass")
+                        and proof.get("cpp_launcher_recipe_checks_pass")
+                        for proof in row.get("proofs", [])
+                    )
+                )
+                for row in inventory.get("rows", [])
+            )
+            else "fail",
+        },
+        {
+            "name": "production_rtl_inventory_source_rtl_has_cpp_launcher_recipe_and_phase_key_proofs",
+            "status": "pass"
+            if inventory.get("module_only_dpi_inventory", {}).get("status") == "pass"
+            and all(
+                row["category"] not in {"base_imp2_candidate", "generated_full_checkpoint"}
+                or (
+                    row.get("module_only_dpi_covered") is True
+                    and all(
+                        proof.get("cpp_launcher_recipe_checks_pass")
+                        and proof.get("cpp_launcher_result", {}).get("expected_phase_trace_keys")
+                        == proof.get("cpp_launcher_result", {}).get("observed_phase_trace_prefix_keys")
+                        and proof.get("cpp_launcher_result", {}).get("expected_phase_signal_trace_keys")
+                        == proof.get("cpp_launcher_result", {}).get("observed_phase_signal_trace_prefix_keys")
+                        for proof in row.get("proofs", [])
+                    )
+                )
+                for row in inventory.get("rows", [])
+            )
+            else "fail",
+        },
+        {
+            "name": "production_rtl_inventory_source_rtl_has_cpp_launcher_readme_cycle_proofs",
+            "status": "pass"
+            if inventory.get("module_only_dpi_inventory", {}).get("status") == "pass"
+            and set(
+                inventory.get("module_only_dpi_inventory", {}).get(
+                    "cpp_launcher_readme_cycle_covered_paths",
+                    [],
+                )
+            )
+            == set(inventory.get("module_only_dpi_inventory", {}).get("required_paths", []))
+            and not inventory.get("module_only_dpi_inventory", {}).get(
+                "cpp_launcher_readme_cycle_missing_paths",
+                [],
+            )
+            and all(
+                row["category"] not in {"base_imp2_candidate", "generated_full_checkpoint"}
+                or (
+                    row.get("module_only_dpi_covered") is True
+                    and all(
+                        proof.get("cpp_launcher_readme_cycle_checks_pass") is True
+                        and proof.get("cpp_launcher_readme_cycle_proof", {}).get("status") == "pass"
+                        and proof.get("cpp_launcher_readme_cycle_proof", {}).get("readme_phase_keys")
+                        == proof.get("cpp_launcher_readme_cycle_proof", {}).get(
+                            "cycle_contract_phase_keys"
+                        )
+                        and proof.get("cpp_launcher_readme_cycle_proof", {}).get(
+                            "cpp_launcher_observed_phase_keys"
+                        )
+                        == proof.get("cpp_launcher_readme_cycle_proof", {}).get("readme_phase_keys")
+                        for proof in row.get("proofs", [])
+                    )
+                )
+                for row in inventory.get("rows", [])
+            )
+            else "fail",
+        },
+        {
+            "name": "production_rtl_inventory_non_source_rtl_has_explicit_exemption",
+            "status": "pass"
+            if set(inventory.get("module_only_dpi_inventory", {}).get("exempt_paths", []))
+            == set(category_paths["generated_soc_top"] + category_paths["base_imp1_mock"])
+            and all(
+                row["category"] not in {"generated_soc_top", "base_imp1_mock"}
+                or row.get("module_only_dpi_required") is False
+                for row in rows
+            )
+            else "fail",
+        },
+        {
+            "name": "production_rtl_inventory_only_imp1_mocks_are_standalone_runtime_exempt",
+            "status": "pass"
+            if set(inventory.get("standalone_runtime_inventory", {}).get("exempt_paths", []))
+            == set(category_paths["base_imp1_mock"])
+            and all(
+                (row["category"] == "base_imp1_mock")
+                == (row.get("standalone_runtime_required") is False)
+                for row in rows
+            )
+            else "fail",
+        },
+        {
+            "name": "production_rtl_inventory_imp1_mock_rtl_lint_passed",
+            "status": "pass"
+            if inventory.get("imp1_mock_rtl_lint", {}).get("status") == "pass"
+            and all(
+                row["category"] != "base_imp1_mock"
+                or row.get("module_lint", {}).get("status") == "pass"
+                for row in rows
+            )
+            else "fail",
+        },
+        {
+            "name": "production_rtl_inventory_imp1_mock_rtl_runtime_passed",
+            "status": "pass"
+            if inventory.get("imp1_mock_rtl_lint", {})
+            .get("runtime", {})
+            .get("status")
+            == "pass"
+            and all(
+                row["category"] != "base_imp1_mock"
+                or (
+                    row.get("mock_runtime", {}).get("status") == "pass"
+                    and row.get("mock_runtime", {}).get("stdout_marker_present") is True
+                )
+                for row in rows
+            )
+            else "fail",
+        },
+        {
+            "name": "production_rtl_inventory_modules_match_proofs",
+            "status": "pass"
+            if rows and all(row["modules_match_proof"] for row in rows)
+            else "fail",
+        },
+    ]
+
+
+def build_generated_soc_top_hierarchy_proof(soc_top_artifacts: dict[str, str]) -> dict[str, Any]:
+    top_text = (REPO_ROOT / soc_top_artifacts["top"]).read_text(encoding="utf-8")
+    manifest = load_json(REPO_ROOT / soc_top_artifacts["composition_manifest"])
+    expected_instances = []
+    for subsystem in manifest["subsystems"]:
+        for ip in subsystem["ips"]:
+            instance = f"u_{ip['name']}"
+            active_rtl = ip["rtl"]
+            source_modules = (
+                parse_sv_defined_modules(REPO_ROOT / active_rtl)
+                if (REPO_ROOT / active_rtl).exists()
+                else []
+            )
+            instance_matches = [
+                match.start()
+                for match in re.finditer(rf"\b{re.escape(instance)}\b", top_text)
+            ]
+            module_matches = [
+                match.start()
+                for match in re.finditer(rf"\b{re.escape(ip['module'])}\b", top_text)
+            ]
+            expected_instances.append(
+                {
+                    "subsystem": subsystem["name"],
+                    "name": ip["name"],
+                    "module": ip["module"],
+                    "instance": instance,
+                    "rtl": active_rtl,
+                    "order": ip["order"],
+                    "replaceable": ip["replaceable"],
+                    "source_defined_modules": source_modules,
+                    "module_defined_in_active_rtl": ip["module"] in source_modules,
+                    "module_reference_count": len(module_matches),
+                    "instance_name_count": len(instance_matches),
+                    "instance_position": instance_matches[0] if instance_matches else None,
+                    "subsystem_comment_present": f"// Subsystem: {subsystem['name']}" in top_text,
+                    "present_once": len(instance_matches) == 1,
+                }
+            )
+    instance_positions = [
+        entry["instance_position"]
+        for entry in expected_instances
+        if entry["instance_position"] is not None
+    ]
+    expected_by_name = {entry["name"]: entry for entry in expected_instances}
+    separated_names = {"control_cpu", "ingress_sram", "systolic_array"}
+    checks = [
+        {
+            "name": "generated_soc_top_instances_match_manifest",
+            "status": "pass"
+            if expected_instances
+            and len(expected_instances)
+            == sum(len(subsystem["ips"]) for subsystem in manifest["subsystems"])
+            else "fail",
+        },
+        {
+            "name": "generated_soc_top_instances_present_once",
+            "status": "pass"
+            if expected_instances and all(entry["present_once"] for entry in expected_instances)
+            else "fail",
+        },
+        {
+            "name": "generated_soc_top_instance_modules_defined_by_active_rtl",
+            "status": "pass"
+            if expected_instances
+            and all(entry["module_defined_in_active_rtl"] for entry in expected_instances)
+            else "fail",
+        },
+        {
+            "name": "generated_soc_top_subsystem_comments_present",
+            "status": "pass"
+            if expected_instances
+            and all(entry["subsystem_comment_present"] for entry in expected_instances)
+            else "fail",
+        },
+        {
+            "name": "generated_soc_top_instance_order_matches_manifest_order",
+            "status": "pass"
+            if len(instance_positions) == len(expected_instances)
+            and instance_positions == sorted(instance_positions)
+            and [entry["order"] for entry in expected_instances]
+            == sorted(entry["order"] for entry in expected_instances)
+            else "fail",
+        },
+        {
+            "name": "generated_soc_top_preserves_cpu_latch_array_boundaries",
+            "status": "pass"
+            if separated_names.issubset(expected_by_name)
+            and len({expected_by_name[name]["instance"] for name in separated_names}) == 3
+            and len({expected_by_name[name]["module"] for name in separated_names}) == 3
+            else "fail",
+        },
+    ]
+    return {
+        "schema": "e1-generated-soc-top-hierarchy-proof-v0",
+        "status": "pass" if all(check["status"] == "pass" for check in checks) else "fail",
+        "top": soc_top_artifacts["top"],
+        "composition_manifest": soc_top_artifacts["composition_manifest"],
+        "expected_instance_count": len(expected_instances),
+        "expected_instances": expected_instances,
+        "separated_boundaries": {
+            name: {
+                "module": expected_by_name[name]["module"],
+                "instance": expected_by_name[name]["instance"],
+                "rtl": expected_by_name[name]["rtl"],
+            }
+            for name in sorted(separated_names)
+            if name in expected_by_name
+        },
+        "checks": checks,
+    }
+
+
+def emit_lowering_construction_certificate(
+    output_path: Path,
+    manifest: dict[str, Any],
+    fixture_path: Path,
+    inspection: dict[str, Any],
+    binding: dict[str, Any],
+    rtl_lowering: dict[str, Any],
+    implementation_matrix: dict[str, Any],
+    target_manifest: dict[str, Any],
+    module_dpi_report: dict[str, Any],
+    full_checkpoint_rtl_lowering: dict[str, Any],
+    command_stream: dict[str, Any],
+    rtl_cycle: dict[str, Any],
+    rtl_top: dict[str, Any],
+    full_checkpoint_graph_rtl_lowering: dict[str, Any],
+    full_checkpoint_module_dpi: dict[str, Any],
+    full_graph_module_dpi_binding: dict[str, Any],
+    soc_top_artifacts: dict[str, str],
+    production_rtl_inventory: dict[str, Any],
+    generated_soc_top_hierarchy: dict[str, Any],
+) -> dict[str, Any]:
+    lowered_by_op = {
+        entry["operation"].split(".", 1)[1]: entry
+        for entry in rtl_lowering["operation_lowering"]
+    }
+    operation_coverage = []
+    for op_name, count in sorted(inspection["operation_counts"].items()):
+        lowering = lowered_by_op.get(op_name)
+        operation_coverage.append(
+            {
+                "operation": f"stablehlo.{op_name}",
+                "count": count,
+                "bound_ip": binding["bindings"].get(f"stablehlo.{op_name}"),
+                "lowering_status": lowering["status"] if lowering is not None else "missing",
+                "active_implementation": lowering["active_implementation"] if lowering is not None else None,
+                "rtl_files": lowering["rtl_files"] if lowering is not None else [],
+                "module_dpi_probe": lowering["module_dpi_probe"] if lowering is not None else None,
+                "module_dpi_flist": lowering["module_dpi_flist"] if lowering is not None else None,
+            }
+        )
+    source_instance_coverage = []
+    for instance in inspection.get("operation_instances", []):
+        op_name = instance["stablehlo_op"]
+        lowering = lowered_by_op.get(op_name)
+        source_instance_coverage.append(
+            {
+                "source_index": instance["source_index"],
+                "source_line": instance["source_line"],
+                "source_end_line": instance["source_end_line"],
+                "ssa_result": instance["ssa_result"],
+                "operation": instance["operation"],
+                "source_snippet": instance["source_snippet"],
+                "bound_ip": binding["bindings"].get(instance["operation"]),
+                "lowering_status": lowering["status"] if lowering is not None else "missing",
+                "active_implementation": lowering["active_implementation"] if lowering is not None else None,
+                "rtl_files": lowering["rtl_files"] if lowering is not None else [],
+                "module_dpi_probe": lowering["module_dpi_probe"] if lowering is not None else None,
+                "module_dpi_flist": lowering["module_dpi_flist"] if lowering is not None else None,
+            }
+        )
+    source_instance_counts = Counter(
+        entry["stablehlo_op"]
+        for entry in inspection.get("operation_instances", [])
+    )
+
+    target_filelists = {
+        "active_implementation": implementation_matrix["flists"]["active"],
+        "fpga": target_manifest["fpga"]["filelist"],
+        "openroad": target_manifest["openroad"]["filelist"],
+    }
+    target_filelist_coverage = []
+    for target_name, filelist in target_filelists.items():
+        filelist_path = REPO_ROOT / filelist
+        entries = filelist_path.read_text(encoding="utf-8").splitlines() if filelist_path.exists() else []
+        target_filelist_coverage.append(
+            {
+                "target": target_name,
+                "filelist": filelist,
+                "entries": entries,
+                "matches_target_manifest_rtl_files": entries == target_manifest["rtl_files"],
+                "matches_active_imp2_flist": entries
+                == (REPO_ROOT / implementation_matrix["flists"]["active"]).read_text(encoding="utf-8").splitlines(),
+            }
+        )
+
+    target_rtl_artifacts = unique_ordered(target_manifest["rtl_files"])
+    generated_soc_top_construction_artifacts = unique_ordered(
+        [
+            soc_top_artifacts["top"],
+            soc_top_artifacts["composition_manifest"],
+            soc_top_artifacts["interface_contracts"],
+            "e1/e1-h1/tools/generate_soc_top.py",
+            "e1/e1-h1/config/architecture.json",
+            *[
+                repo_rel(path)
+                for path in sorted((REPO_ROOT / "e1/e1-h1/ip").glob("*.json"))
+            ],
+            "e1/e1-h1/tests/e1_h1_soc_top_tb.cpp",
+            "e1/e1-h1/generated/targets/manifest.json",
+        ]
+    )
+    target_rtl_artifacts_passed = (
+        bool(target_rtl_artifacts)
+        and soc_top_artifacts["top"] in target_rtl_artifacts
+        and all((REPO_ROOT / path).exists() for path in target_rtl_artifacts)
+    )
+    generated_soc_top_construction_artifacts_passed = (
+        soc_top_artifacts["top"] in target_rtl_artifacts
+        and all(
+            (REPO_ROOT / path).exists()
+            for path in generated_soc_top_construction_artifacts
+        )
+    )
+
+    readme_cycle_templates = full_checkpoint_graph_rtl_lowering["readme_cycle_coverage"]["templates"]
+
+    def module_cycle_documentation_passed(report: dict[str, Any]) -> bool:
+        readme_coverage_ref = report.get("readme_cycle_coverage", {})
+        if isinstance(readme_coverage_ref, str):
+            readme_coverage_path = REPO_ROOT / readme_coverage_ref
+            if not readme_coverage_path.exists():
+                return False
+            readme_coverage = json.loads(readme_coverage_path.read_text(encoding="utf-8"))
+        else:
+            readme_coverage = readme_coverage_ref
+        readme_modules = {
+            module["name"]: module
+            for module in readme_coverage.get("modules", [])
+        }
+        report_modules = {
+            module["name"]: module
+            for module in report.get("modules", [])
+        }
+        if not report.get("cycle_contract") or not report.get("readme_cycle_coverage"):
+            return False
+        if set(readme_modules) != set(report_modules):
+            return False
+        return (
+            all(check["status"] == "pass" for check in readme_coverage.get("diagram_checks", []))
+            and all(
+                all(check["status"] == "pass" for check in module["cycle_contract"]["checks"])
+                and all(check["status"] == "pass" for check in module["readme_cycle_coverage"]["checks"])
+                and module["readme_cycle_coverage"] == readme_modules[module["name"]]
+                and module["readme_cycle_coverage"]["phase_names"]
+                == [step["phase"] for step in module["cycle_contract"]["cycles"]]
+                and module["readme_cycle_coverage"]["template"] == module["cycle_contract"]["template"]
+                and module["readme_cycle_coverage"]["cycle_period"] == module["cycle_contract"]["cycle_period"]
+                and module["readme_cycle_coverage"]["top_module"] == module["cycle_contract"]["top_module"]
+                for module in report_modules.values()
+            )
+        )
+
+    def module_cycle_documentation_summary(report: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "cycle_contract": report["cycle_contract"],
+            "readme_cycle_coverage": report["readme_cycle_coverage"],
+            "module_interfaces_doc": report["module_interfaces_doc"],
+            "module_count": len(report["modules"]),
+            "modules": [
+                {
+                    "name": module["name"],
+                    "top_module": module["top_module"],
+                    "template": module["cycle_contract"]["template"],
+                    "cycle_period": module["cycle_contract"]["cycle_period"],
+                    "cycle_count": len(module["cycle_contract"]["cycles"]),
+                    "phase_names": module["readme_cycle_coverage"]["phase_names"],
+                    "readme_diagram": module["readme_cycle_coverage"]["readme_diagram"],
+                    "readme_index": module["readme_cycle_coverage"]["readme_index"],
+                    "readme_index_row": module["readme_cycle_coverage"]["readme_index_row"],
+                }
+                for module in report["modules"]
+            ],
+        }
+
+    module_cycle_doc_artifacts = unique_ordered(
+        [
+            module_dpi_report["cycle_contract"],
+            module_dpi_report["readme_cycle_coverage"],
+            module_dpi_report["module_interfaces_doc"],
+            full_checkpoint_module_dpi["cycle_contract"],
+            full_checkpoint_module_dpi["readme_cycle_coverage"],
+            full_checkpoint_module_dpi["module_interfaces_doc"],
+        ]
+    )
+    base_module_cycle_docs_passed = module_cycle_documentation_passed(module_dpi_report)
+    generated_full_checkpoint_module_cycle_docs_passed = module_cycle_documentation_passed(full_checkpoint_module_dpi)
+
+    def cycle_diagram_audit() -> dict[str, Any]:
+        readme_path = "e1/e1-h1/docs/modules/README.md"
+        readme_text = (REPO_ROOT / readme_path).read_text(encoding="utf-8")
+        readme_runtime_matrix = f"{readme_path}#module-cycle-runtime-matrix"
+
+        def module_rows(report: dict[str, Any], suite: str) -> list[dict[str, Any]]:
+            rows: list[dict[str, Any]] = []
+            for module in report.get("modules", []):
+                contract = module.get("cycle_contract", {})
+                readme = module.get("readme_cycle_coverage", {})
+                execution = module.get("verilator_execution", {})
+                phase_names_from_contract = [
+                    step["phase"] for step in contract.get("cycles", [])
+                ]
+                cycle_count = len(phase_names_from_contract)
+                readme_checks_pass = bool(readme.get("checks")) and all(
+                    check["status"] == "pass" for check in readme.get("checks", [])
+                )
+                contract_checks_pass = bool(contract.get("checks")) and all(
+                    check["status"] == "pass" for check in contract.get("checks", [])
+                )
+                runtime_status = execution.get("status")
+                observed_phase_trace_count = int(execution.get("observed_phase_trace_count") or 0)
+                observed_phase_signal_trace_count = int(
+                    execution.get("observed_phase_signal_trace_count") or 0
+                )
+                phase_names_match_contract = (
+                    readme.get("phase_names") == phase_names_from_contract
+                )
+                runtime_covers_template = (
+                    runtime_status == "pass"
+                    and observed_phase_trace_count >= cycle_count
+                    and observed_phase_signal_trace_count >= cycle_count
+                )
+                readme_runtime_matrix_row = (
+                    f"| `{suite}` | `{module['name']}` | `{module['top_module']}` | "
+                    f"`{contract.get('template')}` | {cycle_count} | "
+                    f"{observed_phase_trace_count} | "
+                    f"{observed_phase_signal_trace_count} | `{runtime_status}` |"
+                )
+                readme_runtime_matrix_row_present = readme_runtime_matrix_row in readme_text
+                status = (
+                    "pass"
+                    if readme_checks_pass
+                    and contract_checks_pass
+                    and phase_names_match_contract
+                    and runtime_covers_template
+                    and readme_runtime_matrix_row_present
+                    and readme.get("readme_index_row")
+                    and readme.get("readme_diagram")
+                    else "fail"
+                )
+                rows.append(
+                    {
+                        "suite": suite,
+                        "name": module["name"],
+                        "top_module": module["top_module"],
+                        "template": contract.get("template"),
+                        "cycle_period": contract.get("cycle_period"),
+                        "cycle_count": cycle_count,
+                        "phase_names": readme.get("phase_names", []),
+                        "readme_diagram": readme.get("readme_diagram"),
+                        "readme_index": readme.get("readme_index"),
+                        "readme_index_row": readme.get("readme_index_row"),
+                        "readme_runtime_matrix": readme_runtime_matrix,
+                        "readme_runtime_matrix_row": readme_runtime_matrix_row,
+                        "readme_runtime_matrix_row_present": readme_runtime_matrix_row_present,
+                        "readme_checks_pass": readme_checks_pass,
+                        "contract_checks_pass": contract_checks_pass,
+                        "phase_names_match_contract": phase_names_match_contract,
+                        "runtime_status": runtime_status,
+                        "observed_phase_trace_count": observed_phase_trace_count,
+                        "observed_phase_signal_trace_count": observed_phase_signal_trace_count,
+                        "runtime_covers_template": runtime_covers_template,
+                        "status": status,
+                    }
+                )
+            return rows
+
+        graph_coverage = full_checkpoint_graph_rtl_lowering["readme_cycle_coverage"]
+        graph_rows: list[dict[str, Any]] = []
+        for template in graph_coverage.get("templates", []):
+            checks_pass = bool(template.get("checks")) and all(
+                check["status"] == "pass" for check in template.get("checks", [])
+            )
+            graph_rows.append(
+                {
+                    "suite": "full_graph_slot_template",
+                    "template": template["template"],
+                    "cycle_count": template["cycle_count"],
+                    "phase_names": template["phase_names"],
+                    "applies_to_slots": template["applies_to_slots"],
+                    "source": template["source"],
+                    "checks_pass": checks_pass,
+                    "status": "pass" if checks_pass else "fail",
+                }
+            )
+
+        base_rows = module_rows(module_dpi_report, "base_module_dpi")
+        generated_rows = module_rows(
+            full_checkpoint_module_dpi,
+            "generated_full_checkpoint_module_dpi",
+        )
+        diagram_checks = graph_coverage.get("diagram_checks", [])
+        checks = [
+            {
+                "name": "base_module_cycle_diagram_rows_pass",
+                "status": "pass"
+                if base_rows and all(row["status"] == "pass" for row in base_rows)
+                else "fail",
+            },
+            {
+                "name": "generated_module_cycle_diagram_rows_pass",
+                "status": "pass"
+                if generated_rows and all(row["status"] == "pass" for row in generated_rows)
+                else "fail",
+            },
+            {
+                "name": "full_graph_cycle_templates_are_in_readme",
+                "status": "pass"
+                if graph_rows and all(row["status"] == "pass" for row in graph_rows)
+                else "fail",
+            },
+            {
+                "name": "readme_cycle_diagram_snippets_present",
+                "status": "pass"
+                if diagram_checks
+                and all(check["status"] == "pass" for check in diagram_checks)
+                else "fail",
+            },
+            {
+                "name": "module_runtime_traces_cover_documented_cycle_templates",
+                "status": "pass"
+                if [*base_rows, *generated_rows]
+                and all(row["runtime_covers_template"] for row in [*base_rows, *generated_rows])
+                else "fail",
+            },
+            {
+                "name": "readme_module_cycle_runtime_matrix_rows_present",
+                "status": "pass"
+                if [*base_rows, *generated_rows]
+                and all(
+                    row["readme_runtime_matrix_row_present"]
+                    for row in [*base_rows, *generated_rows]
+                )
+                else "fail",
+            },
+        ]
+        return {
+            "schema": "e1-cycle-diagram-audit-v0",
+            "readme": readme_path,
+            "readme_runtime_matrix": readme_runtime_matrix,
+            "scope": (
+                "base module-DPI modules, generated full-checkpoint modules, "
+                "and full-graph slot templates"
+            ),
+            "status": "pass" if all(check["status"] == "pass" for check in checks) else "fail",
+            "base_module_count": len(base_rows),
+            "generated_full_checkpoint_module_count": len(generated_rows),
+            "full_graph_template_count": len(graph_rows),
+            "base_modules": base_rows,
+            "generated_full_checkpoint_modules": generated_rows,
+            "full_graph_templates": graph_rows,
+            "diagram_checks": diagram_checks,
+            "checks": checks,
+        }
+
+    cycle_diagram_documentation_audit = cycle_diagram_audit()
+    cycle_diagram_documentation_audit_passed = (
+        cycle_diagram_documentation_audit["status"] == "pass"
+    )
+
+    def signal_summary(signals: list[dict[str, Any]]) -> list[dict[str, str]]:
+        return [
+            {
+                "name": signal["name"],
+                "width": signal["width"],
+                "description": signal["description"],
+            }
+            for signal in signals
+        ]
+
+    def signal_width_summary(signals: list[dict[str, Any]]) -> list[dict[str, str]]:
+        return [
+            {
+                "name": signal["name"],
+                "width": signal["width"],
+            }
+            for signal in signals
+        ]
+
+    def module_section_text(doc_text: str, name: str) -> str:
+        heading = f"## {name}\n"
+        start = doc_text.find(heading)
+        if start < 0:
+            return ""
+        next_heading = doc_text.find("\n## ", start + len(heading))
+        return doc_text[start:] if next_heading < 0 else doc_text[start:next_heading]
+
+    def module_interface_signal_inventory_summary(
+        report: dict[str, Any],
+        *,
+        family: str,
+    ) -> dict[str, Any]:
+        doc_path = REPO_ROOT / report["module_interfaces_doc"]
+        doc_text = doc_path.read_text(encoding="utf-8") if doc_path.exists() else ""
+        modules: list[dict[str, Any]] = []
+        for module in report["modules"]:
+            section = module_section_text(doc_text, module["name"])
+            rtl_contract = module.get("rtl_port_contract", {})
+            ip_contract = module.get("ip_port_contract")
+            input_signals = signal_summary(module.get("input_signals", []))
+            output_signals = signal_summary(module.get("output_signals", []))
+            expected_inputs = signal_width_summary(module.get("input_signals", []))
+            expected_outputs = signal_width_summary(module.get("output_signals", []))
+            rtl_inputs = rtl_contract.get("input", [])
+            rtl_outputs = rtl_contract.get("output", [])
+            ip_inputs = ip_contract.get("input", []) if ip_contract else None
+            ip_outputs = ip_contract.get("output", []) if ip_contract else None
+            doc_checks = [
+                {
+                    "name": "module_section_present",
+                    "status": "pass" if section else "fail",
+                },
+                {
+                    "name": "input_signal_table_present",
+                    "status": "pass" if "### Input Signals" in section else "fail",
+                },
+                {
+                    "name": "output_signal_table_present",
+                    "status": "pass" if "### Output Signals" in section else "fail",
+                },
+                {
+                    "name": "top_module_documented",
+                    "status": "pass" if module["top_module"] in section else "fail",
+                },
+                {
+                    "name": "all_input_signals_documented",
+                    "status": "pass"
+                    if input_signals
+                    and all(
+                        f"`{signal['name']}`" in section and signal["description"] in section
+                        for signal in input_signals
+                    )
+                    else "fail",
+                },
+                {
+                    "name": "all_output_signals_documented",
+                    "status": "pass"
+                    if (
+                        output_signals
+                        and all(
+                            f"`{signal['name']}`" in section
+                            and signal["description"] in section
+                            for signal in output_signals
+                        )
+                    )
+                    or (not output_signals and "`_none`" in section)
+                    else "fail",
+                },
+            ]
+            rtl_checks = [
+                {
+                    "name": "input_signals_match_rtl_ports",
+                    "status": "pass" if expected_inputs == rtl_inputs else "fail",
+                },
+                {
+                    "name": "output_signals_match_rtl_ports",
+                    "status": "pass" if expected_outputs == rtl_outputs else "fail",
+                },
+            ]
+            ip_checks = []
+            if ip_contract is not None:
+                ip_checks = [
+                    {
+                        "name": "input_signals_match_ip_manifest_ports",
+                        "status": "pass" if expected_inputs == ip_inputs else "fail",
+                    },
+                    {
+                        "name": "output_signals_match_ip_manifest_ports",
+                        "status": "pass" if expected_outputs == ip_outputs else "fail",
+                    },
+                ]
+            checks_for_module = [*doc_checks, *rtl_checks, *ip_checks]
+            modules.append(
+                {
+                    "name": module["name"],
+                    "family": family,
+                    "top_module": module["top_module"],
+                    "module_interfaces_doc": report["module_interfaces_doc"],
+                    "interface_source": module.get("interface_source"),
+                    "input_signal_count": len(input_signals),
+                    "output_signal_count": len(output_signals),
+                    "input_signals": input_signals,
+                    "output_signals": output_signals,
+                    "rtl_port_contract": rtl_contract,
+                    "ip_port_contract": ip_contract,
+                    "checks": checks_for_module,
+                    "status": (
+                        "pass"
+                        if checks_for_module
+                        and all(check["status"] == "pass" for check in checks_for_module)
+                        else "fail"
+                    ),
+                }
+            )
+        suite_checks = [
+            {
+                "name": f"{family}_module_interface_doc_exists",
+                "status": "pass" if doc_path.exists() else "fail",
+            },
+            {
+                "name": f"{family}_module_interface_signal_inventory_covers_all_modules",
+                "status": "pass"
+                if modules
+                and len(modules) == len(report["modules"])
+                and {module["name"] for module in modules}
+                == {module["name"] for module in report["modules"]}
+                else "fail",
+            },
+            {
+                "name": f"{family}_module_interface_signal_inventory_documents_io_tables",
+                "status": "pass"
+                if modules
+                and all(
+                    any(
+                        check["name"] == "input_signal_table_present"
+                        and check["status"] == "pass"
+                        for check in module["checks"]
+                    )
+                    and any(
+                        check["name"] == "output_signal_table_present"
+                        and check["status"] == "pass"
+                        for check in module["checks"]
+                    )
+                    for module in modules
+                )
+                else "fail",
+            },
+            {
+                "name": f"{family}_module_interface_signal_inventory_matches_rtl_ports",
+                "status": "pass"
+                if modules
+                and all(
+                    any(
+                        check["name"] == "input_signals_match_rtl_ports"
+                        and check["status"] == "pass"
+                        for check in module["checks"]
+                    )
+                    and any(
+                        check["name"] == "output_signals_match_rtl_ports"
+                        and check["status"] == "pass"
+                        for check in module["checks"]
+                    )
+                    for module in modules
+                )
+                else "fail",
+            },
+            {
+                "name": f"{family}_module_interface_signal_inventory_has_signal_descriptions",
+                "status": "pass"
+                if modules
+                and all(
+                    module["input_signal_count"] > 0
+                    and all(signal["description"] for signal in module["input_signals"])
+                    and all(signal["description"] for signal in module["output_signals"])
+                    for module in modules
+                )
+                else "fail",
+            },
+            {
+                "name": f"{family}_module_interface_signal_inventory_modules_pass",
+                "status": "pass"
+                if modules and all(module["status"] == "pass" for module in modules)
+                else "fail",
+            },
+        ]
+        return {
+            "family": family,
+            "module_interfaces_doc": report["module_interfaces_doc"],
+            "module_count": len(modules),
+            "modules": modules,
+            "checks": suite_checks,
+            "status": (
+                "pass"
+                if suite_checks
+                and all(check["status"] == "pass" for check in suite_checks)
+                else "fail"
+            ),
+        }
+
+    base_module_interface_signal_inventory = module_interface_signal_inventory_summary(
+        module_dpi_report,
+        family="base_module_dpi",
+    )
+    generated_module_interface_signal_inventory = module_interface_signal_inventory_summary(
+        full_checkpoint_module_dpi,
+        family="generated_full_checkpoint_module_dpi",
+    )
+    module_interface_signal_inventory_checks = [
+        *base_module_interface_signal_inventory["checks"],
+        *generated_module_interface_signal_inventory["checks"],
+        {
+            "name": "module_interface_signal_inventory_all_suites_pass",
+            "status": "pass"
+            if base_module_interface_signal_inventory["status"] == "pass"
+            and generated_module_interface_signal_inventory["status"] == "pass"
+            else "fail",
+        },
+    ]
+    module_interface_signal_inventory = {
+        "schema": "e1-module-interface-signal-inventory-v0",
+        "status": (
+            "pass"
+            if all(
+                check["status"] == "pass"
+                for check in module_interface_signal_inventory_checks
+            )
+            else "fail"
+        ),
+        "scope": "module-only base imp2 and generated full-checkpoint RTL boundaries",
+        "base_module_dpi": base_module_interface_signal_inventory,
+        "generated_full_checkpoint_module_dpi": generated_module_interface_signal_inventory,
+        "checks": module_interface_signal_inventory_checks,
+    }
+    module_interface_signal_inventory_passed = (
+        module_interface_signal_inventory["status"] == "pass"
+    )
+    module_dpi_generator_sources = {
+        "base_module_dpi_generator": module_dpi_report["generator"],
+        "generated_full_checkpoint_module_dpi_generator": full_checkpoint_module_dpi["generator"],
+        "verilator_runner": "e1/tools/run_module_dpi_verilator.py",
+        "pipeline_orchestrator": "e1/tools/run_e1_pipeline.py",
+    }
+    module_dpi_generator_source_artifacts = unique_ordered(module_dpi_generator_sources.values())
+    module_dpi_generator_sources_passed = (
+        module_dpi_generator_sources["base_module_dpi_generator"].endswith(".cpp")
+        and module_dpi_generator_sources["generated_full_checkpoint_module_dpi_generator"].endswith(".cpp")
+        and all(
+            (REPO_ROOT / path).exists()
+            for path in module_dpi_generator_source_artifacts
+        )
+    )
+    base_generator_executable = "<module_dpi_generator_build_dir>/e1_h1_generate_module_dpi"
+    full_checkpoint_generator_executable = (
+        "<full_checkpoint_module_dpi_generator_build_dir>/e1_h1_generate_full_checkpoint_module_dpi"
+    )
+    base_generator_build_command = [
+        "c++",
+        "-std=c++17",
+        module_dpi_generator_sources["base_module_dpi_generator"],
+        "-o",
+        base_generator_executable,
+    ]
+    full_checkpoint_generator_build_command = [
+        "c++",
+        "-std=c++17",
+        module_dpi_generator_sources["generated_full_checkpoint_module_dpi_generator"],
+        "-o",
+        full_checkpoint_generator_executable,
+    ]
+    base_generator_execution_command = [
+        base_generator_executable,
+        "--repo-root",
+        "<repo-root>",
+        "--output-dir",
+        "e1/e1-h1/generated/module_dpi",
+    ]
+    full_checkpoint_generator_execution_command = [
+        full_checkpoint_generator_executable,
+        "--repo-root",
+        "<repo-root>",
+        "--output-dir",
+        "e1/e1-h1/generated/full_checkpoint_dpi",
+    ]
+    base_generator_stdout = (
+        f"PASS e1_h1_generate_module_dpi {module_dpi_report['module_count']} modules"
+        " -> e1/e1-h1/generated/module_dpi\n"
+    )
+    full_checkpoint_generator_stdout = (
+        "PASS e1_h1_generate_full_checkpoint_module_dpi "
+        f"{full_checkpoint_module_dpi['module_count']} modules"
+        " -> e1/e1-h1/generated/full_checkpoint_dpi\n"
+    )
+
+    def generator_build_and_run_recorded(
+        report: dict[str, Any],
+        *,
+        source: str,
+        executable: str,
+        build_command: list[str],
+        execution_command: list[str],
+    ) -> bool:
+        build = report.get("generator_build", {})
+        execution = report.get("generator_execution", {})
+        serialized = json.dumps({"generator_build": build, "generator_execution": execution}, sort_keys=True)
+        transient_markers = [
+            "/private/var/folders/",
+            "/var/folders/",
+            "/private/tmp/",
+            "/tmp/",
+        ]
+        return (
+            build.get("source") == source
+            and build.get("command") == build_command
+            and build.get("executable") == executable
+            and build.get("working_directory") == "<repo-root>"
+            and build.get("status") == "pass"
+            and execution.get("command") == execution_command
+            and execution.get("working_directory") == "<repo-root>"
+            and execution.get("status") == "pass"
+            and not any(marker in serialized for marker in transient_markers)
+        )
+
+    def generator_stdout_reports_module_count(report: dict[str, Any], expected_stdout: str) -> bool:
+        execution = report.get("generator_execution", {})
+        return (
+            execution.get("stdout") == expected_stdout
+            and execution.get("expected_stdout") == expected_stdout
+        )
+
+    base_generator_build_and_run_recorded = generator_build_and_run_recorded(
+        module_dpi_report,
+        source=module_dpi_generator_sources["base_module_dpi_generator"],
+        executable=base_generator_executable,
+        build_command=base_generator_build_command,
+        execution_command=base_generator_execution_command,
+    )
+    full_checkpoint_generator_build_and_run_recorded = generator_build_and_run_recorded(
+        full_checkpoint_module_dpi,
+        source=module_dpi_generator_sources["generated_full_checkpoint_module_dpi_generator"],
+        executable=full_checkpoint_generator_executable,
+        build_command=full_checkpoint_generator_build_command,
+        execution_command=full_checkpoint_generator_execution_command,
+    )
+    module_dpi_generator_build_and_run_recorded = (
+        base_generator_build_and_run_recorded
+        and full_checkpoint_generator_build_and_run_recorded
+    )
+    module_dpi_generator_stdout_reports_module_counts = (
+        generator_stdout_reports_module_count(module_dpi_report, base_generator_stdout)
+        and generator_stdout_reports_module_count(full_checkpoint_module_dpi, full_checkpoint_generator_stdout)
+    )
+    module_dpi_generator_execution_evidence = {
+        "base_module_dpi_generator": {
+            "source": module_dpi_generator_sources["base_module_dpi_generator"],
+            "build": module_dpi_report.get("generator_build", {}),
+            "execution": module_dpi_report.get("generator_execution", {}),
+        },
+        "generated_full_checkpoint_module_dpi_generator": {
+            "source": module_dpi_generator_sources["generated_full_checkpoint_module_dpi_generator"],
+            "build": full_checkpoint_module_dpi.get("generator_build", {}),
+            "execution": full_checkpoint_module_dpi.get("generator_execution", {}),
+        },
+    }
+    module_dpi_cpp_verilator_launchers = {
+        "base_module_dpi": module_dpi_report.get("cpp_verilator_launcher", {}),
+        "generated_full_checkpoint_module_dpi": full_checkpoint_module_dpi.get("cpp_verilator_launcher", {}),
+    }
+    module_dpi_cpp_verilator_launcher_artifacts = unique_ordered(
+        [
+            launcher.get("source", "")
+            for launcher in module_dpi_cpp_verilator_launchers.values()
+            if launcher.get("source")
+        ]
+    )
+    module_dpi_cpp_verilator_launchers_passed = (
+        len(module_dpi_cpp_verilator_launcher_artifacts) == 2
+        and all((REPO_ROOT / path).exists() for path in module_dpi_cpp_verilator_launcher_artifacts)
+        and all(
+            launcher.get("status") == "pass"
+            and all(check["status"] == "pass" for check in launcher.get("checks", []))
+            and launcher.get("verilator_run", {}).get("status") == "pass"
+            and launcher.get("verilator_run", {}).get("summary", {}).get("status") == "pass"
+            and launcher.get("verilator_run", {}).get("summary", {}).get("failures") == 0
+            and not any(
+                marker in json.dumps(launcher, sort_keys=True)
+                for marker in [
+                    "/private/var/folders/",
+                    "/var/folders/",
+                    "/private/tmp/",
+                    "/tmp/",
+                ]
+            )
+            for launcher in module_dpi_cpp_verilator_launchers.values()
+        )
+    )
+
+    def cpp_launcher_runtime_markers_validated(launcher: dict[str, Any]) -> bool:
+        module_results = launcher.get("verilator_run", {}).get("module_results", [])
+        return (
+            bool(module_results)
+            and any(
+                check.get("name") == "cpp_verilator_launcher_run_stdout_markers_match_recipe"
+                and check.get("status") == "pass"
+                for check in launcher.get("checks", [])
+            )
+            and all(
+                result.get("status") == "pass"
+                and result.get("stdout_markers_present") is True
+                and result.get("missing_stdout_markers") == []
+                and bool(result.get("expected_stdout_markers"))
+                and result.get("observed_stdout_marker_count")
+                == len(result.get("expected_stdout_markers", []))
+                and result.get("captured_stdout_line_count", 0) > 0
+                for result in module_results
+            )
+        )
+
+    module_dpi_cpp_verilator_launchers_validate_runtime_markers = all(
+        cpp_launcher_runtime_markers_validated(launcher)
+        for launcher in module_dpi_cpp_verilator_launchers.values()
+    )
+
+    def cpp_launcher_runtime_phase_traces_validated(launcher: dict[str, Any]) -> bool:
+        module_results = launcher.get("verilator_run", {}).get("module_results", [])
+        return (
+            bool(module_results)
+            and any(
+                check.get("name") == "cpp_verilator_launcher_run_phase_traces_match_recipe"
+                and check.get("status") == "pass"
+                for check in launcher.get("checks", [])
+            )
+            and all(
+                result.get("status") == "pass"
+                and result.get("phase_trace_in_order") is True
+                and result.get("phase_trace_repeats_template") is True
+                and result.get("phase_signal_trace_matches") is True
+                and result.get("phase_signal_trace_repeats_template") is True
+                and bool(result.get("expected_phase_trace_keys"))
+                and bool(result.get("expected_phase_signal_trace_keys"))
+                and result.get("observed_phase_trace_prefix_keys")
+                == result.get("expected_phase_trace_keys")
+                and result.get("observed_phase_trace_count", 0)
+                >= len(result.get("expected_phase_trace_keys", []))
+                and result.get("observed_phase_signal_trace_prefix_keys")
+                == result.get("expected_phase_signal_trace_keys")
+                and result.get("observed_phase_signal_trace_count", 0)
+                >= len(result.get("expected_phase_signal_trace_keys", []))
+                for result in module_results
+            )
+        )
+
+    module_dpi_cpp_verilator_launchers_validate_runtime_phase_traces = all(
+        cpp_launcher_runtime_phase_traces_validated(launcher)
+        for launcher in module_dpi_cpp_verilator_launchers.values()
+    )
+
+    def cpp_launcher_runtime_summary(launcher: dict[str, Any]) -> dict[str, Any]:
+        module_results = launcher.get("verilator_run", {}).get("module_results", [])
+        phase_counts = [
+            int(result.get("observed_phase_trace_count", 0))
+            for result in module_results
+        ]
+        phase_signal_counts = [
+            int(result.get("observed_phase_signal_trace_count", 0))
+            for result in module_results
+        ]
+        return {
+            "suite": launcher.get("suite"),
+            "status": launcher.get("status"),
+            "module_count": len(module_results),
+            "run_status": launcher.get("verilator_run", {}).get("status"),
+            "run_failures": launcher.get("verilator_run", {}).get("summary", {}).get("failures"),
+            "stdout_marker_checks_passed": all(
+                result.get("stdout_markers_present") is True
+                and result.get("missing_stdout_markers") == []
+                for result in module_results
+            ),
+            "phase_prefix_checks_passed": all(
+                result.get("phase_trace_in_order") is True
+                for result in module_results
+            ),
+            "phase_repeat_template_checks_passed": all(
+                result.get("phase_trace_repeats_template") is True
+                for result in module_results
+            ),
+            "phase_signal_prefix_checks_passed": all(
+                result.get("phase_signal_trace_matches") is True
+                for result in module_results
+            ),
+            "phase_signal_repeat_template_checks_passed": all(
+                result.get("phase_signal_trace_repeats_template") is True
+                for result in module_results
+            ),
+            "observed_phase_trace_record_count": sum(phase_counts),
+            "observed_phase_signal_trace_record_count": sum(phase_signal_counts),
+            "min_observed_phase_trace_record_count": min(phase_counts) if phase_counts else 0,
+            "max_observed_phase_trace_record_count": max(phase_counts) if phase_counts else 0,
+            "min_observed_phase_signal_trace_record_count": min(phase_signal_counts) if phase_signal_counts else 0,
+            "max_observed_phase_signal_trace_record_count": max(phase_signal_counts) if phase_signal_counts else 0,
+            "module_names": [
+                result.get("name")
+                for result in module_results
+            ],
+        }
+
+    module_dpi_cpp_verilator_launcher_runtime_summary = {
+        name: cpp_launcher_runtime_summary(launcher)
+        for name, launcher in module_dpi_cpp_verilator_launchers.items()
+    }
+    base_cpp_launcher_results_by_name = {
+        result["name"]: result
+        for result in module_dpi_report.get("cpp_verilator_launcher", {})
+        .get("verilator_run", {})
+        .get("module_results", [])
+        if result.get("name")
+    }
+    systolic_array_module = next(
+        (
+            module
+            for module in module_dpi_report.get("modules", [])
+            if module["name"] == "systolic_array"
+        ),
+        {},
+    )
+    systolic_array_cpp_launcher_result = base_cpp_launcher_results_by_name.get(
+        "systolic_array",
+        {},
+    )
+    systolic_array_result_digest_proof = {
+        "schema": "e1-systolic-array-result-digest-proof-v0",
+        "module": "systolic_array",
+        "rtl": systolic_array_module.get("imp2_rtl"),
+        "probe": systolic_array_module.get("probe"),
+        "scoreboard": module_dpi_report.get("scoreboard"),
+        "verilator_execution_report": module_dpi_report.get("verilator_execution_report"),
+        "cpp_verilator_launcher": module_dpi_report.get("verilator_execution_launcher"),
+        "expected_digest_marker": "E1_H1_MODULE_DPI_SYSTOLIC_DIGEST",
+        "result_signal": next(
+            (
+                signal
+                for signal in systolic_array_module.get("output_signals", [])
+                if signal["name"] == "result_digest_o"
+            ),
+            None,
+        ),
+        "cpp_launcher_status": systolic_array_cpp_launcher_result.get("status"),
+        "cpp_launcher_expected_stdout_markers": systolic_array_cpp_launcher_result.get(
+            "expected_stdout_markers",
+            [],
+        ),
+        "cpp_launcher_stdout_markers_present": systolic_array_cpp_launcher_result.get(
+            "stdout_markers_present"
+        ),
+        "cpp_launcher_missing_stdout_markers": systolic_array_cpp_launcher_result.get(
+            "missing_stdout_markers",
+            [],
+        ),
+        "status": "pass"
+        if systolic_array_module
+        and any(
+            signal["name"] == "result_digest_o"
+            and signal["width"] == "32"
+            and signal["description"]
+            for signal in systolic_array_module.get("output_signals", [])
+        )
+        and systolic_array_cpp_launcher_result.get("status") == "pass"
+        and systolic_array_cpp_launcher_result.get("stdout_markers_present") is True
+        and not systolic_array_cpp_launcher_result.get("missing_stdout_markers", [])
+        and "E1_H1_MODULE_DPI_SYSTOLIC_DIGEST"
+        in systolic_array_cpp_launcher_result.get("expected_stdout_markers", [])
+        else "fail",
+    }
+    module_dpi_passed = (
+        module_dpi_report["status"] == "pass"
+        and all(
+            module["verilator_execution"]["status"] == "pass"
+            and all(check["status"] == "pass" for check in module["construction_ledger"]["checks"])
+            for module in module_dpi_report["modules"]
+        )
+    )
+    module_isolation_passed = (
+        module_dpi_report.get("module_isolation", {}).get("status") == "pass"
+        and all(
+            check["status"] == "pass"
+            for check in module_dpi_report.get("module_isolation", {}).get("checks", [])
+        )
+    )
+    full_checkpoint_module_dpi_passed = (
+        full_checkpoint_module_dpi["status"] == "pass"
+        and all(
+            module["verilator_execution"]["status"] == "pass"
+            and all(check["status"] == "pass" for check in module["construction_ledger"]["checks"])
+            for module in full_checkpoint_module_dpi["modules"]
+        )
+    )
+    full_checkpoint_module_isolation_passed = (
+        full_checkpoint_module_dpi.get("module_isolation", {}).get("status") == "pass"
+        and all(
+            check["status"] == "pass"
+            for check in full_checkpoint_module_dpi.get("module_isolation", {}).get("checks", [])
+        )
+    )
+
+    def generated_artifacts_for_module_dpi_suite(report: dict[str, Any]) -> list[str]:
+        artifacts: list[str] = []
+        for module in report.get("modules", []):
+            artifacts.extend(
+                module.get("construction_ledger", {}).get("derived_artifacts", [])
+            )
+            artifacts.extend(
+                [
+                    module.get("probe", ""),
+                    module.get("main", ""),
+                    module.get("flist", ""),
+                ]
+            )
+        artifacts.extend(
+            [
+                report.get("manifest", ""),
+                report.get("scoreboard", ""),
+                report.get("module_interfaces_doc", ""),
+                report.get("module_isolation_proof", ""),
+                report.get("cycle_contract", ""),
+                report.get("module_test_plan", ""),
+                report.get("verilator_execution_recipe", ""),
+                report.get("verilator_execution_launcher", ""),
+                report.get("verilator_execution_report", ""),
+                report.get("readme_cycle_coverage", ""),
+                report.get("construction_ledger", ""),
+            ]
+        )
+        return unique_ordered([artifact for artifact in artifacts if artifact])
+
+    def dpi_generation_provenance_suite(
+        *,
+        suite_key: str,
+        report: dict[str, Any],
+        launcher: dict[str, Any],
+        expected_generator_source: str,
+        expected_stdout: str,
+        generator_build_recorded: bool,
+        launcher_runtime_summary: dict[str, Any],
+    ) -> dict[str, Any]:
+        generated_artifacts = generated_artifacts_for_module_dpi_suite(report)
+        artifact_existence = [
+            {
+                "path": artifact,
+                "exists": (REPO_ROOT / artifact).exists(),
+            }
+            for artifact in generated_artifacts
+        ]
+        launcher_results_by_name = {
+            result.get("name"): result
+            for result in launcher.get("verilator_run", {}).get("module_results", [])
+            if result.get("name")
+        }
+        module_rows: list[dict[str, Any]] = []
+        for module in report.get("modules", []):
+            ledger = module.get("construction_ledger", {})
+            module_artifacts = unique_ordered(
+                [
+                    *ledger.get("derived_artifacts", []),
+                    module.get("probe", ""),
+                    module.get("main", ""),
+                    module.get("flist", ""),
+                    report.get("scoreboard", ""),
+                ]
+            )
+            module_artifacts = [artifact for artifact in module_artifacts if artifact]
+            result = launcher_results_by_name.get(module["name"], {})
+            ledger_checks_pass = (
+                bool(ledger.get("checks"))
+                and all(check["status"] == "pass" for check in ledger.get("checks", []))
+            )
+            artifacts_exist = all((REPO_ROOT / artifact).exists() for artifact in module_artifacts)
+            launcher_result_passed = (
+                result.get("status") == "pass"
+                and result.get("stdout_markers_present") is True
+                and result.get("missing_stdout_markers", []) == []
+                and result.get("phase_trace_in_order") is True
+                and result.get("phase_trace_repeats_template") is True
+                and result.get("phase_signal_trace_matches") is True
+                and result.get("phase_signal_trace_repeats_template") is True
+            )
+            status = (
+                "pass"
+                if module.get("verilator_execution", {}).get("status") == "pass"
+                and ledger_checks_pass
+                and artifacts_exist
+                and launcher_result_passed
+                else "fail"
+            )
+            module_rows.append(
+                {
+                    "name": module["name"],
+                    "top_module": module.get("top_module"),
+                    "probe": module.get("probe"),
+                    "main": module.get("main"),
+                    "flist": module.get("flist"),
+                    "generated_artifacts": module_artifacts,
+                    "generated_artifact_count": len(module_artifacts),
+                    "all_generated_artifacts_exist": artifacts_exist,
+                    "ledger_checks_pass": ledger_checks_pass,
+                    "verilator_execution_status": module.get("verilator_execution", {}).get("status"),
+                    "cpp_launcher_result_status": result.get("status"),
+                    "cpp_launcher_run_executable": result.get("run_executable"),
+                    "cpp_launcher_stdout_markers_present": result.get("stdout_markers_present"),
+                    "cpp_launcher_missing_stdout_markers": result.get(
+                        "missing_stdout_markers",
+                        [],
+                    ),
+                    "cpp_launcher_phase_trace_in_order": result.get("phase_trace_in_order"),
+                    "cpp_launcher_phase_signal_trace_matches": result.get(
+                        "phase_signal_trace_matches",
+                    ),
+                    "status": status,
+                }
+            )
+
+        checks = [
+            {
+                "name": "generator_source_matches_report",
+                "status": "pass"
+                if report.get("generator") == expected_generator_source
+                and (REPO_ROOT / expected_generator_source).exists()
+                else "fail",
+            },
+            {
+                "name": "generator_build_and_execution_are_recorded",
+                "status": "pass" if generator_build_recorded else "fail",
+            },
+            {
+                "name": "generator_stdout_reports_expected_module_count",
+                "status": "pass"
+                if generator_stdout_reports_module_count(report, expected_stdout)
+                else "fail",
+            },
+            {
+                "name": "generated_artifacts_exist",
+                "status": "pass"
+                if generated_artifacts
+                and all(record["exists"] for record in artifact_existence)
+                else "fail",
+            },
+            {
+                "name": "cpp_verilator_launcher_exists_and_passes_checks",
+                "status": "pass"
+                if launcher.get("source") == report.get("verilator_execution_launcher")
+                and (REPO_ROOT / launcher.get("source", "")).exists()
+                and launcher.get("status") == "pass"
+                and all(check["status"] == "pass" for check in launcher.get("checks", []))
+                else "fail",
+            },
+            {
+                "name": "cpp_verilator_launcher_runs_all_modules",
+                "status": "pass"
+                if launcher.get("verilator_run", {}).get("status") == "pass"
+                and launcher.get("verilator_run", {}).get("summary", {}).get("status") == "pass"
+                and launcher.get("verilator_run", {}).get("summary", {}).get("failures") == 0
+                and set(launcher_results_by_name) == {module["name"] for module in report.get("modules", [])}
+                else "fail",
+            },
+            {
+                "name": "module_rows_have_artifacts_ledgers_and_launcher_results",
+                "status": "pass"
+                if module_rows
+                and all(row["status"] == "pass" for row in module_rows)
+                else "fail",
+            },
+        ]
+        return {
+            "suite": suite_key,
+            "schema": "e1-dpi-generation-provenance-suite-v0",
+            "status": "pass" if all(check["status"] == "pass" for check in checks) else "fail",
+            "generator": report.get("generator"),
+            "generator_build": report.get("generator_build", {}),
+            "generator_execution": report.get("generator_execution", {}),
+            "expected_generator_stdout": expected_stdout,
+            "manifest": report.get("manifest"),
+            "scoreboard": report.get("scoreboard"),
+            "verilator_execution_recipe": report.get("verilator_execution_recipe"),
+            "verilator_execution_launcher": report.get("verilator_execution_launcher"),
+            "verilator_execution_report": report.get("verilator_execution_report"),
+            "cpp_verilator_launcher_source": launcher.get("source"),
+            "cpp_verilator_launcher_summary": launcher_runtime_summary,
+            "module_count": len(report.get("modules", [])),
+            "cpp_launcher_module_count": len(launcher_results_by_name),
+            "generated_artifact_count": len(generated_artifacts),
+            "generated_artifacts": generated_artifacts,
+            "generated_artifact_existence": artifact_existence,
+            "modules": module_rows,
+            "checks": checks,
+        }
+
+    dpi_generation_provenance_suites = {
+        "base_module_dpi": dpi_generation_provenance_suite(
+            suite_key="base_module_dpi",
+            report=module_dpi_report,
+            launcher=module_dpi_cpp_verilator_launchers["base_module_dpi"],
+            expected_generator_source=module_dpi_generator_sources[
+                "base_module_dpi_generator"
+            ],
+            expected_stdout=base_generator_stdout,
+            generator_build_recorded=base_generator_build_and_run_recorded,
+            launcher_runtime_summary=module_dpi_cpp_verilator_launcher_runtime_summary[
+                "base_module_dpi"
+            ],
+        ),
+        "generated_full_checkpoint_module_dpi": dpi_generation_provenance_suite(
+            suite_key="generated_full_checkpoint_module_dpi",
+            report=full_checkpoint_module_dpi,
+            launcher=module_dpi_cpp_verilator_launchers[
+                "generated_full_checkpoint_module_dpi"
+            ],
+            expected_generator_source=module_dpi_generator_sources[
+                "generated_full_checkpoint_module_dpi_generator"
+            ],
+            expected_stdout=full_checkpoint_generator_stdout,
+            generator_build_recorded=full_checkpoint_generator_build_and_run_recorded,
+            launcher_runtime_summary=module_dpi_cpp_verilator_launcher_runtime_summary[
+                "generated_full_checkpoint_module_dpi"
+            ],
+        ),
+    }
+    dpi_generation_provenance_artifacts = unique_ordered(
+        [
+            artifact
+            for suite in dpi_generation_provenance_suites.values()
+            for artifact in suite["generated_artifacts"]
+        ]
+    )
+    dpi_generation_provenance_checks = [
+        {
+            "name": "generator_and_runner_sources_are_present",
+            "status": "pass"
+            if module_dpi_generator_sources_passed
+            and all(
+                (REPO_ROOT / source).exists()
+                for source in module_dpi_generator_sources.values()
+            )
+            else "fail",
+        },
+        {
+            "name": "all_dpi_generation_suites_pass",
+            "status": "pass"
+            if all(
+                suite["status"] == "pass"
+                for suite in dpi_generation_provenance_suites.values()
+            )
+            else "fail",
+        },
+        {
+            "name": "generated_artifacts_are_materialized",
+            "status": "pass"
+            if dpi_generation_provenance_artifacts
+            and all((REPO_ROOT / artifact).exists() for artifact in dpi_generation_provenance_artifacts)
+            else "fail",
+        },
+        {
+            "name": "cpp_launchers_validate_markers_and_phase_traces",
+            "status": "pass"
+            if module_dpi_cpp_verilator_launchers_validate_runtime_markers
+            and module_dpi_cpp_verilator_launchers_validate_runtime_phase_traces
+            else "fail",
+        },
+    ]
+    dpi_generation_provenance_audit = {
+        "schema": "e1-dpi-generation-provenance-audit-v0",
+        "scope": (
+            "C++ module-DPI generators, generated collateral, generated C++ "
+            "Verilator launchers, and module-only Verilator runtime results"
+        ),
+        "status": "pass"
+        if all(check["status"] == "pass" for check in dpi_generation_provenance_checks)
+        else "fail",
+        "generator_sources": module_dpi_generator_sources,
+        "generator_source_artifacts": module_dpi_generator_source_artifacts,
+        "recipe_runner": module_dpi_generator_sources["verilator_runner"],
+        "pipeline_orchestrator": module_dpi_generator_sources["pipeline_orchestrator"],
+        "suite_count": len(dpi_generation_provenance_suites),
+        "module_count": sum(
+            suite["module_count"] for suite in dpi_generation_provenance_suites.values()
+        ),
+        "generated_artifact_count": len(dpi_generation_provenance_artifacts),
+        "generated_artifacts": dpi_generation_provenance_artifacts,
+        "suites": dpi_generation_provenance_suites,
+        "checks": dpi_generation_provenance_checks,
+    }
+    dpi_generation_provenance_audit_passed = (
+        dpi_generation_provenance_audit["status"] == "pass"
+    )
+
+    def module_runtime_phase_traces_passed(
+        report: dict[str, Any], *, require_phase_signal_trace: bool
+    ) -> bool:
+        return all(
+            module["verilator_execution"]["status"] == "pass"
+            and module["verilator_execution"]["observed_phase_markers"]
+            == module["verilator_execution"]["expected_phase_markers"]
+            and module["verilator_execution"]["observed_phase_trace_prefix"]
+            == module["verilator_execution"]["expected_phase_trace"]
+            and module["verilator_execution"]["observed_phase_trace_count"]
+            >= len(module["verilator_execution"]["expected_phase_trace"])
+            and module["readme_cycle_coverage"]["phase_names"]
+            == [step["phase"] for step in module["cycle_contract"]["cycles"]]
+            and (
+                not require_phase_signal_trace
+                or (
+                    len(module["verilator_execution"]["expected_phase_signal_trace"]) > 0
+                    and module["verilator_execution"]["observed_phase_signal_trace_prefix"]
+                    == module["verilator_execution"]["expected_phase_signal_trace"]
+                    and module["verilator_execution"]["observed_phase_signal_trace_count"]
+                    >= len(module["verilator_execution"]["expected_phase_signal_trace"])
+                )
+            )
+            for module in report["modules"]
+        )
+
+    base_runtime_phase_traces_passed = module_runtime_phase_traces_passed(
+        module_dpi_report, require_phase_signal_trace=True
+    )
+    generated_runtime_phase_traces_passed = module_runtime_phase_traces_passed(
+        full_checkpoint_module_dpi, require_phase_signal_trace=True
+    )
+    source_derived_dpi_passed = (
+        full_graph_module_dpi_binding["status"] == "pass"
+        and full_graph_module_dpi_binding["source_derived_module_dpi_coverage_count"]
+        == (
+            full_graph_module_dpi_binding["generated_rtl_module_dpi_coverage_count"]
+            + full_graph_module_dpi_binding["separated_base_rtl_module_dpi_coverage_count"]
+        )
+        and all(
+            entry["covered"]
+            and entry["verilator_status"] == "pass"
+            and entry["ledger_checks_pass"]
+            and entry["recipe_checks_pass"]
+            and entry["module_only_flist_boundary_exact"]
+            and entry["selected_dut_rtl_in_flist"]
+            and entry["cycle_contract_checks_pass"]
+            and entry["readme_cycle_checks_pass"]
+            and entry["phase_trace_checks_pass"]
+            and entry["phase_signal_trace_checks_pass"]
+            and entry.get("cpp_launcher_checks_pass") is True
+            and entry.get("cpp_launcher_recipe_checks_pass") is True
+            and entry.get("cpp_launcher_readme_cycle_checks_pass") is True
+            for entry in full_graph_module_dpi_binding["source_derived_module_dpi_coverage"]
+        )
+    )
+    source_derived_cpp_launcher_evidence_passed = (
+        bool(full_graph_module_dpi_binding.get("source_derived_module_dpi_coverage"))
+        and all(
+            entry.get("cpp_launcher_checks_pass") is True
+            and entry.get("cpp_launcher_recipe_checks_pass") is True
+            and entry.get("cpp_launcher_result", {}).get("status") == "pass"
+            and entry.get("cpp_launcher_readme_cycle_checks_pass") is True
+            and entry.get("cpp_launcher_readme_cycle_proof", {}).get("status") == "pass"
+            for entry in full_graph_module_dpi_binding["source_derived_module_dpi_coverage"]
+        )
+    )
+    generated_child_stub_boundary_passed = (
+        bool(full_graph_module_dpi_binding.get("generated_child_stub_boundary"))
+        and all(
+            entry["present"]
+            and entry["flist_contains_only_selected_dut_and_probe"]
+            and entry["composed_dependencies_absent_from_flist"]
+            and entry["child_stubs_present_in_probe"]
+            for entry in full_graph_module_dpi_binding["generated_child_stub_boundary"]
+        )
+    )
+    base_module_boundary_passed = (
+        bool(full_graph_module_dpi_binding.get("all_base_module_bindings"))
+        and all(
+            binding["present"]
+            and binding["source_defined_modules_include_top"]
+            and binding["flist_exact_match"]
+            and binding["exact_probe_instantiation_counts"]
+            and binding.get("cpp_launcher_checks_pass") is True
+            and binding.get("cpp_launcher_recipe_checks_pass") is True
+            and binding.get("cpp_launcher_readme_cycle_checks_pass") is True
+            for binding in full_graph_module_dpi_binding["all_base_module_bindings"]
+        )
+    )
+    base_module_cpp_launcher_evidence_passed = (
+        bool(full_graph_module_dpi_binding.get("all_base_module_bindings"))
+        and all(
+            binding.get("cpp_launcher_checks_pass") is True
+            and binding.get("cpp_launcher_recipe_checks_pass") is True
+            and binding.get("cpp_launcher_result", {}).get("status") == "pass"
+            and binding.get("cpp_launcher_readme_cycle_checks_pass") is True
+            and binding.get("cpp_launcher_readme_cycle_proof", {}).get("status") == "pass"
+            for binding in full_graph_module_dpi_binding["all_base_module_bindings"]
+        )
+    )
+    module_dpi_boundary_artifacts = unique_ordered(
+        [
+            path
+            for binding in full_graph_module_dpi_binding["all_base_module_bindings"]
+            for path in [
+                binding.get("reference_rtl"),
+                binding.get("imp2_rtl"),
+                binding.get("probe"),
+                binding.get("flist"),
+            ]
+            if path
+        ]
+        + [
+            path
+            for boundary in full_graph_module_dpi_binding["generated_child_stub_boundary"]
+            for path in [
+                *boundary.get("selected_dut_rtl", []),
+                boundary.get("probe"),
+                boundary.get("flist"),
+            ]
+            if path
+        ]
+    )
+    production_rtl_inventory_check_rows = production_rtl_inventory_checks(production_rtl_inventory)
+    production_rtl_inventory_artifacts = unique_ordered(production_rtl_inventory["paths"])
+    imp1_mock_runtime_artifacts = unique_ordered(
+        [
+            path
+            for path in [
+                production_rtl_inventory.get("imp1_mock_rtl_lint", {})
+                .get("runtime", {})
+                .get("manifest", ""),
+                *production_rtl_inventory.get("imp1_mock_rtl_lint", {})
+                .get("runtime", {})
+                .get("generated_artifacts", []),
+            ]
+            if path
+        ]
+    )
+    aggregate = full_checkpoint_rtl_lowering["aggregate"]
+    total_layer_slots = int(aggregate["linear_ops_per_layer"]) + int(aggregate["control_ops_per_layer"])
+    expected_graph_slots = int(aggregate["layers"]) * total_layer_slots
+    production_rtl_inventory_passed = all(
+        check["status"] == "pass" for check in production_rtl_inventory_check_rows
+    )
+    source_derived_inventory_module_only_passed = (
+        production_rtl_inventory.get("module_only_dpi_inventory", {}).get("status") == "pass"
+        and all(
+            row["category"] not in {"base_imp2_candidate", "generated_full_checkpoint"}
+            or row.get("module_only_dpi_covered") is True
+            for row in production_rtl_inventory.get("rows", [])
+        )
+    )
+    active_rtl_standalone_runtime_passed = (
+        production_rtl_inventory.get("standalone_runtime_inventory", {}).get("status") == "pass"
+        and all(
+            row["category"] == "base_imp1_mock"
+            or row.get("standalone_runtime_covered") is True
+            for row in production_rtl_inventory.get("rows", [])
+        )
+    )
+
+    boundary_role_by_name = {
+        "control_cpu": "cpu_control",
+        "rgmii_ethernet_ingress": "digital_ingress",
+        "ingress_sram": "latch_buffer",
+        "activation_sram": "sram_shell",
+        "accumulator_sram": "sram_shell",
+        "systolic_array": "systolic_array",
+        "linear_scheduler": "linear_systolic_path",
+        "linear_tile_engine": "linear_systolic_path",
+        "linear_slot_engine": "linear_systolic_path",
+        "control_scheduler": "cpu_control",
+        "control_slot_engine": "cpu_control",
+        "graph_sequencer": "cpu_control",
+        "full_checkpoint_top": "top_glue",
+        "generated_soc_top": "top_glue",
+    }
+    role_descriptions = {
+        "cpu_control": "CPU/control sequencing and command issue.",
+        "digital_ingress": "Digital-only RGMII ingress source for input data.",
+        "latch_buffer": "Latched stream buffer that holds and releases data under backpressure.",
+        "sram_shell": "Configurable SRAM shell boundary.",
+        "systolic_array": "Replaceable systolic-array compute boundary.",
+        "linear_systolic_path": "TinyLlama linear-op scheduler/slot path that drives SRAM and systolic-array boundaries.",
+        "top_glue": "Top-level composition glue with child modules isolated by module-only probes.",
+    }
+    required_taxonomy_roles = sorted(role_descriptions)
+    base_modules_by_name = {
+        module["name"]: module
+        for module in module_dpi_report.get("modules", [])
+    }
+    generated_modules_by_name = {
+        module["name"]: module
+        for module in full_checkpoint_module_dpi.get("modules", [])
+    }
+    base_module_isolation_proof = load_json(
+        REPO_ROOT / module_dpi_report["module_isolation_proof"]
+    )
+    generated_module_isolation_proof = load_json(
+        REPO_ROOT / full_checkpoint_module_dpi["module_isolation_proof"]
+    )
+    base_isolation_by_name = {
+        module["name"]: module
+        for module in base_module_isolation_proof.get("modules", [])
+    }
+    generated_isolation_by_name = {
+        module["name"]: module
+        for module in generated_module_isolation_proof.get("modules", [])
+    }
+    base_boundary_by_name = {
+        binding["name"]: binding
+        for binding in full_graph_module_dpi_binding.get("all_base_module_bindings", [])
+    }
+    generated_boundary_by_name = {
+        boundary["name"]: boundary
+        for boundary in full_graph_module_dpi_binding.get("generated_child_stub_boundary", [])
+    }
+    production_row_by_rtl = {
+        row["rtl"]: row
+        for row in production_rtl_inventory.get("rows", [])
+    }
+    standalone_runtime_by_rtl = {
+        entry["rtl"]: entry
+        for entry in production_rtl_inventory.get("standalone_runtime_inventory", {}).get(
+            "coverage",
+            [],
+        )
+    }
+
+    def systemverilog_module_only_coverage_audit() -> dict[str, Any]:
+        active_source_categories = {"base_imp2_candidate", "generated_full_checkpoint"}
+        audit_rows: list[dict[str, Any]] = []
+
+        for row in production_rtl_inventory.get("rows", []):
+            category = row["category"]
+            proofs = row.get("proofs", [])
+            module_only_required = category in active_source_categories
+            standalone_required = row.get("standalone_runtime_required") is True
+            proof_rows: list[dict[str, Any]] = []
+
+            for proof in proofs:
+                proof_name = proof.get("name")
+                boundary = (
+                    base_boundary_by_name.get(proof_name, {})
+                    if category == "base_imp2_candidate"
+                    else generated_boundary_by_name.get(proof_name, {})
+                )
+                if category == "base_imp2_candidate":
+                    single_dut_boundary = (
+                        boundary.get("probe_dut_instantiation_count") == 1
+                        and boundary.get("probe_reference_instantiation_count") == 1
+                        and boundary.get("flist_exact_match") is True
+                    )
+                    selected_dut_rtl = [row["rtl"]]
+                    reference_rtl = boundary.get("reference_rtl")
+                    top_module = boundary.get("top_module", proof.get("top_module"))
+                else:
+                    single_dut_boundary = (
+                        proof.get("flist_exact_match") is True
+                        and boundary.get("flist_contains_only_selected_dut_and_probe") is True
+                        and boundary.get("composed_dependencies_absent_from_flist") is True
+                        and boundary.get("child_stubs_present_in_probe") is True
+                    )
+                    selected_dut_rtl = boundary.get("selected_dut_rtl", [row["rtl"]])
+                    reference_rtl = None
+                    top_module = proof.get("sv_module")
+
+                runtime_proof_passed = (
+                    proof.get("verilator_status") == "pass"
+                    and proof.get("ledger_checks_pass") is True
+                    and proof.get("recipe_checks_pass") is True
+                    and proof.get("phase_trace_checks_pass") is True
+                    and proof.get("phase_signal_trace_checks_pass") is True
+                    and proof.get("cpp_launcher_checks_pass") is True
+                    and proof.get("cpp_launcher_recipe_checks_pass") is True
+                    and proof.get("cpp_launcher_readme_cycle_checks_pass") is True
+                    and proof.get("cpp_launcher_result", {}).get("status") == "pass"
+                    and proof.get("cpp_launcher_result", {}).get("missing_stdout_markers", []) == []
+                )
+                proof_rows.append(
+                    {
+                        "name": proof_name,
+                        "top_module": top_module,
+                        "probe": proof.get("probe"),
+                        "flist": proof.get("flist"),
+                        "selected_dut_rtl": selected_dut_rtl,
+                        "reference_rtl": reference_rtl,
+                        "single_dut_boundary": single_dut_boundary,
+                        "runtime_proof_passed": runtime_proof_passed,
+                        "cpp_launcher_run_executable": proof.get(
+                            "cpp_launcher_result",
+                            {},
+                        ).get("run_executable"),
+                        "cycle_template": proof.get("cycle_template")
+                        or proof.get("cycle_contract", {}).get("template"),
+                    }
+                )
+
+            if module_only_required:
+                run_scope = "module_only_dpi_verilator"
+                status = (
+                    "pass"
+                    if row.get("modules_match_proof") is True
+                    and row.get("module_only_dpi_covered") is True
+                    and row.get("standalone_runtime_covered") is True
+                    and proof_rows
+                    and all(proof["single_dut_boundary"] for proof in proof_rows)
+                    and all(proof["runtime_proof_passed"] for proof in proof_rows)
+                    else "fail"
+                )
+            elif category == "generated_soc_top":
+                run_scope = "standalone_top_verilator"
+                status = (
+                    "pass"
+                    if row.get("modules_match_proof") is True
+                    and row.get("standalone_runtime_covered") is True
+                    and row.get("proof", {}).get("status") == "pass"
+                    else "fail"
+                )
+            else:
+                run_scope = "accepted_imp1_mock_verilator_runtime_and_contract"
+                status = (
+                    "pass"
+                    if row.get("modules_match_proof") is True
+                    and row.get("covered") is True
+                    and row.get("module_lint", {}).get("status") == "pass"
+                    and row.get("mock_runtime", {}).get("status") == "pass"
+                    and row.get("mock_runtime", {}).get("stdout_marker_present") is True
+                    else "fail"
+                )
+
+            audit_rows.append(
+                {
+                    "rtl": row["rtl"],
+                    "category": category,
+                    "defined_modules": row.get("defined_modules", []),
+                    "expected_modules": row.get("expected_modules", []),
+                    "modules_match_proof": row.get("modules_match_proof") is True,
+                    "run_scope": run_scope,
+                    "module_only_required": module_only_required,
+                    "standalone_runtime_required": standalone_required,
+                    "module_only_dpi_covered": row.get("module_only_dpi_covered"),
+                    "standalone_runtime_covered": row.get("standalone_runtime_covered"),
+                    "proof_count": len(proof_rows),
+                    "proofs": proof_rows,
+                    "status": status,
+                }
+            )
+
+        active_rows = [
+            row for row in audit_rows if row["category"] in active_source_categories
+        ]
+        checks = [
+            {
+                "name": "active_source_rtl_rows_have_module_only_runtime",
+                "status": "pass"
+                if active_rows
+                and all(row["status"] == "pass" for row in active_rows)
+                and all(row["module_only_required"] for row in active_rows)
+                else "fail",
+            },
+            {
+                "name": "module_only_runtime_rows_have_single_dut_boundaries",
+                "status": "pass"
+                if active_rows
+                and all(
+                    row["proofs"]
+                    and all(proof["single_dut_boundary"] for proof in row["proofs"])
+                    for row in active_rows
+                )
+                else "fail",
+            },
+            {
+                "name": "module_only_runtime_rows_have_cpp_launcher_runtime_evidence",
+                "status": "pass"
+                if active_rows
+                and all(
+                    row["proofs"]
+                    and all(proof["runtime_proof_passed"] for proof in row["proofs"])
+                    for row in active_rows
+                )
+                else "fail",
+            },
+            {
+                "name": "all_production_rtl_rows_parse_expected_modules",
+                "status": "pass"
+                if audit_rows
+                and all(row["modules_match_proof"] for row in audit_rows)
+                else "fail",
+            },
+            {
+                "name": "non_module_only_rows_have_explicit_top_or_mock_scope",
+                "status": "pass"
+                if audit_rows
+                and all(
+                    row["module_only_required"]
+                    or row["run_scope"]
+                    in {
+                        "standalone_top_verilator",
+                        "accepted_imp1_mock_verilator_runtime_and_contract",
+                    }
+                    for row in audit_rows
+                )
+                else "fail",
+            },
+        ]
+        return {
+            "schema": "e1-systemverilog-module-only-coverage-audit-v0",
+            "scope": (
+                "production RTL rows; active source-derived rows must have "
+                "single-DUT module-DPI Verilator runtime evidence"
+            ),
+            "status": "pass" if all(check["status"] == "pass" for check in checks) else "fail",
+            "active_source_categories": sorted(active_source_categories),
+            "row_count": len(audit_rows),
+            "active_module_only_row_count": len(active_rows),
+            "active_module_only_passed_count": sum(
+                1 for row in active_rows if row["status"] == "pass"
+            ),
+            "rows": audit_rows,
+            "checks": checks,
+        }
+
+    systemverilog_module_coverage_audit = systemverilog_module_only_coverage_audit()
+    systemverilog_module_coverage_audit_passed = (
+        systemverilog_module_coverage_audit["status"] == "pass"
+    )
+
+    def systemverilog_defined_module_runtime_scope_audit() -> dict[str, Any]:
+        module_rows: list[dict[str, Any]] = []
+        audit_rows_by_rtl = {
+            row["rtl"]: row
+            for row in systemverilog_module_coverage_audit.get("rows", [])
+        }
+        active_source_categories = {"base_imp2_candidate", "generated_full_checkpoint"}
+
+        for audit_row in systemverilog_module_coverage_audit.get("rows", []):
+            rtl = audit_row["rtl"]
+            production_row = production_row_by_rtl.get(rtl, {})
+            category = audit_row["category"]
+            defined_modules = audit_row.get("defined_modules", [])
+            proof_names = [
+                proof.get("name")
+                for proof in audit_row.get("proofs", [])
+                if proof.get("name")
+            ]
+            for sv_module in defined_modules:
+                if category in active_source_categories:
+                    runtime_scope = "module_only_dpi_verilator"
+                    evidence = [
+                        "e1/generated/pipeline/28_lowering_construction_certificate.json:systemverilog_module_coverage_audit",
+                        "e1/generated/pipeline/27_full_graph_module_dpi_binding.json",
+                    ]
+                    coverage_status = (
+                        "pass"
+                        if audit_row["status"] == "pass"
+                        and audit_row.get("module_only_dpi_covered") is True
+                        and audit_row.get("standalone_runtime_covered") is True
+                        and audit_row.get("proof_count", 0) > 0
+                        and all(
+                            proof["runtime_proof_passed"]
+                            and proof["single_dut_boundary"]
+                            for proof in audit_row.get("proofs", [])
+                        )
+                        else "fail"
+                    )
+                elif category == "generated_soc_top":
+                    runtime_scope = "standalone_top_verilator"
+                    evidence = [
+                        "e1/generated/pipeline/29_end_to_end_smoke.json:generated_soc_top_standalone_verilator",
+                        "e1/generated/pipeline/29_end_to_end_smoke.json:generated_soc_top_hierarchy",
+                    ]
+                    coverage_status = (
+                        "pass"
+                        if audit_row["status"] == "pass"
+                        and audit_row.get("standalone_runtime_covered") is True
+                        and production_row.get("proof", {}).get("status") == "pass"
+                        else "fail"
+                    )
+                else:
+                    runtime_scope = "accepted_imp1_mock_verilator_runtime_and_contract"
+                    evidence = [
+                        "e1/e1-h1/generated/imp1_mock_runtime/manifest.json",
+                        "e1/generated/pipeline/28_lowering_construction_certificate.json:target_rtl_evidence.production_rtl_inventory",
+                    ]
+                    coverage_status = (
+                        "pass"
+                        if category == "base_imp1_mock"
+                        and audit_row["status"] == "pass"
+                        and production_row.get("module_lint", {}).get("status") == "pass"
+                        and production_row.get("mock_runtime", {}).get("status") == "pass"
+                        and production_row.get("mock_runtime", {}).get(
+                            "stdout_marker_present"
+                        )
+                        is True
+                        else "fail"
+                    )
+
+                module_rows.append(
+                    {
+                        "rtl": rtl,
+                        "sv_module": sv_module,
+                        "category": category,
+                        "runtime_scope": runtime_scope,
+                        "source_row_status": audit_row["status"],
+                        "module_only_required": audit_row["module_only_required"],
+                        "standalone_runtime_required": audit_row[
+                            "standalone_runtime_required"
+                        ],
+                        "proof_names": proof_names,
+                        "proof_count": len(proof_names),
+                        "module_lint_status": production_row.get(
+                            "module_lint",
+                            {},
+                        ).get("status"),
+                        "mock_runtime_status": production_row.get(
+                            "mock_runtime",
+                            {},
+                        ).get("status"),
+                        "mock_runtime_main": production_row.get(
+                            "mock_runtime",
+                            {},
+                        ).get("main"),
+                        "mock_runtime_stdout_marker_present": production_row.get(
+                            "mock_runtime",
+                            {},
+                        ).get("stdout_marker_present"),
+                        "evidence": evidence,
+                        "status": coverage_status,
+                    }
+                )
+
+        active_rows = [
+            row for row in module_rows if row["category"] in active_source_categories
+        ]
+        imp1_rows = [
+            row for row in module_rows if row["category"] == "base_imp1_mock"
+        ]
+        top_rows = [
+            row for row in module_rows if row["category"] == "generated_soc_top"
+        ]
+        expected_defined_module_count = sum(
+            len(row.get("defined_modules", []))
+            for row in systemverilog_module_coverage_audit.get("rows", [])
+        )
+        checks = [
+            {
+                "name": "every_defined_systemverilog_module_has_runtime_scope",
+                "status": "pass"
+                if module_rows
+                and all(row["status"] == "pass" for row in module_rows)
+                else "fail",
+            },
+            {
+                "name": "active_defined_modules_use_module_only_dpi_scope",
+                "status": "pass"
+                if active_rows
+                and all(
+                    row["runtime_scope"] == "module_only_dpi_verilator"
+                    and row["status"] == "pass"
+                    for row in active_rows
+                )
+                else "fail",
+            },
+            {
+                "name": "generated_top_defined_modules_use_standalone_scope",
+                "status": "pass"
+                if top_rows
+                and all(
+                    row["runtime_scope"] == "standalone_top_verilator"
+                    and row["status"] == "pass"
+                    for row in top_rows
+                )
+                else "fail",
+            },
+            {
+                "name": "imp1_mock_defined_modules_use_verilator_runtime_and_contract_scope",
+                "status": "pass"
+                if imp1_rows
+                and all(
+                    row["runtime_scope"]
+                    == "accepted_imp1_mock_verilator_runtime_and_contract"
+                    and row["status"] == "pass"
+                    and row["module_lint_status"] == "pass"
+                    and row["mock_runtime_status"] == "pass"
+                    and row["mock_runtime_stdout_marker_present"] is True
+                    for row in imp1_rows
+                )
+                else "fail",
+            },
+            {
+                "name": "defined_module_rows_cover_all_inventory_defined_modules",
+                "status": "pass"
+                if len(module_rows) == expected_defined_module_count
+                and set(audit_rows_by_rtl) == {
+                    row["rtl"]
+                    for row in systemverilog_module_coverage_audit.get("rows", [])
+                }
+                else "fail",
+            },
+        ]
+        return {
+            "schema": "e1-systemverilog-defined-module-runtime-scope-audit-v0",
+            "scope": (
+                "one row per parsed SystemVerilog module in the production RTL "
+                "inventory, with explicit module-only, standalone-top, or "
+                "accepted-mock Verilator runtime scope"
+            ),
+            "status": "pass" if all(check["status"] == "pass" for check in checks) else "fail",
+            "defined_module_count": len(module_rows),
+            "active_module_only_defined_module_count": len(active_rows),
+            "imp1_mock_defined_module_count": len(imp1_rows),
+            "standalone_top_defined_module_count": len(top_rows),
+            "rows": module_rows,
+            "checks": checks,
+        }
+
+    systemverilog_defined_module_runtime_audit = (
+        systemverilog_defined_module_runtime_scope_audit()
+    )
+    systemverilog_defined_module_runtime_audit_passed = (
+        systemverilog_defined_module_runtime_audit["status"] == "pass"
+    )
+
+    def cycle_evidence(
+        module: dict[str, Any],
+        *,
+        cycle_contract: str,
+        readme_cycle_coverage: str,
+        module_interfaces_doc: str,
+        verilator_execution_report: str,
+    ) -> dict[str, Any]:
+        contract = module.get("cycle_contract", {})
+        readme_cycle = module.get("readme_cycle_coverage", {})
+        verilator_execution = module.get("verilator_execution", {})
+        status = (
+            "pass"
+            if module
+            and all(check["status"] == "pass" for check in contract.get("checks", []))
+            and all(check["status"] == "pass" for check in readme_cycle.get("checks", []))
+            and verilator_execution.get("status") == "pass"
+            and readme_cycle.get("phase_names")
+            == [step["phase"] for step in contract.get("cycles", [])]
+            else "fail"
+        )
+        return {
+            "status": status,
+            "cycle_contract": cycle_contract,
+            "readme_cycle_coverage": readme_cycle_coverage,
+            "module_interfaces_doc": module_interfaces_doc,
+            "verilator_execution_report": verilator_execution_report,
+            "cycle_template": contract.get("template"),
+            "cycle_period": contract.get("cycle_period"),
+            "cycle_count": len(contract.get("cycles", [])),
+            "phase_names": readme_cycle.get("phase_names", []),
+            "readme_diagram": readme_cycle.get("readme_diagram"),
+            "readme_index": readme_cycle.get("readme_index"),
+            "observed_phase_trace_count": verilator_execution.get("observed_phase_trace_count"),
+            "observed_phase_signal_trace_count": verilator_execution.get(
+                "observed_phase_signal_trace_count"
+            ),
+        }
+
+    def standalone_runtime_proof(rtl: str) -> dict[str, Any]:
+        inventory_entry = standalone_runtime_by_rtl.get(rtl, {})
+        row = production_row_by_rtl.get(rtl, {})
+        return {
+            "status": (
+                "pass"
+                if inventory_entry.get("covered") is True
+                and row.get("standalone_runtime_covered") is True
+                else "fail"
+            ),
+            "inventory": (
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:"
+                "target_rtl_evidence.production_rtl_inventory.standalone_runtime_inventory"
+            ),
+            "category": inventory_entry.get("category", row.get("category")),
+            "coverage_kind": inventory_entry.get("coverage_kind", row.get("coverage_kind")),
+            "standalone_runtime_kind": inventory_entry.get(
+                "standalone_runtime_kind",
+                row.get("standalone_runtime_kind"),
+            ),
+            "requirement": inventory_entry.get(
+                "requirement",
+                row.get("standalone_runtime_requirement"),
+            ),
+            "covered": inventory_entry.get("covered"),
+        }
+
+    def module_only_proof(
+        *,
+        family: str,
+        isolation: dict[str, Any],
+        boundary: dict[str, Any],
+        proof_path: str,
+        verilator_execution_report: str,
+    ) -> dict[str, Any]:
+        boundary_ok = (
+            boundary.get("flist_exact_match") is True
+            or boundary.get("flist_contains_only_selected_dut_and_probe") is True
+        )
+        return {
+            "required": True,
+            "status": (
+                "pass"
+                if isolation
+                and boundary
+                and boundary_ok
+                and all(check["status"] == "pass" for check in isolation.get("checks", []))
+                else "fail"
+            ),
+            "family": family,
+            "module_isolation_proof": proof_path,
+            "verilator_execution_report": verilator_execution_report,
+            "flist": isolation.get("flist", boundary.get("flist")),
+            "probe": isolation.get("probe", boundary.get("probe")),
+            "boundary": isolation.get("boundary"),
+            "selected_dut_rtl": (
+                [isolation["imp2_rtl"]]
+                if isolation.get("imp2_rtl")
+                else isolation.get("module_only_flist_rtl", boundary.get("selected_dut_rtl", []))
+            ),
+            "child_stub_modules": isolation.get("child_stub_modules", []),
+            "forbidden_design_neighbors": isolation.get(
+                "forbidden_design_neighbors",
+                isolation.get("forbidden_child_modules", []),
+            ),
+        }
+
+    def source_boundary_entry(
+        *,
+        name: str,
+        family: str,
+        rtl: str,
+        top_module: str,
+        module: dict[str, Any],
+        isolation: dict[str, Any],
+        boundary: dict[str, Any],
+        cycle_contract: str,
+        readme_cycle_coverage: str,
+        module_interfaces_doc: str,
+        module_isolation_proof: str,
+        verilator_execution_report: str,
+    ) -> dict[str, Any]:
+        role = boundary_role_by_name.get(name, "unclassified")
+        return {
+            "name": name,
+            "family": family,
+            "role": role,
+            "role_description": role_descriptions.get(role, "Unclassified module boundary."),
+            "rtl": rtl,
+            "top_module": top_module,
+            "standalone_runtime_required": True,
+            "standalone_runtime": standalone_runtime_proof(rtl),
+            "module_only_runtime_required": True,
+            "module_only_proof": module_only_proof(
+                family=family,
+                isolation=isolation,
+                boundary=boundary,
+                proof_path=module_isolation_proof,
+                verilator_execution_report=verilator_execution_report,
+            ),
+            "cycle_evidence_required": True,
+            "cycle_evidence": cycle_evidence(
+                module,
+                cycle_contract=cycle_contract,
+                readme_cycle_coverage=readme_cycle_coverage,
+                module_interfaces_doc=module_interfaces_doc,
+                verilator_execution_report=verilator_execution_report,
+            ),
+        }
+
+    module_boundary_taxonomy_entries: list[dict[str, Any]] = []
+    for name, module in base_modules_by_name.items():
+        isolation = base_isolation_by_name.get(name, {})
+        boundary = base_boundary_by_name.get(name, {})
+        rtl = boundary.get("imp2_rtl") or isolation.get("imp2_rtl")
+        module_boundary_taxonomy_entries.append(
+            source_boundary_entry(
+                name=name,
+                family="base_imp2_candidate",
+                rtl=rtl,
+                top_module=module["top_module"],
+                module=module,
+                isolation=isolation,
+                boundary=boundary,
+                cycle_contract=module_dpi_report["cycle_contract"],
+                readme_cycle_coverage=module_dpi_report["readme_cycle_coverage"],
+                module_interfaces_doc=module_dpi_report["module_interfaces_doc"],
+                module_isolation_proof=module_dpi_report["module_isolation_proof"],
+                verilator_execution_report=module_dpi_report["verilator_execution_report"],
+            )
+        )
+    for name, module in generated_modules_by_name.items():
+        isolation = generated_isolation_by_name.get(name, {})
+        boundary = generated_boundary_by_name.get(name, {})
+        rtl = isolation.get("dut_rtl") or next(iter(boundary.get("selected_dut_rtl", [])), "")
+        module_boundary_taxonomy_entries.append(
+            source_boundary_entry(
+                name=name,
+                family="generated_full_checkpoint",
+                rtl=rtl,
+                top_module=module["top_module"],
+                module=module,
+                isolation=isolation,
+                boundary=boundary,
+                cycle_contract=full_checkpoint_module_dpi["cycle_contract"],
+                readme_cycle_coverage=full_checkpoint_module_dpi["readme_cycle_coverage"],
+                module_interfaces_doc=full_checkpoint_module_dpi["module_interfaces_doc"],
+                module_isolation_proof=full_checkpoint_module_dpi["module_isolation_proof"],
+                verilator_execution_report=full_checkpoint_module_dpi[
+                    "verilator_execution_report"
+                ],
+            )
+        )
+    module_boundary_taxonomy_entries.append(
+        {
+            "name": "generated_soc_top",
+            "family": "generated_soc_top",
+            "role": boundary_role_by_name["generated_soc_top"],
+            "role_description": role_descriptions["top_glue"],
+            "rtl": soc_top_artifacts["top"],
+            "top_module": "e1_h1_soc_top",
+            "standalone_runtime_required": True,
+            "standalone_runtime": standalone_runtime_proof(soc_top_artifacts["top"]),
+            "module_only_runtime_required": False,
+            "module_only_proof": {
+                "required": False,
+                "status": "pass",
+                "reason": "generated_soc_top_is_composition_boundary_with_standalone_cpp_verilator_smoke",
+                "hierarchy_proof": "e1/generated/pipeline/29_end_to_end_smoke.json:generated_soc_top_hierarchy",
+            },
+            "cycle_evidence_required": False,
+            "cycle_evidence": {
+                "status": "pass" if generated_soc_top_hierarchy["status"] == "pass" else "fail",
+                "generated_soc_top_doc": "e1/e1-h1/docs/generated-soc-top.md",
+                "verilator_execution_report": (
+                    "e1/generated/pipeline/29_end_to_end_smoke.json:"
+                    "generated_soc_top_standalone_verilator"
+                ),
+                "reason": "top glue is covered by hierarchy and standalone top smoke rather than a module-only cycle template",
+            },
+        }
+    )
+    module_boundary_roles = {
+        role: [
+            entry["name"]
+            for entry in module_boundary_taxonomy_entries
+            if entry["role"] == role
+        ]
+        for role in required_taxonomy_roles
+    }
+    expected_taxonomy_names = (
+        list(base_modules_by_name)
+        + list(generated_modules_by_name)
+        + ["generated_soc_top"]
+    )
+    expected_active_runtime_paths = production_rtl_inventory.get(
+        "standalone_runtime_inventory",
+        {},
+    ).get("required_paths", [])
+    taxonomy_active_runtime_paths = unique_ordered(
+        [
+            entry["rtl"]
+            for entry in module_boundary_taxonomy_entries
+            if entry["standalone_runtime_required"]
+        ]
+    )
+    module_boundary_taxonomy_checks = [
+        {
+            "name": "module_boundary_taxonomy_covers_all_named_boundaries",
+            "status": "pass"
+            if set(entry["name"] for entry in module_boundary_taxonomy_entries)
+            == set(expected_taxonomy_names)
+            else "fail",
+        },
+        {
+            "name": "module_boundary_taxonomy_covers_all_active_runtime_modules",
+            "status": "pass"
+            if set(taxonomy_active_runtime_paths) == set(expected_active_runtime_paths)
+            else "fail",
+        },
+        {
+            "name": "module_boundary_taxonomy_preserves_cpu_latch_systolic_categories",
+            "status": "pass"
+            if {
+                "control_cpu",
+                "control_scheduler",
+                "control_slot_engine",
+                "graph_sequencer",
+            }.issubset(set(module_boundary_roles["cpu_control"]))
+            and module_boundary_roles["latch_buffer"] == ["ingress_sram"]
+            and module_boundary_roles["systolic_array"] == ["systolic_array"]
+            and set(module_boundary_roles["linear_systolic_path"])
+            == {"linear_scheduler", "linear_tile_engine", "linear_slot_engine"}
+            else "fail",
+        },
+        {
+            "name": "module_boundary_taxonomy_classifies_ingress_sram_and_top_glue",
+            "status": "pass"
+            if module_boundary_roles["digital_ingress"] == ["rgmii_ethernet_ingress"]
+            and set(module_boundary_roles["sram_shell"]) == {"activation_sram", "accumulator_sram"}
+            and set(module_boundary_roles["top_glue"])
+            == {"full_checkpoint_top", "generated_soc_top"}
+            else "fail",
+        },
+        {
+            "name": "module_boundary_taxonomy_entries_have_runtime_and_cycle_evidence",
+            "status": "pass"
+            if all(
+                entry["standalone_runtime"]["status"] == "pass"
+                and (
+                    not entry["module_only_runtime_required"]
+                    or entry["module_only_proof"]["status"] == "pass"
+                )
+                and (
+                    not entry["cycle_evidence_required"]
+                    or entry["cycle_evidence"]["status"] == "pass"
+                )
+                for entry in module_boundary_taxonomy_entries
+            )
+            else "fail",
+        },
+    ]
+    module_boundary_taxonomy = {
+        "schema": "e1-module-boundary-taxonomy-v0",
+        "status": (
+            "pass"
+            if all(check["status"] == "pass" for check in module_boundary_taxonomy_checks)
+            else "fail"
+        ),
+        "scope": "active generated SoC top, base imp2 module boundaries, and generated full-checkpoint module boundaries",
+        "roles": module_boundary_roles,
+        "role_descriptions": role_descriptions,
+        "expected_boundary_names": expected_taxonomy_names,
+        "active_runtime_paths": taxonomy_active_runtime_paths,
+        "expected_active_runtime_paths": expected_active_runtime_paths,
+        "entries": module_boundary_taxonomy_entries,
+        "checks": module_boundary_taxonomy_checks,
+    }
+    module_boundary_taxonomy_passed = module_boundary_taxonomy["status"] == "pass"
+    objective_coverage = [
+        {
+            "requirement": "full_rtl_lowering_current_scope",
+            "status": "pass"
+            if full_checkpoint_graph_rtl_lowering["status"] == "pass"
+            and full_checkpoint_graph_rtl_lowering["full_checkpoint_structural_rtl_execution"]
+            and rtl_top["full_checkpoint_structural_rtl_execution"]
+            and rtl_top["full_command_verilator_report"]["status"] == "pass"
+            else "fail",
+            "evidence": [
+                "e1/generated/pipeline/25_full_checkpoint_graph_rtl_lowering_proof.json",
+                "e1/generated/pipeline/24_full_checkpoint_rtl_top.json",
+            ],
+            "scope": rtl_top["full_checkpoint_rtl_execution_scope"],
+        },
+        {
+            "requirement": "correct_by_construction",
+            "status": "pass"
+            if module_dpi_passed
+            and full_checkpoint_module_dpi_passed
+            and source_derived_dpi_passed
+            and target_rtl_artifacts_passed
+            and generated_soc_top_construction_artifacts_passed
+            and production_rtl_inventory_passed
+            else "fail",
+            "evidence": [
+                "e1/generated/pipeline/12_module_dpi_generation.json",
+                "e1/generated/pipeline/26_full_checkpoint_module_dpi_generation.json",
+                "e1/generated/pipeline/27_full_graph_module_dpi_binding.json",
+                "e1/generated/pipeline/28_lowering_construction_certificate.json",
+            ],
+        },
+        {
+            "requirement": "cpp_program_generates_dpi_and_tests_modules",
+            "status": "pass"
+            if module_dpi_generator_sources_passed
+            and module_dpi_generator_build_and_run_recorded
+            and module_dpi_generator_stdout_reports_module_counts
+            and dpi_generation_provenance_audit_passed
+            and module_dpi_cpp_verilator_launchers_passed
+            and module_dpi_cpp_verilator_launchers_validate_runtime_markers
+            and module_dpi_cpp_verilator_launchers_validate_runtime_phase_traces
+            and module_dpi_passed
+            and full_checkpoint_module_dpi_passed
+            else "fail",
+            "evidence": [
+                module_dpi_report["generator"],
+                full_checkpoint_module_dpi["generator"],
+                "e1/generated/pipeline/12_module_dpi_generation.json:generator_build",
+                "e1/generated/pipeline/12_module_dpi_generation.json:generator_execution",
+                "e1/generated/pipeline/26_full_checkpoint_module_dpi_generation.json:generator_build",
+                "e1/generated/pipeline/26_full_checkpoint_module_dpi_generation.json:generator_execution",
+                module_dpi_report["verilator_execution_launcher"],
+                full_checkpoint_module_dpi["verilator_execution_launcher"],
+                module_dpi_report["verilator_execution_report"],
+                full_checkpoint_module_dpi["verilator_execution_report"],
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:dpi_generation_provenance_audit",
+            ],
+        },
+        {
+            "requirement": "each_active_source_derived_systemverilog_module_has_module_only_dpi_proof",
+            "status": "pass"
+            if source_derived_dpi_passed
+            and generated_child_stub_boundary_passed
+            and base_module_boundary_passed
+            and source_derived_inventory_module_only_passed
+            else "fail",
+            "evidence": [
+                "e1/generated/pipeline/27_full_graph_module_dpi_binding.json",
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:target_rtl_evidence.production_rtl_inventory.module_only_dpi_inventory",
+            ],
+            "required_categories": production_rtl_inventory.get("module_only_dpi_inventory", {}).get(
+                "required_categories", []
+            ),
+            "required_paths": production_rtl_inventory.get("module_only_dpi_inventory", {}).get(
+                "required_paths", []
+            ),
+        },
+        {
+            "requirement": "each_active_systemverilog_module_has_single_dut_runtime_audit",
+            "status": "pass" if systemverilog_module_coverage_audit_passed else "fail",
+            "evidence": [
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:systemverilog_module_coverage_audit",
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:target_rtl_evidence.production_rtl_inventory",
+            ],
+            "active_source_categories": systemverilog_module_coverage_audit[
+                "active_source_categories"
+            ],
+            "active_module_only_row_count": systemverilog_module_coverage_audit[
+                "active_module_only_row_count"
+            ],
+        },
+        {
+            "requirement": "each_defined_systemverilog_module_has_explicit_runtime_scope",
+            "status": "pass" if systemverilog_defined_module_runtime_audit_passed else "fail",
+            "evidence": [
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:systemverilog_defined_module_runtime_audit",
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:systemverilog_module_coverage_audit",
+            ],
+            "defined_module_count": systemverilog_defined_module_runtime_audit[
+                "defined_module_count"
+            ],
+            "active_module_only_defined_module_count": (
+                systemverilog_defined_module_runtime_audit[
+                    "active_module_only_defined_module_count"
+                ]
+            ),
+            "imp1_mock_defined_module_count": (
+                systemverilog_defined_module_runtime_audit[
+                    "imp1_mock_defined_module_count"
+                ]
+            ),
+            "standalone_top_defined_module_count": (
+                systemverilog_defined_module_runtime_audit[
+                    "standalone_top_defined_module_count"
+                ]
+            ),
+        },
+        {
+            "requirement": "each_active_systemverilog_module_has_standalone_runtime_proof",
+            "status": "pass" if active_rtl_standalone_runtime_passed else "fail",
+            "evidence": [
+                "e1/generated/pipeline/29_end_to_end_smoke.json:generated_soc_top_standalone_verilator",
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:target_rtl_evidence.production_rtl_inventory.standalone_runtime_inventory",
+            ],
+            "required_categories": production_rtl_inventory.get(
+                "standalone_runtime_inventory", {}
+            ).get("required_categories", []),
+            "required_paths": production_rtl_inventory.get(
+                "standalone_runtime_inventory", {}
+            ).get("required_paths", []),
+            "exempt_categories": production_rtl_inventory.get(
+                "standalone_runtime_inventory", {}
+            ).get("exempt_categories", []),
+        },
+        {
+            "requirement": "module_interfaces_document_every_input_output_signal",
+            "status": "pass" if module_interface_signal_inventory_passed else "fail",
+            "evidence": [
+                module_dpi_report["module_interfaces_doc"],
+                full_checkpoint_module_dpi["module_interfaces_doc"],
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:module_interface_signal_inventory",
+            ],
+            "base_module_count": base_module_interface_signal_inventory["module_count"],
+            "generated_full_checkpoint_module_count": (
+                generated_module_interface_signal_inventory["module_count"]
+            ),
+            "scope": module_interface_signal_inventory["scope"],
+        },
+        {
+            "requirement": "systolic_array_result_digest_matches_cpp_scoreboard",
+            "status": systolic_array_result_digest_proof["status"],
+            "evidence": [
+                "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
+                module_dpi_report["verilator_execution_report"],
+                module_dpi_report["verilator_execution_launcher"],
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:systolic_array_result_digest_proof",
+            ],
+            "result_signal": systolic_array_result_digest_proof["result_signal"],
+            "expected_digest_marker": systolic_array_result_digest_proof[
+                "expected_digest_marker"
+            ],
+        },
+        {
+            "requirement": "module_boundary_taxonomy_proves_separation_of_concerns",
+            "status": "pass" if module_boundary_taxonomy_passed else "fail",
+            "evidence": [
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:module_boundary_taxonomy",
+                module_dpi_report["module_isolation_proof"],
+                full_checkpoint_module_dpi["module_isolation_proof"],
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:target_rtl_evidence.production_rtl_inventory.standalone_runtime_inventory",
+            ],
+            "roles": module_boundary_taxonomy["roles"],
+            "active_runtime_paths": module_boundary_taxonomy["active_runtime_paths"],
+        },
+        {
+            "requirement": "full_command_trace_anchors_match_cpp_schedule",
+            "status": "pass"
+            if rtl_top["full_command_trace_anchor_check"]
+            and full_checkpoint_graph_rtl_lowering["full_checkpoint_command_stream_rtl_execution"]
+            else "fail",
+            "evidence": [
+                "e1/generated/pipeline/24_full_checkpoint_rtl_top.json:full_command_trace_anchors",
+                "e1/generated/pipeline/25_full_checkpoint_graph_rtl_lowering_proof.json:checks.full_command_trace_anchors_match_cpp_schedule",
+            ],
+        },
+        {
+            "requirement": "full_command_per_op_trace_coverage_matches_cpp_schedule",
+            "status": "pass"
+            if rtl_top["full_command_per_op_trace_coverage_check"]
+            and full_checkpoint_graph_rtl_lowering["full_checkpoint_command_stream_rtl_execution"]
+            else "fail",
+            "evidence": [
+                "e1/generated/pipeline/24_full_checkpoint_rtl_top.json:full_command_per_op_trace_coverage",
+                "e1/generated/pipeline/25_full_checkpoint_graph_rtl_lowering_proof.json:checks.full_command_per_op_trace_coverage_matches_cpp_schedule",
+            ],
+        },
+        {
+            "requirement": "cpu_latch_buffer_systolic_array_are_separate_boundaries",
+            "status": "pass"
+            if module_isolation_passed
+            and full_checkpoint_module_isolation_passed
+            and generated_soc_top_hierarchy["status"] == "pass"
+            else "fail",
+            "evidence": [
+                module_dpi_report["module_isolation_proof"],
+                full_checkpoint_module_dpi["module_isolation_proof"],
+                "e1/generated/pipeline/29_end_to_end_smoke.json:generated_soc_top_hierarchy",
+            ],
+            "separated_boundaries": {
+                "base": module_dpi_report.get("module_isolation", {}).get("separated_boundaries", {}),
+                "generated_full_checkpoint": full_checkpoint_module_dpi.get("module_isolation", {}).get(
+                    "separated_boundaries", {}
+                ),
+                "generated_soc_top": generated_soc_top_hierarchy.get("separated_boundaries", {}),
+            },
+        },
+        {
+            "requirement": "latch_buffer_holds_and_releases_data",
+            "status": "pass"
+            if module_dpi_report.get("module_isolation", {})
+            .get("separated_boundaries", {})
+            .get("latch_buffer_module")
+            == "ingress_sram"
+            and rtl_top["full_command_verilator_report"]["saw_latched_hold"]
+            else "fail",
+            "evidence": [
+                "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv",
+                "e1/generated/pipeline/24_full_checkpoint_rtl_top.json:full_command_verilator_report",
+            ],
+        },
+        {
+            "requirement": "each_cycle_is_identified_in_readme_diagrams",
+            "status": "pass"
+            if base_module_cycle_docs_passed
+            and generated_full_checkpoint_module_cycle_docs_passed
+            and cycle_diagram_documentation_audit_passed
+            and all(
+                check["status"] == "pass"
+                for check in full_checkpoint_graph_rtl_lowering["readme_cycle_coverage"][
+                    "diagram_checks"
+                ]
+            )
+            and all(
+                all(check["status"] == "pass" for check in template["checks"])
+                for template in full_checkpoint_graph_rtl_lowering["readme_cycle_coverage"][
+                    "templates"
+                ]
+            )
+            else "fail",
+            "evidence": [
+                "e1/e1-h1/docs/modules/README.md",
+                module_dpi_report["readme_cycle_coverage"],
+                full_checkpoint_module_dpi["readme_cycle_coverage"],
+                "e1/generated/pipeline/25_full_checkpoint_graph_rtl_lowering_proof.json:readme_cycle_coverage",
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:cycle_diagram_audit",
+            ],
+        },
+        {
+            "requirement": "runtime_cycle_phase_traces_match_readme_contracts",
+            "status": "pass"
+            if base_runtime_phase_traces_passed
+            and generated_runtime_phase_traces_passed
+            and source_derived_dpi_passed
+            and rtl_top["full_command_cycle_phase_check"]
+            else "fail",
+            "evidence": [
+                module_dpi_report["verilator_execution_report"],
+                full_checkpoint_module_dpi["verilator_execution_report"],
+                "e1/generated/pipeline/27_full_graph_module_dpi_binding.json:source_derived_module_dpi_coverage",
+                "e1/generated/pipeline/24_full_checkpoint_rtl_top.json:full_command_cycle_phase_check",
+            ],
+        },
+    ]
+    certificate_non_claims = [
+        "This certificate does not claim TinyLlama numeric output equivalence.",
+        "Structural RTL execution does not claim output tensor equivalence.",
+        "This certificate does not claim live full-checkpoint StableHLO export without the checkpoint dependencies and cache.",
+    ]
+    objective_by_requirement = {
+        entry["requirement"]: entry
+        for entry in objective_coverage
+    }
+
+    def objective_status(*requirements: str) -> str:
+        return (
+            "pass"
+            if requirements
+            and all(
+                objective_by_requirement.get(requirement, {}).get("status") == "pass"
+                for requirement in requirements
+            )
+            else "fail"
+        )
+
+    taxonomy_entry_by_name = {
+        entry["name"]: entry
+        for entry in module_boundary_taxonomy.get("entries", [])
+    }
+    cpu_boundary_names = [
+        "control_cpu",
+        "control_scheduler",
+        "control_slot_engine",
+        "graph_sequencer",
+    ]
+    cpu_boundaries_are_isolated = all(
+        taxonomy_entry_by_name.get(name, {}).get("role") == "cpu_control"
+        and taxonomy_entry_by_name.get(name, {}).get("standalone_runtime", {}).get(
+            "status"
+        )
+        == "pass"
+        and (
+            not taxonomy_entry_by_name.get(name, {}).get("module_only_runtime_required")
+            or taxonomy_entry_by_name.get(name, {}).get("module_only_proof", {}).get(
+                "status"
+            )
+            == "pass"
+        )
+        for name in cpu_boundary_names
+    )
+    systolic_boundary_is_isolated = (
+        module_boundary_taxonomy.get("roles", {}).get("systolic_array") == ["systolic_array"]
+        and taxonomy_entry_by_name.get("systolic_array", {}).get(
+            "standalone_runtime",
+            {},
+        ).get("status")
+        == "pass"
+        and taxonomy_entry_by_name.get("systolic_array", {}).get(
+            "module_only_proof",
+            {},
+        ).get("status")
+        == "pass"
+    )
+    latch_buffer_boundary_is_isolated = (
+        module_boundary_taxonomy.get("roles", {}).get("latch_buffer") == ["ingress_sram"]
+        and taxonomy_entry_by_name.get("ingress_sram", {}).get(
+            "standalone_runtime",
+            {},
+        ).get("status")
+        == "pass"
+        and taxonomy_entry_by_name.get("ingress_sram", {}).get(
+            "module_only_proof",
+            {},
+        ).get("status")
+        == "pass"
+    )
+    objective_traceability_rows = [
+        {
+            "objective_phrase": "try full rtl lowering",
+            "mapped_requirements": [
+                "full_rtl_lowering_current_scope",
+                "full_command_trace_anchors_match_cpp_schedule",
+                "full_command_per_op_trace_coverage_matches_cpp_schedule",
+            ],
+            "status": objective_status(
+                "full_rtl_lowering_current_scope",
+                "full_command_trace_anchors_match_cpp_schedule",
+                "full_command_per_op_trace_coverage_matches_cpp_schedule",
+            ),
+            "evidence": [
+                "e1/generated/pipeline/24_full_checkpoint_rtl_top.json",
+                "e1/generated/pipeline/25_full_checkpoint_graph_rtl_lowering_proof.json",
+            ],
+            "verified_scope": rtl_top["full_checkpoint_rtl_execution_scope"],
+        },
+        {
+            "objective_phrase": "correct to be construction",
+            "mapped_requirements": [
+                "correct_by_construction",
+                "each_active_systemverilog_module_has_single_dut_runtime_audit",
+                "each_defined_systemverilog_module_has_explicit_runtime_scope",
+                "each_active_systemverilog_module_has_standalone_runtime_proof",
+            ],
+            "status": objective_status(
+                "correct_by_construction",
+                "each_active_systemverilog_module_has_single_dut_runtime_audit",
+                "each_defined_systemverilog_module_has_explicit_runtime_scope",
+                "each_active_systemverilog_module_has_standalone_runtime_proof",
+            ),
+            "evidence": [
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:checks",
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:target_rtl_evidence.production_rtl_inventory",
+            ],
+        },
+        {
+            "objective_phrase": "make a c++ program that automatically generates the dpi",
+            "mapped_requirements": [
+                "cpp_program_generates_dpi_and_tests_modules",
+            ],
+            "status": (
+                "pass"
+                if objective_status("cpp_program_generates_dpi_and_tests_modules") == "pass"
+                and dpi_generation_provenance_audit_passed
+                else "fail"
+            ),
+            "evidence": [
+                module_dpi_report["generator"],
+                full_checkpoint_module_dpi["generator"],
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:dpi_generation_provenance_audit",
+            ],
+            "generated_module_count": dpi_generation_provenance_audit["module_count"],
+            "generated_artifact_count": dpi_generation_provenance_audit[
+                "generated_artifact_count"
+            ],
+        },
+        {
+            "objective_phrase": "test each systemverilog module by itself",
+            "mapped_requirements": [
+                "each_defined_systemverilog_module_has_explicit_runtime_scope",
+                "each_active_source_derived_systemverilog_module_has_module_only_dpi_proof",
+                "each_active_systemverilog_module_has_single_dut_runtime_audit",
+            ],
+            "status": objective_status(
+                "each_defined_systemverilog_module_has_explicit_runtime_scope",
+                "each_active_source_derived_systemverilog_module_has_module_only_dpi_proof",
+                "each_active_systemverilog_module_has_single_dut_runtime_audit",
+            ),
+            "evidence": [
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:systemverilog_module_coverage_audit",
+                "e1/generated/pipeline/27_full_graph_module_dpi_binding.json",
+            ],
+            "active_module_only_row_count": systemverilog_module_coverage_audit[
+                "active_module_only_row_count"
+            ],
+            "defined_module_count": systemverilog_defined_module_runtime_audit[
+                "defined_module_count"
+            ],
+        },
+        {
+            "objective_phrase": "clear separation of concerns",
+            "mapped_requirements": [
+                "module_boundary_taxonomy_proves_separation_of_concerns",
+                "cpu_latch_buffer_systolic_array_are_separate_boundaries",
+            ],
+            "status": objective_status(
+                "module_boundary_taxonomy_proves_separation_of_concerns",
+                "cpu_latch_buffer_systolic_array_are_separate_boundaries",
+            ),
+            "evidence": [
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:module_boundary_taxonomy",
+                module_dpi_report["module_isolation_proof"],
+                full_checkpoint_module_dpi["module_isolation_proof"],
+            ],
+            "roles": module_boundary_taxonomy["roles"],
+        },
+        {
+            "objective_phrase": "the systolic array should be by itself",
+            "mapped_requirements": [
+                "module_boundary_taxonomy_proves_separation_of_concerns",
+                "systolic_array_result_digest_matches_cpp_scoreboard",
+            ],
+            "status": (
+                "pass"
+                if objective_status(
+                    "module_boundary_taxonomy_proves_separation_of_concerns",
+                    "systolic_array_result_digest_matches_cpp_scoreboard",
+                )
+                == "pass"
+                and systolic_boundary_is_isolated
+                else "fail"
+            ),
+            "evidence": [
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:module_boundary_taxonomy.entries.systolic_array",
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:systolic_array_result_digest_proof",
+            ],
+            "boundary": taxonomy_entry_by_name.get("systolic_array", {}),
+        },
+        {
+            "objective_phrase": "the cpus should be by itself",
+            "mapped_requirements": [
+                "module_boundary_taxonomy_proves_separation_of_concerns",
+                "cpu_latch_buffer_systolic_array_are_separate_boundaries",
+            ],
+            "status": (
+                "pass"
+                if objective_status(
+                    "module_boundary_taxonomy_proves_separation_of_concerns",
+                    "cpu_latch_buffer_systolic_array_are_separate_boundaries",
+                )
+                == "pass"
+                and cpu_boundaries_are_isolated
+                else "fail"
+            ),
+            "evidence": [
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:module_boundary_taxonomy.roles.cpu_control",
+            ],
+            "cpu_boundaries": {
+                name: taxonomy_entry_by_name.get(name, {})
+                for name in cpu_boundary_names
+            },
+        },
+        {
+            "objective_phrase": "there should be a buffer that latches",
+            "mapped_requirements": [
+                "latch_buffer_holds_and_releases_data",
+                "module_boundary_taxonomy_proves_separation_of_concerns",
+            ],
+            "status": (
+                "pass"
+                if objective_status(
+                    "latch_buffer_holds_and_releases_data",
+                    "module_boundary_taxonomy_proves_separation_of_concerns",
+                )
+                == "pass"
+                and latch_buffer_boundary_is_isolated
+                else "fail"
+            ),
+            "evidence": [
+                "e1/generated/pipeline/24_full_checkpoint_rtl_top.json:full_command_verilator_report.saw_latched_hold",
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:module_boundary_taxonomy.entries.ingress_sram",
+            ],
+            "boundary": taxonomy_entry_by_name.get("ingress_sram", {}),
+        },
+        {
+            "objective_phrase": "each cycle to be clearly identified and in a diagram placed in the readme",
+            "mapped_requirements": [
+                "each_cycle_is_identified_in_readme_diagrams",
+                "runtime_cycle_phase_traces_match_readme_contracts",
+            ],
+            "status": (
+                "pass"
+                if objective_status(
+                    "each_cycle_is_identified_in_readme_diagrams",
+                    "runtime_cycle_phase_traces_match_readme_contracts",
+                )
+                == "pass"
+                and cycle_diagram_documentation_audit_passed
+                else "fail"
+            ),
+            "evidence": [
+                "e1/e1-h1/docs/modules/README.md#cycle-diagram",
+                cycle_diagram_documentation_audit["readme_runtime_matrix"],
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:cycle_diagram_audit",
+            ],
+            "cycle_audit_counts": {
+                "base_modules": cycle_diagram_documentation_audit["base_module_count"],
+                "generated_full_checkpoint_modules": cycle_diagram_documentation_audit[
+                    "generated_full_checkpoint_module_count"
+                ],
+                "full_graph_templates": cycle_diagram_documentation_audit[
+                    "full_graph_template_count"
+                ],
+            },
+        },
+    ]
+    objective_traceability_checks = [
+        {
+            "name": "all_human_objective_phrases_have_passing_evidence",
+            "status": "pass"
+            if all(row["status"] == "pass" for row in objective_traceability_rows)
+            else "fail",
+        },
+        {
+            "name": "traceability_preserves_structural_scope_and_non_claims",
+            "status": "pass"
+            if rtl_top["full_checkpoint_rtl_execution_scope"]
+            == "structural_graph_slot_and_command_stream_verilator_execution_without_tensor_numeric_equivalence"
+            and not rtl_top["full_checkpoint_numeric_output_equivalence"]
+            and certificate_non_claims
+            else "fail",
+        },
+        {
+            "name": "traceability_mapped_requirements_exist_in_objective_rows",
+            "status": "pass"
+            if set(
+                requirement
+                for row in objective_traceability_rows
+                for requirement in row["mapped_requirements"]
+            ).issubset(set(objective_by_requirement))
+            else "fail",
+        },
+        {
+            "name": "traceability_rows_carry_concrete_evidence",
+            "status": "pass"
+            if all(row.get("evidence") for row in objective_traceability_rows)
+            else "fail",
+        },
+    ]
+    objective_traceability_audit = {
+        "schema": "e1-objective-traceability-audit-v0",
+        "status": "pass"
+        if all(check["status"] == "pass" for check in objective_traceability_checks)
+        else "fail",
+        "original_objective": (
+            "try full rtl lowering; correct by construction; make a C++ program "
+            "that automatically generates DPI and tests each SystemVerilog module "
+            "by itself; keep systolic array, CPUs, and latch buffer separated; "
+            "identify each cycle in README diagrams"
+        ),
+        "verified_scope": rtl_top["full_checkpoint_rtl_execution_scope"],
+        "residual_non_claims": certificate_non_claims,
+        "rows": objective_traceability_rows,
+        "checks": objective_traceability_checks,
+    }
+    objective_traceability_audit_passed = (
+        objective_traceability_audit["status"] == "pass"
+    )
+    active_objective_completion_audit = {
+        "schema": "e1-active-objective-completion-audit-v0",
+        "status": "pass"
+        if objective_coverage
+        and all(entry["status"] == "pass" for entry in objective_coverage)
+        and rtl_top["full_checkpoint_structural_rtl_execution"]
+        and rtl_top["full_checkpoint_rtl_execution_scope"]
+        == "structural_graph_slot_and_command_stream_verilator_execution_without_tensor_numeric_equivalence"
+        and source_derived_dpi_passed
+        and base_module_boundary_passed
+        and generated_child_stub_boundary_passed
+        and base_runtime_phase_traces_passed
+        and generated_runtime_phase_traces_passed
+        and module_boundary_taxonomy_passed
+        and module_interface_signal_inventory_passed
+        and systemverilog_module_coverage_audit_passed
+        and systemverilog_defined_module_runtime_audit_passed
+        and cycle_diagram_documentation_audit_passed
+        and dpi_generation_provenance_audit_passed
+        and objective_traceability_audit_passed
+        and systolic_array_result_digest_proof["status"] == "pass"
+        else "fail",
+        "verdict": "proved_for_structural_rtl_lowering_scope",
+        "verified_scope": rtl_top["full_checkpoint_rtl_execution_scope"],
+        "required_requirement_count": len(objective_coverage),
+        "proved_requirement_count": sum(
+            1 for entry in objective_coverage if entry["status"] == "pass"
+        ),
+        "requirements": objective_coverage,
+        "completion_evidence": [
+            "e1/generated/pipeline/24_full_checkpoint_rtl_top.json",
+            "e1/generated/pipeline/25_full_checkpoint_graph_rtl_lowering_proof.json",
+            "e1/generated/pipeline/27_full_graph_module_dpi_binding.json",
+            "e1/generated/pipeline/28_lowering_construction_certificate.json",
+            "e1/generated/pipeline/28_lowering_construction_certificate.json:objective_traceability_audit",
+            "e1/generated/pipeline/29_end_to_end_smoke.json",
+            "e1/e1-h1/docs/modules/README.md",
+        ],
+        "residual_non_claims": certificate_non_claims,
+    }
+    checks = [
+        {
+            "name": "source_operation_instances_match_stablehlo_counts",
+            "status": "pass"
+            if dict(sorted(source_instance_counts.items())) == dict(sorted(inspection["operation_counts"].items()))
+            and len(source_instance_coverage) == int(inspection["total_operations"])
+            else "fail",
+        },
+        {
+            "name": "source_operation_spans_are_ordered",
+            "status": "pass"
+            if [entry["source_index"] for entry in source_instance_coverage] == list(range(len(source_instance_coverage)))
+            and all(
+                entry["source_line"] <= entry["source_end_line"]
+                for entry in source_instance_coverage
+            )
+            and [entry["source_line"] for entry in source_instance_coverage]
+            == sorted(entry["source_line"] for entry in source_instance_coverage)
+            else "fail",
+        },
+        {
+            "name": "every_source_operation_instance_has_bound_rtl_and_dpi",
+            "status": "pass"
+            if source_instance_coverage
+            and all(
+                entry["bound_ip"] is not None
+                and entry["lowering_status"] == "pass"
+                and entry["active_implementation"] == "imp2"
+                and entry["rtl_files"]
+                and entry["module_dpi_probe"]
+                and entry["module_dpi_flist"]
+                for entry in source_instance_coverage
+            )
+            else "fail",
+        },
+        {
+            "name": "all_fixture_stablehlo_ops_have_lowering_rules",
+            "status": "pass"
+            if set(inspection["operation_counts"]) == set(lowered_by_op)
+            and all(entry["lowering_status"] == "pass" for entry in operation_coverage)
+            else "fail",
+        },
+        {
+            "name": "all_fixture_lowerings_target_active_imp2",
+            "status": "pass"
+            if all(entry["active_implementation"] == "imp2" for entry in operation_coverage)
+            else "fail",
+        },
+        {
+            "name": "base_module_dpi_verilator_and_ledgers_pass",
+            "status": "pass" if module_dpi_passed else "fail",
+        },
+        {
+            "name": "base_module_dpi_cycle_contracts_are_documented_in_readme",
+            "status": "pass" if base_module_cycle_docs_passed else "fail",
+        },
+        {
+            "name": "full_checkpoint_graph_slots_have_rtl_bindings",
+            "status": "pass"
+            if full_checkpoint_graph_rtl_lowering["status"] == "pass"
+            and int(full_checkpoint_graph_rtl_lowering["graph"]["slot_binding_count"]) == expected_graph_slots
+            and all(binding["rtl_file"] and binding["cycle_template"] for binding in full_checkpoint_graph_rtl_lowering["slot_bindings"])
+            else "fail",
+        },
+        {
+            "name": "full_checkpoint_command_stream_runs_through_rtl_top",
+            "status": "pass"
+            if full_checkpoint_graph_rtl_lowering["full_checkpoint_structural_rtl_execution"]
+            and full_checkpoint_graph_rtl_lowering["full_checkpoint_command_stream_rtl_execution"]
+            and rtl_top["full_checkpoint_structural_rtl_execution"]
+            and rtl_top["verilator_execution"]["status"] == "pass"
+            and rtl_top["full_command_payload_schedule_check"]
+            and rtl_top["full_command_payload_digest_check"]
+            and rtl_top["full_command_payload_digest"] == command_stream["payload_digest"]
+            and rtl_top["full_command_cycle_phase_check"]
+            and rtl_top["full_command_control_schedule_check"]
+            and rtl_top["full_command_control_digest_check"]
+            and rtl_top["full_command_trace_anchor_check"]
+            and rtl_top["full_command_per_op_trace_coverage_check"]
+            else "fail",
+        },
+        {
+            "name": "full_checkpoint_structural_rtl_execution_is_proven",
+            "status": "pass"
+            if full_checkpoint_graph_rtl_lowering["full_checkpoint_structural_rtl_execution"]
+            and rtl_top["full_checkpoint_structural_rtl_execution"]
+            else "fail",
+        },
+        {
+            "name": "full_checkpoint_rtl_execution_is_scoped_structural",
+            "status": "pass"
+            if full_checkpoint_graph_rtl_lowering["full_checkpoint_rtl_execution"]
+            and rtl_top["full_checkpoint_rtl_execution"]
+            and full_checkpoint_graph_rtl_lowering["full_checkpoint_rtl_execution_scope"]
+            == rtl_top["full_checkpoint_rtl_execution_scope"]
+            and "without_tensor_numeric_equivalence" in rtl_top["full_checkpoint_rtl_execution_scope"]
+            else "fail",
+        },
+        {
+            "name": "full_checkpoint_payload_digest_matches_cpp_schedule",
+            "status": "pass"
+            if command_stream["payload_digest"] == rtl_top["full_command_payload_digest"]
+            and command_stream["payload_digest"] == full_checkpoint_graph_rtl_lowering["command_stream"]["payload_digest"]
+            else "fail",
+        },
+        {
+            "name": "full_checkpoint_control_payload_digest_matches_graph_schedule",
+            "status": "pass"
+            if rtl_top["full_command_control_digest_check"]
+            and rtl_top["full_command_control_digest"]
+            == full_checkpoint_graph_rtl_lowering["command_stream"]["control_payload_digest"]
+            else "fail",
+        },
+        {
+            "name": "full_checkpoint_trace_anchors_match_cpp_schedule",
+            "status": "pass" if rtl_top["full_command_trace_anchor_check"] else "fail",
+        },
+        {
+            "name": "full_checkpoint_per_op_trace_coverage_matches_cpp_schedule",
+            "status": "pass" if rtl_top["full_command_per_op_trace_coverage_check"] else "fail",
+        },
+        {
+            "name": "generated_full_checkpoint_module_dpi_verilator_and_ledgers_pass",
+            "status": "pass" if full_checkpoint_module_dpi_passed else "fail",
+        },
+        {
+            "name": "generated_full_checkpoint_module_cycle_contracts_are_documented_in_readme",
+            "status": "pass" if generated_full_checkpoint_module_cycle_docs_passed else "fail",
+        },
+        {
+            "name": "source_derived_rtl_modules_have_module_only_dpi_proofs",
+            "status": "pass" if source_derived_dpi_passed else "fail",
+        },
+        {
+            "name": "source_derived_rtl_modules_have_cpp_launcher_runtime_and_recipe_proofs",
+            "status": "pass" if source_derived_cpp_launcher_evidence_passed else "fail",
+        },
+        {
+            "name": "source_derived_rtl_modules_have_cpp_launcher_readme_cycle_proofs",
+            "status": "pass" if source_derived_cpp_launcher_evidence_passed else "fail",
+        },
+        {
+            "name": "source_derived_production_rtl_inventory_has_module_only_dpi",
+            "status": "pass" if source_derived_inventory_module_only_passed else "fail",
+        },
+        {
+            "name": "systemverilog_module_coverage_audit_passes",
+            "status": systemverilog_module_coverage_audit["status"],
+        },
+        {
+            "name": "systemverilog_defined_module_runtime_audit_passes",
+            "status": systemverilog_defined_module_runtime_audit["status"],
+        },
+        {
+            "name": "module_dpi_evidence_preserves_module_only_flist_boundaries",
+            "status": "pass"
+            if generated_child_stub_boundary_passed and base_module_boundary_passed
+            else "fail",
+        },
+        {
+            "name": "module_dpi_boundaries_have_cpp_launcher_runtime_and_recipe_proofs",
+            "status": "pass" if base_module_cpp_launcher_evidence_passed else "fail",
+        },
+        {
+            "name": "module_dpi_boundaries_have_cpp_launcher_readme_cycle_proofs",
+            "status": "pass" if base_module_cpp_launcher_evidence_passed else "fail",
+        },
+        {
+            "name": "module_dpi_boundary_artifacts_exist",
+            "status": "pass"
+            if module_dpi_boundary_artifacts
+            and all((REPO_ROOT / path).exists() for path in module_dpi_boundary_artifacts)
+            else "fail",
+        },
+        {
+            "name": "objective_coverage_requirements_pass",
+            "status": "pass"
+            if all(entry["status"] == "pass" for entry in objective_coverage)
+            else "fail",
+        },
+        {
+            "name": "active_objective_completion_audit_passes",
+            "status": active_objective_completion_audit["status"],
+        },
+        {
+            "name": "objective_traceability_audit_passes",
+            "status": objective_traceability_audit["status"],
+        },
+        {
+            "name": "base_module_isolation_report_passes",
+            "status": "pass" if module_isolation_passed else "fail",
+        },
+        {
+            "name": "generated_full_checkpoint_module_isolation_report_passes",
+            "status": "pass" if full_checkpoint_module_isolation_passed else "fail",
+        },
+        *module_boundary_taxonomy["checks"],
+        *production_rtl_inventory_check_rows,
+        {
+            "name": "module_cycle_documentation_artifacts_exist",
+            "status": "pass"
+            if module_cycle_doc_artifacts
+            and all((REPO_ROOT / path).exists() for path in module_cycle_doc_artifacts)
+            else "fail",
+        },
+        {
+            "name": "cycle_diagram_audit_passes",
+            "status": cycle_diagram_documentation_audit["status"],
+        },
+        *module_interface_signal_inventory["checks"],
+        {
+            "name": "module_dpi_generator_and_runner_sources_are_hashed",
+            "status": "pass" if module_dpi_generator_sources_passed else "fail",
+        },
+        {
+            "name": "module_dpi_generator_build_and_run_commands_are_recorded",
+            "status": "pass" if module_dpi_generator_build_and_run_recorded else "fail",
+        },
+        {
+            "name": "module_dpi_generator_execution_stdout_reports_module_counts",
+            "status": "pass" if module_dpi_generator_stdout_reports_module_counts else "fail",
+        },
+        {
+            "name": "dpi_generation_provenance_audit_passes",
+            "status": dpi_generation_provenance_audit["status"],
+        },
+        {
+            "name": "module_dpi_cpp_verilator_launchers_match_execution_recipes",
+            "status": "pass" if module_dpi_cpp_verilator_launchers_passed else "fail",
+        },
+        {
+            "name": "module_dpi_cpp_verilator_launchers_run_module_tests",
+            "status": "pass" if module_dpi_cpp_verilator_launchers_passed else "fail",
+        },
+        {
+            "name": "module_dpi_cpp_verilator_launchers_validate_runtime_markers",
+            "status": "pass" if module_dpi_cpp_verilator_launchers_validate_runtime_markers else "fail",
+        },
+        {
+            "name": "module_dpi_cpp_verilator_launchers_validate_runtime_phase_traces",
+            "status": "pass" if module_dpi_cpp_verilator_launchers_validate_runtime_phase_traces else "fail",
+        },
+        {
+            "name": "systolic_array_result_digest_matches_cpp_scoreboard",
+            "status": systolic_array_result_digest_proof["status"],
+        },
+        {
+            "name": "target_filelists_match_active_imp2",
+            "status": "pass"
+            if all(
+                entry["matches_target_manifest_rtl_files"] and entry["matches_active_imp2_flist"]
+                for entry in target_filelist_coverage
+            )
+            else "fail",
+        },
+        {
+            "name": "target_filelist_rtl_artifacts_are_hashed",
+            "status": "pass" if target_rtl_artifacts_passed else "fail",
+        },
+        {
+            "name": "generated_soc_top_construction_artifacts_are_hashed",
+            "status": "pass" if generated_soc_top_construction_artifacts_passed else "fail",
+        },
+        {
+            "name": "generated_soc_top_hierarchy_matches_manifest",
+            "status": generated_soc_top_hierarchy["status"],
+        },
+        {
+            "name": "readme_documents_every_cycle_template",
+            "status": "pass"
+            if all(
+                all(check["status"] == "pass" for check in template["checks"])
+                for template in readme_cycle_templates
+            )
+            else "fail",
+        },
+        {
+            "name": "separation_of_concerns_is_preserved",
+            "status": "pass"
+            if set(rtl_top["separation"])
+            == {"control_slot_engine", "graph_sequencer", "latch_buffer", "linear_slot_engine", "systolic_array"}
+            and "ingress_sram" in full_graph_module_dpi_binding["required_base_modules"]
+            and "systolic_array" in full_graph_module_dpi_binding["required_base_modules"]
+            and "control_cpu" in full_graph_module_dpi_binding["required_base_modules"]
+            else "fail",
+        },
+        {
+            "name": "numeric_output_equivalence_remains_explicit_non_claim",
+            "status": "pass"
+            if not full_checkpoint_graph_rtl_lowering["full_checkpoint_numeric_output_equivalence"]
+            and not rtl_top["full_checkpoint_numeric_output_equivalence"]
+            else "fail",
+        },
+    ]
+    artifact_paths = unique_ordered(
+        [
+            repo_rel(fixture_path),
+            "e1/generated/pipeline/03_stablehlo_inspection.json",
+            "e1/generated/pipeline/05_e1_h1_binding.json",
+            rtl_lowering["implementation_matrix"],
+            rtl_lowering["module_dpi_generation"]["manifest"],
+            "e1/generated/pipeline/12_module_dpi_generation.json",
+            "e1/generated/pipeline/15_rtl_lowering.json",
+            "e1/generated/pipeline/18_full_checkpoint_rtl_lowering_plan.json",
+            command_stream["header"],
+            "e1/generated/pipeline/19_full_checkpoint_command_stream.json",
+            rtl_cycle["scheduler_rtl"],
+            "e1/generated/pipeline/20_full_checkpoint_rtl_cycle_lowering.json",
+            rtl_top["top_rtl"],
+            rtl_top["flist"],
+            rtl_top["full_verilator_tb"],
+            "e1/generated/pipeline/24_full_checkpoint_rtl_top.json",
+            "e1/generated/pipeline/25_full_checkpoint_graph_rtl_lowering_proof.json",
+            full_checkpoint_module_dpi["manifest"],
+            "e1/generated/pipeline/26_full_checkpoint_module_dpi_generation.json",
+            "e1/generated/pipeline/27_full_graph_module_dpi_binding.json",
+            *target_rtl_artifacts,
+            *generated_soc_top_construction_artifacts,
+            *production_rtl_inventory_artifacts,
+            *imp1_mock_runtime_artifacts,
+            *module_dpi_generator_source_artifacts,
+            *module_dpi_cpp_verilator_launcher_artifacts,
+            *dpi_generation_provenance_artifacts,
+            *module_cycle_doc_artifacts,
+            *module_dpi_boundary_artifacts,
+            "e1/e1-h1/generated/targets/manifest.json",
+            target_manifest["fpga"]["filelist"],
+            target_manifest["openroad"]["filelist"],
+            "e1/e1-h1/docs/generated-soc-top.md",
+            "e1/e1-h1/docs/modules/README.md",
+        ]
+    )
+    certificate = {
+        "schema": "e1-lowering-construction-certificate-v0",
+        "status": "pass" if all(check["status"] == "pass" for check in checks) else "fail",
+        "model_id": manifest["model_id"],
+        "truth_boundary": "stablehlo_fixture_and_full_checkpoint_graph_to_imp2_rtl_contracts",
+        "claim_scope": [
+            "Checked-in StableHLO fixture operations are bound to active imp2 RTL modules with module-DPI proofs.",
+            "The shape-complete TinyLlama full-checkpoint graph is lowered to ordered RTL slot dispatch with structural full-command Verilator execution checks.",
+            "The RTL-accepted full-command payload digest matches the generated C++ schedule digest.",
+            "The RTL-observed CPU/control slot payload digest matches the generated graph schedule digest.",
+            "Generated and separated RTL modules have module-only Verilator+DPI evidence and documented cycle templates.",
+            "The SystemVerilog module coverage audit lists every production RTL row, parsed module names, run scope, and single-DUT runtime proof status.",
+            "The defined-module runtime audit assigns every parsed production SystemVerilog module an explicit module-only, standalone-top, or accepted-mock Verilator runtime scope.",
+            "The base systolic-array module exposes a result digest checked by the generated C++ DPI scoreboard during module-only Verilator execution.",
+            "The cycle-diagram audit ties README cycle rows to generated cycle contracts and observed Verilator phase traces.",
+            "The DPI generation provenance audit ties generator sources, emitted module-DPI artifacts, generated C++ Verilator launchers, and module runtime results into one reviewable section.",
+            "The objective traceability audit maps each human-requested clause to concrete construction evidence while preserving the structural RTL scope and non-claims.",
+            "Every active source-derived base imp2 and generated full-checkpoint RTL row in the production inventory is required to carry module-only DPI/Verilator coverage.",
+            "Generated composed RTL module-DPI flists compile only the selected DUT plus probe, with child dependencies represented as probe-local stubs.",
+            "Base and generated module cycle contracts are bound to machine-checked README rows and hashed cycle-coverage artifacts.",
+            "Base and generated module interface tables enumerate input/output signals with descriptions and match parsed RTL port contracts.",
+            "The C++ module-DPI generator sources, generator build/run records, normalized generator stdout, generated Verilator launchers, and Verilator recipe runner are construction evidence.",
+            "Target-listed RTL artifacts, generated SoC top artifacts, and SoC top generator inputs are hashed as construction inputs.",
+            "The production RTL inventory is classified by proof family and every listed RTL module name matches its construction proof.",
+            "The module-boundary taxonomy maps active runtime modules into CPU/control, digital ingress, latch-buffer, SRAM, systolic, linear-path, and top-glue roles with standalone runtime evidence.",
+            "The generated SoC top hierarchy instantiates manifest IPs as distinct CPU, latch-buffer, memory, RGMII, and systolic-array boundaries.",
+        ],
+        "non_claims": certificate_non_claims,
+        "fixture_operation_coverage": operation_coverage,
+        "source_operation_instance_coverage": source_instance_coverage,
+        "full_checkpoint_graph": {
+            "layers": aggregate["layers"],
+            "slots_per_layer": total_layer_slots,
+            "expected_graph_slots": expected_graph_slots,
+            "observed_graph_slots": full_checkpoint_graph_rtl_lowering["graph"]["slot_binding_count"],
+            "total_tile_commands": command_stream["total_tile_commands"],
+            "total_rtl_cycles": rtl_cycle["total_rtl_cycles"],
+            "payload_digest": command_stream["payload_digest"],
+            "control_payload_digest": rtl_top["full_command_control_digest"],
+            "rtl_execution": rtl_top["full_checkpoint_rtl_execution"],
+            "rtl_execution_scope": rtl_top["full_checkpoint_rtl_execution_scope"],
+            "structural_rtl_execution": rtl_top["full_checkpoint_structural_rtl_execution"],
+            "verilator_execution_status": rtl_top["verilator_execution"]["status"],
+            "full_command_verilator_report": rtl_top["full_command_verilator_report"],
+            "full_verilator_tb": rtl_top["full_verilator_tb"],
+            "payload_schedule": rtl_top["full_command_payload_schedule"],
+        },
+        "module_dpi_evidence": {
+            "base_module_count": len(module_dpi_report["modules"]),
+            "generated_full_checkpoint_module_count": len(full_checkpoint_module_dpi["modules"]),
+            "source_derived_module_dpi_coverage_count": full_graph_module_dpi_binding[
+                "source_derived_module_dpi_coverage_count"
+            ],
+            "full_graph_module_dpi_binding": "e1/generated/pipeline/27_full_graph_module_dpi_binding.json",
+            "generated_child_stub_boundary": full_graph_module_dpi_binding[
+                "generated_child_stub_boundary"
+            ],
+            "all_base_module_boundaries": full_graph_module_dpi_binding[
+                "all_base_module_bindings"
+            ],
+            "module_dpi_boundary_artifacts": module_dpi_boundary_artifacts,
+            "base_module_isolation": module_dpi_report.get("module_isolation", {}),
+            "generated_full_checkpoint_module_isolation": full_checkpoint_module_dpi.get(
+                "module_isolation", {}
+            ),
+            "source_derived_module_only_inventory": production_rtl_inventory.get(
+                "module_only_dpi_inventory", {}
+            ),
+            "generator_sources": module_dpi_generator_sources,
+            "generator_source_artifacts": module_dpi_generator_source_artifacts,
+            "generator_execution": module_dpi_generator_execution_evidence,
+            "cpp_verilator_launchers": module_dpi_cpp_verilator_launchers,
+            "cpp_verilator_launcher_runtime_summary": (
+                module_dpi_cpp_verilator_launcher_runtime_summary
+            ),
+            "cpp_verilator_launcher_artifacts": module_dpi_cpp_verilator_launcher_artifacts,
+            "dpi_generation_provenance_audit": (
+                "e1/generated/pipeline/28_lowering_construction_certificate.json:"
+                "dpi_generation_provenance_audit"
+            ),
+        },
+        "systolic_array_result_digest_proof": systolic_array_result_digest_proof,
+        "dpi_generation_provenance_audit": dpi_generation_provenance_audit,
+        "systemverilog_module_coverage_audit": systemverilog_module_coverage_audit,
+        "systemverilog_defined_module_runtime_audit": (
+            systemverilog_defined_module_runtime_audit
+        ),
+        "cycle_diagram_audit": cycle_diagram_documentation_audit,
+        "module_boundary_taxonomy": module_boundary_taxonomy,
+        "objective_traceability_audit": objective_traceability_audit,
+        "objective_coverage": objective_coverage,
+        "active_objective_completion_audit": active_objective_completion_audit,
+        "target_filelists": target_filelist_coverage,
+        "target_rtl_evidence": {
+            "target_rtl_artifacts": target_rtl_artifacts,
+            "generated_soc_top": soc_top_artifacts,
+            "generated_soc_top_construction_artifacts": generated_soc_top_construction_artifacts,
+            "generated_soc_top_hierarchy": generated_soc_top_hierarchy,
+            "production_rtl_inventory": production_rtl_inventory,
+            "production_rtl_inventory_artifacts": production_rtl_inventory_artifacts,
+            "imp1_mock_runtime_artifacts": imp1_mock_runtime_artifacts,
+        },
+        "cycle_documentation": full_checkpoint_graph_rtl_lowering["readme_cycle_coverage"],
+        "module_cycle_documentation": {
+            "base_module_dpi": module_cycle_documentation_summary(module_dpi_report),
+            "generated_full_checkpoint_module_dpi": module_cycle_documentation_summary(
+                full_checkpoint_module_dpi
+            ),
+            "hashed_artifacts": module_cycle_doc_artifacts,
+        },
+        "module_interface_signal_inventory": module_interface_signal_inventory,
+        "artifact_hashes": [artifact_record(path) for path in artifact_paths],
+        "checks": checks,
+    }
+    write_json(output_path, certificate)
+    return certificate
 
 
 def emit_tinyllama_imp2_coverage(
@@ -5069,6 +12392,7 @@ def run_pipeline(
     fixture_path = REPO_ROOT / manifest["frontend"]["fixture"]
     fixture_text = fixture_path.read_text(encoding="utf-8")
     ops = stablehlo_ops(fixture_text)
+    op_instances = stablehlo_operation_instances(fixture_text)
     tensor_types = tensors(fixture_text)
     ip_manifests = load_ip_manifests(e1_h1_dir / "ip")
 
@@ -5100,7 +12424,9 @@ def run_pipeline(
     systolic_ops = {"dot_general"}
     cpu_ops = set(ops) - systolic_ops
     inspection = {
+        "schema": "e1-stablehlo-inspection-v0",
         "operation_counts": dict(sorted(ops.items())),
+        "operation_instances": op_instances,
         "total_operations": sum(ops.values()),
         "systolic_array_ops": sorted(systolic_ops & set(ops)),
         "cpu_or_stream_ops": sorted(cpu_ops),
@@ -5241,7 +12567,7 @@ def run_pipeline(
     passes.append({"pass": "e1_select_implementations", "artifact": implementation_matrix["matrix"]})
 
     module_dpi_out = output_dir / "12_module_dpi_generation.json"
-    module_dpi_report = run_module_dpi_generator(e1_h1_dir, module_dpi_out)
+    module_dpi_report = run_module_dpi_generator(e1_h1_dir, module_dpi_out, implementation_matrix)
     passes.append({"pass": "e1_generate_module_dpi", "artifact": repo_rel(module_dpi_out)})
 
     sv_out = output_dir / "13_systemverilog_plan.json"
@@ -5458,7 +12784,6 @@ def run_pipeline(
         }
     )
 
-    e2e_out = output_dir / "28_end_to_end_smoke.json"
     target_manifest_path = "e1/e1-h1/generated/targets/manifest.json"
     generated_soc_top_exists = all(
         (REPO_ROOT / path).exists()
@@ -5468,11 +12793,79 @@ def run_pipeline(
             soc_top_artifacts["interface_contracts"],
         ]
     )
+    target_filelists = {
+        "active_implementation": implementation_matrix["flists"]["active"],
+        "fpga": target_manifest["fpga"]["filelist"],
+        "openroad": target_manifest["openroad"]["filelist"],
+    }
+    target_filelist_entries = {
+        name: (REPO_ROOT / path).read_text(encoding="utf-8").splitlines()
+        if (REPO_ROOT / path).exists()
+        else []
+        for name, path in target_filelists.items()
+    }
+    generated_soc_top_standalone_verilator = run_generated_soc_top_verilator_smoke(
+        target_filelist_entries["active_implementation"],
+        REPO_ROOT / "e1/e1-h1/tests/e1_h1_soc_top_tb.cpp",
+    )
+    generated_soc_top_standalone_passed = (
+        generated_soc_top_exists
+        and generated_soc_top_standalone_verilator["status"] == "pass"
+    )
+    imp1_mock_rtl_lint = run_imp1_mock_rtl_lints(implementation_matrix)
+    production_rtl_inventory = build_production_rtl_inventory(
+        implementation_matrix=implementation_matrix,
+        module_dpi_report=module_dpi_report,
+        full_graph_module_dpi_binding=full_graph_module_dpi_binding,
+        cpp_verilator_launchers={
+            "base_module_dpi": module_dpi_report.get("cpp_verilator_launcher", {}),
+            "generated_full_checkpoint_module_dpi": full_checkpoint_module_dpi.get(
+                "cpp_verilator_launcher", {}
+            ),
+        },
+        soc_top_artifacts=soc_top_artifacts,
+        generated_soc_top_standalone_verilator=generated_soc_top_standalone_verilator,
+        generated_soc_top_standalone_passed=generated_soc_top_standalone_passed,
+        imp1_mock_rtl_lint=imp1_mock_rtl_lint,
+    )
+    generated_soc_top_hierarchy = build_generated_soc_top_hierarchy_proof(soc_top_artifacts)
+
+    lowering_certificate_out = output_dir / "28_lowering_construction_certificate.json"
+    lowering_certificate = emit_lowering_construction_certificate(
+        lowering_certificate_out,
+        manifest,
+        fixture_path,
+        inspection,
+        binding,
+        rtl_lowering,
+        implementation_matrix,
+        target_manifest,
+        module_dpi_report,
+        full_checkpoint_rtl_lowering,
+        full_checkpoint_command_stream,
+        full_checkpoint_rtl_cycle,
+        full_checkpoint_rtl_top,
+        full_checkpoint_graph_rtl_lowering,
+        full_checkpoint_module_dpi,
+        full_graph_module_dpi_binding,
+        soc_top_artifacts,
+        production_rtl_inventory,
+        generated_soc_top_hierarchy,
+    )
+    passes.append(
+        {
+            "pass": "e1_emit_lowering_construction_certificate",
+            "artifact": repo_rel(lowering_certificate_out),
+        }
+    )
+
+    e2e_out = output_dir / "29_end_to_end_smoke.json"
     module_dpi_exists = all(
         (REPO_ROOT / path).exists()
         for path in [
             module_dpi_report["manifest"],
             module_dpi_report["scoreboard"],
+            module_dpi_report["module_interfaces_doc"],
             module_dpi_report["module_isolation_proof"],
             module_dpi_report["cycle_contract"],
             module_dpi_report["module_test_plan"],
@@ -5499,6 +12892,69 @@ def run_pipeline(
             target_manifest["openroad"]["config"],
         ]
     )
+    module_dpi_by_imp2_rtl = module_dpi_imp2_rtl_index(module_dpi_report)
+    production_module_only_proofs_by_rtl = {
+        row["rtl"]: row.get("proofs", [])
+        for row in production_rtl_inventory.get("rows", [])
+        if row.get("module_only_dpi_required") is True
+    }
+    target_filelist_module_dpi_coverage = []
+    for target_name, filelist in target_filelists.items():
+        entries = target_filelist_entries[target_name]
+        rows = []
+        for rtl in entries:
+            if rtl == soc_top_artifacts["top"]:
+                rows.append(
+                    {
+                        "rtl": rtl,
+                        "coverage_kind": "generated_soc_top_standalone_verilator",
+                        "covered": generated_soc_top_standalone_passed,
+                        "module_dpi_proofs": [],
+                        "standalone_verilator_proof": generated_soc_top_standalone_verilator,
+                    }
+                )
+                continue
+            proofs = production_module_only_proofs_by_rtl.get(
+                rtl,
+                module_dpi_by_imp2_rtl.get(rtl, []),
+            )
+            rows.append(
+                {
+                    "rtl": rtl,
+                    "coverage_kind": "module_dpi",
+                    "covered": bool(proofs)
+                    and all(
+                        proof["verilator_status"] == "pass"
+                        and proof["ledger_checks_pass"]
+                        and proof["phase_trace_checks_pass"]
+                        and proof["phase_signal_trace_checks_pass"]
+                        and proof.get("cpp_launcher_checks_pass") is True
+                        and proof.get("cpp_launcher_recipe_checks_pass") is True
+                        and proof.get("cpp_launcher_readme_cycle_checks_pass") is True
+                        for proof in proofs
+                    ),
+                    "module_dpi_proofs": proofs,
+                }
+            )
+        target_filelist_module_dpi_coverage.append(
+            {
+                "target": target_name,
+                "filelist": filelist,
+                "entries": entries,
+                "matches_target_manifest_rtl_files": entries == target_manifest["rtl_files"],
+                "matches_active_flist": entries == target_filelist_entries["active_implementation"],
+                "all_entries_have_expected_proof": bool(rows)
+                and all(row["covered"] for row in rows),
+                "rows": rows,
+            }
+        )
+    module_dpi_imp2_rtls = set(module_dpi_by_imp2_rtl)
+    target_filelist_rtls = {
+        rtl
+        for entries in target_filelist_entries.values()
+        for rtl in entries
+        if rtl != soc_top_artifacts["top"]
+    }
     checkpoint_preflight_statuses = {
         "missing_python_dependencies",
         "missing_checkpoint_cache",
@@ -5518,14 +12974,106 @@ def run_pipeline(
         {"name": "device_program_run", "status": device_program_run["status"]},
         {"name": "chip_model_run", "status": chip_model_run["status"]},
         {"name": "generated_soc_top", "status": "pass" if generated_soc_top_exists else "fail"},
+        {
+            "name": "generated_soc_top_standalone_verilator",
+            "status": "pass" if generated_soc_top_standalone_passed else "fail",
+        },
+        {
+            "name": "generated_soc_top_hierarchy_matches_manifest",
+            "status": generated_soc_top_hierarchy["status"],
+        },
         {"name": "implementation_flists", "status": "pass" if target_package_exists else "fail"},
         {"name": "module_dpi_generation", "status": "pass" if module_dpi_exists else "fail"},
+        *production_rtl_inventory_checks(production_rtl_inventory),
+        {
+            "name": "target_filelists_match_active_implementation",
+            "status": "pass"
+            if target_filelist_module_dpi_coverage
+            and all(
+                target["matches_target_manifest_rtl_files"]
+                and target["matches_active_flist"]
+                for target in target_filelist_module_dpi_coverage
+            )
+            else "fail",
+        },
+        {
+            "name": "target_filelist_rtl_has_module_dpi_or_top_proof",
+            "status": "pass"
+            if target_filelist_module_dpi_coverage
+            and all(
+                target["all_entries_have_expected_proof"]
+                for target in target_filelist_module_dpi_coverage
+            )
+            else "fail",
+        },
+        {
+            "name": "target_filelist_rtl_has_cpp_launcher_recipe_phase_key_proof",
+            "status": "pass"
+            if target_filelist_module_dpi_coverage
+            and all(
+                row["coverage_kind"] != "module_dpi"
+                or (
+                    row["covered"]
+                    and row["module_dpi_proofs"]
+                    and all(
+                        proof.get("cpp_launcher_checks_pass") is True
+                        and proof.get("cpp_launcher_recipe_checks_pass") is True
+                        and proof.get("cpp_launcher_result", {}).get("expected_phase_trace_keys")
+                        == proof.get("cpp_launcher_result", {}).get("observed_phase_trace_prefix_keys")
+                        and proof.get("cpp_launcher_result", {}).get("expected_phase_signal_trace_keys")
+                        == proof.get("cpp_launcher_result", {}).get("observed_phase_signal_trace_prefix_keys")
+                        for proof in row["module_dpi_proofs"]
+                    )
+                )
+                for target in target_filelist_module_dpi_coverage
+                for row in target["rows"]
+            )
+            else "fail",
+        },
+        {
+            "name": "target_filelist_rtl_has_cpp_launcher_readme_cycle_proof",
+            "status": "pass"
+            if target_filelist_module_dpi_coverage
+            and all(
+                row["coverage_kind"] != "module_dpi"
+                or (
+                    row["covered"]
+                    and row["module_dpi_proofs"]
+                    and all(
+                        proof.get("cpp_launcher_readme_cycle_checks_pass") is True
+                        and proof.get("cpp_launcher_readme_cycle_proof", {}).get("status") == "pass"
+                        and proof.get("cpp_launcher_readme_cycle_proof", {}).get("readme_phase_keys")
+                        == proof.get("cpp_launcher_readme_cycle_proof", {}).get(
+                            "cycle_contract_phase_keys"
+                        )
+                        and proof.get("cpp_launcher_readme_cycle_proof", {}).get(
+                            "cpp_launcher_expected_phase_keys"
+                        )
+                        == proof.get("cpp_launcher_readme_cycle_proof", {}).get("readme_phase_keys")
+                        and proof.get("cpp_launcher_readme_cycle_proof", {}).get(
+                            "cpp_launcher_observed_phase_keys"
+                        )
+                        == proof.get("cpp_launcher_readme_cycle_proof", {}).get("readme_phase_keys")
+                        for proof in row["module_dpi_proofs"]
+                    )
+                )
+                for target in target_filelist_module_dpi_coverage
+                for row in target["rows"]
+            )
+            else "fail",
+        },
+        {
+            "name": "all_module_dpi_imp2_rtl_appear_in_target_filelists",
+            "status": "pass"
+            if module_dpi_imp2_rtls and module_dpi_imp2_rtls.issubset(target_filelist_rtls)
+            else "fail",
+        },
         {"name": "rtl_lowering", "status": rtl_lowering["status"]},
         {"name": "tinyllama_imp2_coverage", "status": tinyllama_coverage["status"]},
         {"name": "full_tinyllama_checkpoint", "status": "pass" if checkpoint_check_passes else "fail"},
         {
             "name": "full_checkpoint_rtl_lowering_plan",
-            "status": "pass" if full_checkpoint_rtl_lowering["status"] == "planned" else "fail",
+            "status": full_checkpoint_rtl_lowering["status"],
         },
         {
             "name": "full_checkpoint_command_stream",
@@ -5556,12 +13104,41 @@ def run_pipeline(
             "status": full_checkpoint_graph_rtl_lowering["status"],
         },
         {
+            "name": "full_checkpoint_structural_rtl_execution",
+            "status": "pass"
+            if full_checkpoint_graph_rtl_lowering["full_checkpoint_structural_rtl_execution"]
+            and full_checkpoint_rtl_top["full_checkpoint_structural_rtl_execution"]
+            else "fail",
+        },
+        {
+            "name": "full_checkpoint_trace_anchors_match_cpp_schedule",
+            "status": "pass" if full_checkpoint_rtl_top["full_command_trace_anchor_check"] else "fail",
+        },
+        {
+            "name": "full_checkpoint_per_op_trace_coverage_matches_cpp_schedule",
+            "status": (
+                "pass"
+                if full_checkpoint_rtl_top["full_command_per_op_trace_coverage_check"]
+                else "fail"
+            ),
+        },
+        {
             "name": "full_checkpoint_module_dpi_generation",
             "status": full_checkpoint_module_dpi["status"],
         },
         {
             "name": "full_graph_module_dpi_binding",
             "status": full_graph_module_dpi_binding["status"],
+        },
+        {
+            "name": "lowering_construction_certificate",
+            "status": lowering_certificate["status"],
+        },
+        {
+            "name": "lowering_objective_coverage",
+            "status": "pass"
+            if all(entry["status"] == "pass" for entry in lowering_certificate["objective_coverage"])
+            else "fail",
         },
         {"name": "target_package", "status": "pass" if target_package_exists else "fail"},
     ]
@@ -5595,8 +13172,12 @@ def run_pipeline(
         "hardware_graph": repo_rel(graph_out),
         "implementation_matrix": implementation_matrix["matrix"],
         "implementation_flists": implementation_matrix["flists"],
+        "target_filelist_module_dpi_coverage": target_filelist_module_dpi_coverage,
+        "production_rtl_inventory": production_rtl_inventory,
+        "generated_soc_top_hierarchy": generated_soc_top_hierarchy,
         "module_dpi_generation": repo_rel(module_dpi_out),
         "module_dpi_manifest": module_dpi_report["manifest"],
+        "module_dpi_interfaces_doc": module_dpi_report["module_interfaces_doc"],
         "module_dpi_isolation_proof": module_dpi_report["module_isolation_proof"],
         "module_dpi_cycle_contract": module_dpi_report["cycle_contract"],
         "module_dpi_test_plan": module_dpi_report["module_test_plan"],
@@ -5617,8 +13198,17 @@ def run_pipeline(
         ],
         "full_checkpoint_graph_rtl_lowering_proof": repo_rel(full_checkpoint_graph_rtl_lowering_out),
         "full_checkpoint_graph_rtl_lowering_status": full_checkpoint_graph_rtl_lowering["status"],
+        "full_checkpoint_rtl_execution": full_checkpoint_graph_rtl_lowering[
+            "full_checkpoint_rtl_execution"
+        ],
+        "full_checkpoint_rtl_execution_scope": full_checkpoint_graph_rtl_lowering[
+            "full_checkpoint_rtl_execution_scope"
+        ],
         "full_checkpoint_command_stream_rtl_execution": full_checkpoint_graph_rtl_lowering[
             "full_checkpoint_command_stream_rtl_execution"
+        ],
+        "full_checkpoint_structural_rtl_execution": full_checkpoint_graph_rtl_lowering[
+            "full_checkpoint_structural_rtl_execution"
         ],
         "full_checkpoint_numeric_output_equivalence": full_checkpoint_graph_rtl_lowering[
             "full_checkpoint_numeric_output_equivalence"
@@ -5639,6 +13229,12 @@ def run_pipeline(
         "full_checkpoint_total_graph_slots": full_checkpoint_graph_sequencer["total_graph_slots"],
         "full_checkpoint_rtl_top": repo_rel(full_checkpoint_rtl_top_out),
         "full_checkpoint_rtl_top_status": full_checkpoint_rtl_top["status"],
+        "full_checkpoint_rtl_top_rtl_execution": full_checkpoint_rtl_top[
+            "full_checkpoint_rtl_execution"
+        ],
+        "full_checkpoint_rtl_top_rtl_execution_scope": full_checkpoint_rtl_top[
+            "full_checkpoint_rtl_execution_scope"
+        ],
         "full_checkpoint_rtl_top_smoke_max_tiles_per_linear_slot": full_checkpoint_rtl_top[
             "smoke_max_tiles_per_linear_slot"
         ],
@@ -5649,11 +13245,50 @@ def run_pipeline(
         "full_checkpoint_rtl_top_full_command_count_rtl_execution": full_checkpoint_rtl_top[
             "full_command_count_rtl_execution"
         ],
+        "full_checkpoint_rtl_top_structural_rtl_execution": full_checkpoint_rtl_top[
+            "full_checkpoint_structural_rtl_execution"
+        ],
         "full_checkpoint_rtl_top_full_command_payload_schedule_check": full_checkpoint_rtl_top[
             "full_command_payload_schedule_check"
         ],
+        "full_checkpoint_rtl_top_full_command_payload_digest_check": full_checkpoint_rtl_top[
+            "full_command_payload_digest_check"
+        ],
+        "full_checkpoint_rtl_top_full_command_payload_digest": full_checkpoint_rtl_top[
+            "full_command_payload_digest"
+        ],
+        "full_checkpoint_rtl_top_full_command_control_schedule_check": full_checkpoint_rtl_top[
+            "full_command_control_schedule_check"
+        ],
+        "full_checkpoint_rtl_top_full_command_control_digest_check": full_checkpoint_rtl_top[
+            "full_command_control_digest_check"
+        ],
+        "full_checkpoint_rtl_top_full_command_control_digest": full_checkpoint_rtl_top[
+            "full_command_control_digest"
+        ],
+        "full_checkpoint_rtl_top_verilator_execution_status": full_checkpoint_rtl_top[
+            "verilator_execution"
+        ]["status"],
+        "full_checkpoint_rtl_top_full_command_cycles": full_checkpoint_rtl_top[
+            "full_command_verilator_report"
+        ]["cycles"],
+        "full_checkpoint_rtl_top_full_command_accepted_payload_digest": full_checkpoint_rtl_top[
+            "full_command_verilator_report"
+        ]["accepted_payload_digest"],
         "full_checkpoint_rtl_top_full_command_cycle_phase_check": full_checkpoint_rtl_top[
             "full_command_cycle_phase_check"
+        ],
+        "full_checkpoint_rtl_top_full_command_trace_anchor_check": full_checkpoint_rtl_top[
+            "full_command_trace_anchor_check"
+        ],
+        "full_checkpoint_rtl_top_full_command_trace_anchors": full_checkpoint_rtl_top[
+            "full_command_trace_anchors"
+        ],
+        "full_checkpoint_rtl_top_full_command_per_op_trace_coverage_check": full_checkpoint_rtl_top[
+            "full_command_per_op_trace_coverage_check"
+        ],
+        "full_checkpoint_rtl_top_full_command_per_op_trace_coverage": full_checkpoint_rtl_top[
+            "full_command_per_op_trace_coverage"
         ],
         "full_checkpoint_module_dpi_generation": repo_rel(full_checkpoint_module_dpi_out),
         "full_checkpoint_module_dpi_manifest": full_checkpoint_module_dpi["manifest"],
@@ -5679,8 +13314,22 @@ def run_pipeline(
         "full_graph_module_dpi_required_base_modules": full_graph_module_dpi_binding[
             "required_base_modules"
         ],
+        "full_graph_source_derived_module_dpi_coverage_count": full_graph_module_dpi_binding[
+            "source_derived_module_dpi_coverage_count"
+        ],
+        "full_graph_generated_rtl_module_dpi_coverage_count": full_graph_module_dpi_binding[
+            "generated_rtl_module_dpi_coverage_count"
+        ],
+        "full_graph_separated_base_rtl_module_dpi_coverage_count": full_graph_module_dpi_binding[
+            "separated_base_rtl_module_dpi_coverage_count"
+        ],
+        "lowering_construction_certificate": repo_rel(lowering_certificate_out),
+        "lowering_construction_certificate_status": lowering_certificate["status"],
+        "lowering_construction_certificate_truth_boundary": lowering_certificate["truth_boundary"],
+        "lowering_objective_coverage": lowering_certificate["objective_coverage"],
         "systemverilog_plan": repo_rel(sv_out),
         "generated_soc_top": soc_top_artifacts,
+        "generated_soc_top_standalone_verilator": generated_soc_top_standalone_verilator,
         "target_package_plan": repo_rel(target_out),
         "target_package": target_manifest_path,
         "checks": e2e_checks,
@@ -5703,6 +13352,7 @@ def run_pipeline(
         "end_to_end_status": e2e["status"],
         "module_dpi_generation": repo_rel(module_dpi_out),
         "module_dpi_manifest": module_dpi_report["manifest"],
+        "module_dpi_interfaces_doc": module_dpi_report["module_interfaces_doc"],
         "module_dpi_isolation_proof": module_dpi_report["module_isolation_proof"],
         "module_dpi_cycle_contract": module_dpi_report["cycle_contract"],
         "module_dpi_test_plan": module_dpi_report["module_test_plan"],
@@ -5722,8 +13372,17 @@ def run_pipeline(
         ],
         "full_checkpoint_graph_rtl_lowering_proof": repo_rel(full_checkpoint_graph_rtl_lowering_out),
         "full_checkpoint_graph_rtl_lowering_status": full_checkpoint_graph_rtl_lowering["status"],
+        "full_checkpoint_rtl_execution": full_checkpoint_graph_rtl_lowering[
+            "full_checkpoint_rtl_execution"
+        ],
+        "full_checkpoint_rtl_execution_scope": full_checkpoint_graph_rtl_lowering[
+            "full_checkpoint_rtl_execution_scope"
+        ],
         "full_checkpoint_command_stream_rtl_execution": full_checkpoint_graph_rtl_lowering[
             "full_checkpoint_command_stream_rtl_execution"
+        ],
+        "full_checkpoint_structural_rtl_execution": full_checkpoint_graph_rtl_lowering[
+            "full_checkpoint_structural_rtl_execution"
         ],
         "full_checkpoint_numeric_output_equivalence": full_checkpoint_graph_rtl_lowering[
             "full_checkpoint_numeric_output_equivalence"
@@ -5744,6 +13403,12 @@ def run_pipeline(
         "full_checkpoint_total_graph_slots": full_checkpoint_graph_sequencer["total_graph_slots"],
         "full_checkpoint_rtl_top": repo_rel(full_checkpoint_rtl_top_out),
         "full_checkpoint_rtl_top_status": full_checkpoint_rtl_top["status"],
+        "full_checkpoint_rtl_top_rtl_execution": full_checkpoint_rtl_top[
+            "full_checkpoint_rtl_execution"
+        ],
+        "full_checkpoint_rtl_top_rtl_execution_scope": full_checkpoint_rtl_top[
+            "full_checkpoint_rtl_execution_scope"
+        ],
         "full_checkpoint_rtl_top_smoke_max_tiles_per_linear_slot": full_checkpoint_rtl_top[
             "smoke_max_tiles_per_linear_slot"
         ],
@@ -5754,11 +13419,50 @@ def run_pipeline(
         "full_checkpoint_rtl_top_full_command_count_rtl_execution": full_checkpoint_rtl_top[
             "full_command_count_rtl_execution"
         ],
+        "full_checkpoint_rtl_top_structural_rtl_execution": full_checkpoint_rtl_top[
+            "full_checkpoint_structural_rtl_execution"
+        ],
         "full_checkpoint_rtl_top_full_command_payload_schedule_check": full_checkpoint_rtl_top[
             "full_command_payload_schedule_check"
         ],
+        "full_checkpoint_rtl_top_full_command_payload_digest_check": full_checkpoint_rtl_top[
+            "full_command_payload_digest_check"
+        ],
+        "full_checkpoint_rtl_top_full_command_payload_digest": full_checkpoint_rtl_top[
+            "full_command_payload_digest"
+        ],
+        "full_checkpoint_rtl_top_full_command_control_schedule_check": full_checkpoint_rtl_top[
+            "full_command_control_schedule_check"
+        ],
+        "full_checkpoint_rtl_top_full_command_control_digest_check": full_checkpoint_rtl_top[
+            "full_command_control_digest_check"
+        ],
+        "full_checkpoint_rtl_top_full_command_control_digest": full_checkpoint_rtl_top[
+            "full_command_control_digest"
+        ],
+        "full_checkpoint_rtl_top_verilator_execution_status": full_checkpoint_rtl_top[
+            "verilator_execution"
+        ]["status"],
+        "full_checkpoint_rtl_top_full_command_cycles": full_checkpoint_rtl_top[
+            "full_command_verilator_report"
+        ]["cycles"],
+        "full_checkpoint_rtl_top_full_command_accepted_payload_digest": full_checkpoint_rtl_top[
+            "full_command_verilator_report"
+        ]["accepted_payload_digest"],
         "full_checkpoint_rtl_top_full_command_cycle_phase_check": full_checkpoint_rtl_top[
             "full_command_cycle_phase_check"
+        ],
+        "full_checkpoint_rtl_top_full_command_trace_anchor_check": full_checkpoint_rtl_top[
+            "full_command_trace_anchor_check"
+        ],
+        "full_checkpoint_rtl_top_full_command_trace_anchors": full_checkpoint_rtl_top[
+            "full_command_trace_anchors"
+        ],
+        "full_checkpoint_rtl_top_full_command_per_op_trace_coverage_check": full_checkpoint_rtl_top[
+            "full_command_per_op_trace_coverage_check"
+        ],
+        "full_checkpoint_rtl_top_full_command_per_op_trace_coverage": full_checkpoint_rtl_top[
+            "full_command_per_op_trace_coverage"
         ],
         "full_checkpoint_module_dpi_generation": repo_rel(full_checkpoint_module_dpi_out),
         "full_checkpoint_module_dpi_manifest": full_checkpoint_module_dpi["manifest"],
@@ -5784,6 +13488,18 @@ def run_pipeline(
         "full_graph_module_dpi_required_base_modules": full_graph_module_dpi_binding[
             "required_base_modules"
         ],
+        "full_graph_source_derived_module_dpi_coverage_count": full_graph_module_dpi_binding[
+            "source_derived_module_dpi_coverage_count"
+        ],
+        "full_graph_generated_rtl_module_dpi_coverage_count": full_graph_module_dpi_binding[
+            "generated_rtl_module_dpi_coverage_count"
+        ],
+        "full_graph_separated_base_rtl_module_dpi_coverage_count": full_graph_module_dpi_binding[
+            "separated_base_rtl_module_dpi_coverage_count"
+        ],
+        "lowering_construction_certificate": repo_rel(lowering_certificate_out),
+        "lowering_construction_certificate_status": lowering_certificate["status"],
+        "lowering_construction_certificate_truth_boundary": lowering_certificate["truth_boundary"],
         "pipeline": architecture["pipeline"],
     }
     write_json(summary_out, summary)

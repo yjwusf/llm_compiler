@@ -36,6 +36,22 @@
     {
       "name": "all_expected_phase_markers_observed",
       "status": "pass"
+    },
+    {
+      "name": "all_expected_vip_case_markers_observed",
+      "status": "pass"
+    },
+    {
+      "name": "all_expected_vip_case_traces_observed_in_order",
+      "status": "pass"
+    },
+    {
+      "name": "all_expected_phase_traces_observed_in_order",
+      "status": "pass"
+    },
+    {
+      "name": "all_expected_phase_signal_traces_observed",
+      "status": "pass"
     }
   ],
   "execution_recipe": "e1/e1-h1/generated/module_dpi/verilator_execution_recipe.json",
@@ -76,8 +92,95 @@
         "phase=halt_transition",
         "phase=halted_idle"
       ],
+      "expected_phase_signal_trace": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 4,
+          "expected": 4,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 5,
+          "expected": 5,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 6,
+          "expected": 6,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 7,
+          "expected": 7,
+          "signal": "probe_cycle_phase_o"
+        }
+      ],
+      "expected_phase_trace": [
+        {
+          "cycle": 0,
+          "phase": "reset_release",
+          "phase_marker": "phase=reset_release"
+        },
+        {
+          "cycle": 1,
+          "phase": "command_backpressure",
+          "phase_marker": "phase=command_backpressure"
+        },
+        {
+          "cycle": 2,
+          "phase": "command_handshake",
+          "phase_marker": "phase=command_handshake"
+        },
+        {
+          "cycle": 3,
+          "phase": "wait_for_array",
+          "phase_marker": "phase=wait_for_array"
+        },
+        {
+          "cycle": 4,
+          "phase": "wait_for_array_stable",
+          "phase_marker": "phase=wait_for_array_stable"
+        },
+        {
+          "cycle": 5,
+          "phase": "array_completion",
+          "phase_marker": "phase=array_completion"
+        },
+        {
+          "cycle": 6,
+          "phase": "halt_transition",
+          "phase_marker": "phase=halt_transition"
+        },
+        {
+          "cycle": 7,
+          "phase": "halted_idle",
+          "phase_marker": "phase=halted_idle"
+        }
+      ],
       "expected_stdout_markers": [
         "module=control_cpu",
+        "case=reset_to_first_command",
+        "case=command_backpressure",
+        "case=array_completion",
         "E1_H1_MODULE_DPI_CYCLE",
         "phase=reset_release",
         "phase=command_backpressure",
@@ -87,6 +190,28 @@
         "phase=array_completion",
         "phase=halt_transition",
         "phase=halted_idle"
+      ],
+      "expected_vip_case_markers": [
+        "case=reset_to_first_command",
+        "case=command_backpressure",
+        "case=array_completion"
+      ],
+      "expected_vip_case_trace": [
+        {
+          "case": "reset_to_first_command",
+          "case_marker": "case=reset_to_first_command",
+          "index": 0
+        },
+        {
+          "case": "command_backpressure",
+          "case_marker": "case=command_backpressure",
+          "index": 1
+        },
+        {
+          "case": "array_completion",
+          "case_marker": "case=array_completion",
+          "index": 2
+        }
       ],
       "flist": "e1/e1-h1/generated/module_dpi/flists/control_cpu.f",
       "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_control_cpu_main.cpp",
@@ -101,8 +226,97 @@
         "phase=halt_transition",
         "phase=halted_idle"
       ],
+      "observed_phase_signal_trace_count": 8,
+      "observed_phase_signal_trace_prefix": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 4,
+          "expected": 4,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 5,
+          "expected": 5,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 6,
+          "expected": 6,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 7,
+          "expected": 7,
+          "signal": "probe_cycle_phase_o"
+        }
+      ],
+      "observed_phase_trace_count": 8,
+      "observed_phase_trace_prefix": [
+        {
+          "cycle": 0,
+          "phase": "reset_release",
+          "phase_marker": "phase=reset_release"
+        },
+        {
+          "cycle": 1,
+          "phase": "command_backpressure",
+          "phase_marker": "phase=command_backpressure"
+        },
+        {
+          "cycle": 2,
+          "phase": "command_handshake",
+          "phase_marker": "phase=command_handshake"
+        },
+        {
+          "cycle": 3,
+          "phase": "wait_for_array",
+          "phase_marker": "phase=wait_for_array"
+        },
+        {
+          "cycle": 4,
+          "phase": "wait_for_array_stable",
+          "phase_marker": "phase=wait_for_array_stable"
+        },
+        {
+          "cycle": 5,
+          "phase": "array_completion",
+          "phase_marker": "phase=array_completion"
+        },
+        {
+          "cycle": 6,
+          "phase": "halt_transition",
+          "phase_marker": "phase=halt_transition"
+        },
+        {
+          "cycle": 7,
+          "phase": "halted_idle",
+          "phase_marker": "phase=halted_idle"
+        }
+      ],
       "observed_stdout_markers": [
         "module=control_cpu",
+        "case=reset_to_first_command",
+        "case=command_backpressure",
+        "case=array_completion",
         "E1_H1_MODULE_DPI_CYCLE",
         "phase=reset_release",
         "phase=command_backpressure",
@@ -112,6 +326,29 @@
         "phase=array_completion",
         "phase=halt_transition",
         "phase=halted_idle"
+      ],
+      "observed_vip_case_markers": [
+        "case=reset_to_first_command",
+        "case=command_backpressure",
+        "case=array_completion"
+      ],
+      "observed_vip_case_trace_count": 3,
+      "observed_vip_case_trace_prefix": [
+        {
+          "case": "reset_to_first_command",
+          "case_marker": "case=reset_to_first_command",
+          "index": 0
+        },
+        {
+          "case": "command_backpressure",
+          "case_marker": "case=command_backpressure",
+          "index": 1
+        },
+        {
+          "case": "array_completion",
+          "case_marker": "case=array_completion",
+          "index": 2
+        }
       ],
       "run_executable": "<build-root>/obj_module_dpi_control_cpu/Ve1_h1_module_dpi_control_cpu",
       "run_returncode": 0,
@@ -158,8 +395,115 @@
         "phase=drain_stream",
         "phase=return_idle"
       ],
+      "expected_phase_signal_trace": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 4,
+          "expected": 4,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 5,
+          "expected": 5,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 6,
+          "expected": 6,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 7,
+          "expected": 7,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 8,
+          "expected": 8,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 9,
+          "expected": 9,
+          "signal": "probe_cycle_phase_o"
+        }
+      ],
+      "expected_phase_trace": [
+        {
+          "cycle": 0,
+          "phase": "idle_after_reset",
+          "phase_marker": "phase=idle_after_reset"
+        },
+        {
+          "cycle": 1,
+          "phase": "frame_nibble_0",
+          "phase_marker": "phase=frame_nibble_0"
+        },
+        {
+          "cycle": 2,
+          "phase": "frame_nibble_1",
+          "phase_marker": "phase=frame_nibble_1"
+        },
+        {
+          "cycle": 3,
+          "phase": "frame_nibble_2",
+          "phase_marker": "phase=frame_nibble_2"
+        },
+        {
+          "cycle": 4,
+          "phase": "frame_nibble_3",
+          "phase_marker": "phase=frame_nibble_3"
+        },
+        {
+          "cycle": 5,
+          "phase": "frame_nibble_4",
+          "phase_marker": "phase=frame_nibble_4"
+        },
+        {
+          "cycle": 6,
+          "phase": "frame_gap",
+          "phase_marker": "phase=frame_gap"
+        },
+        {
+          "cycle": 7,
+          "phase": "downstream_accept",
+          "phase_marker": "phase=downstream_accept"
+        },
+        {
+          "cycle": 8,
+          "phase": "drain_stream",
+          "phase_marker": "phase=drain_stream"
+        },
+        {
+          "cycle": 9,
+          "phase": "return_idle",
+          "phase_marker": "phase=return_idle"
+        }
+      ],
       "expected_stdout_markers": [
         "module=rgmii_ethernet_ingress",
+        "case=reset_idle",
+        "case=minimum_frame",
+        "case=downstream_backpressure",
         "E1_H1_MODULE_DPI_CYCLE",
         "phase=idle_after_reset",
         "phase=frame_nibble_0",
@@ -171,6 +515,28 @@
         "phase=downstream_accept",
         "phase=drain_stream",
         "phase=return_idle"
+      ],
+      "expected_vip_case_markers": [
+        "case=reset_idle",
+        "case=minimum_frame",
+        "case=downstream_backpressure"
+      ],
+      "expected_vip_case_trace": [
+        {
+          "case": "reset_idle",
+          "case_marker": "case=reset_idle",
+          "index": 0
+        },
+        {
+          "case": "minimum_frame",
+          "case_marker": "case=minimum_frame",
+          "index": 1
+        },
+        {
+          "case": "downstream_backpressure",
+          "case_marker": "case=downstream_backpressure",
+          "index": 2
+        }
       ],
       "flist": "e1/e1-h1/generated/module_dpi/flists/rgmii_ethernet_ingress.f",
       "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_rgmii_ethernet_ingress_main.cpp",
@@ -187,8 +553,117 @@
         "phase=drain_stream",
         "phase=return_idle"
       ],
+      "observed_phase_signal_trace_count": 10,
+      "observed_phase_signal_trace_prefix": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 4,
+          "expected": 4,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 5,
+          "expected": 5,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 6,
+          "expected": 6,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 7,
+          "expected": 7,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 8,
+          "expected": 8,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 9,
+          "expected": 9,
+          "signal": "probe_cycle_phase_o"
+        }
+      ],
+      "observed_phase_trace_count": 10,
+      "observed_phase_trace_prefix": [
+        {
+          "cycle": 0,
+          "phase": "idle_after_reset",
+          "phase_marker": "phase=idle_after_reset"
+        },
+        {
+          "cycle": 1,
+          "phase": "frame_nibble_0",
+          "phase_marker": "phase=frame_nibble_0"
+        },
+        {
+          "cycle": 2,
+          "phase": "frame_nibble_1",
+          "phase_marker": "phase=frame_nibble_1"
+        },
+        {
+          "cycle": 3,
+          "phase": "frame_nibble_2",
+          "phase_marker": "phase=frame_nibble_2"
+        },
+        {
+          "cycle": 4,
+          "phase": "frame_nibble_3",
+          "phase_marker": "phase=frame_nibble_3"
+        },
+        {
+          "cycle": 5,
+          "phase": "frame_nibble_4",
+          "phase_marker": "phase=frame_nibble_4"
+        },
+        {
+          "cycle": 6,
+          "phase": "frame_gap",
+          "phase_marker": "phase=frame_gap"
+        },
+        {
+          "cycle": 7,
+          "phase": "downstream_accept",
+          "phase_marker": "phase=downstream_accept"
+        },
+        {
+          "cycle": 8,
+          "phase": "drain_stream",
+          "phase_marker": "phase=drain_stream"
+        },
+        {
+          "cycle": 9,
+          "phase": "return_idle",
+          "phase_marker": "phase=return_idle"
+        }
+      ],
       "observed_stdout_markers": [
         "module=rgmii_ethernet_ingress",
+        "case=reset_idle",
+        "case=minimum_frame",
+        "case=downstream_backpressure",
         "E1_H1_MODULE_DPI_CYCLE",
         "phase=idle_after_reset",
         "phase=frame_nibble_0",
@@ -200,6 +675,29 @@
         "phase=downstream_accept",
         "phase=drain_stream",
         "phase=return_idle"
+      ],
+      "observed_vip_case_markers": [
+        "case=reset_idle",
+        "case=minimum_frame",
+        "case=downstream_backpressure"
+      ],
+      "observed_vip_case_trace_count": 3,
+      "observed_vip_case_trace_prefix": [
+        {
+          "case": "reset_idle",
+          "case_marker": "case=reset_idle",
+          "index": 0
+        },
+        {
+          "case": "minimum_frame",
+          "case_marker": "case=minimum_frame",
+          "index": 1
+        },
+        {
+          "case": "downstream_backpressure",
+          "case_marker": "case=downstream_backpressure",
+          "index": 2
+        }
       ],
       "run_executable": "<build-root>/obj_module_dpi_rgmii_ethernet_ingress/Ve1_h1_module_dpi_rgmii_ethernet_ingress",
       "run_returncode": 0,
@@ -242,8 +740,75 @@
         "phase=reject_error_word",
         "phase=empty_or_ready"
       ],
+      "expected_phase_signal_trace": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 4,
+          "expected": 4,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 5,
+          "expected": 5,
+          "signal": "probe_cycle_phase_o"
+        }
+      ],
+      "expected_phase_trace": [
+        {
+          "cycle": 0,
+          "phase": "latch_first_word",
+          "phase_marker": "phase=latch_first_word"
+        },
+        {
+          "cycle": 1,
+          "phase": "hold_latched_word",
+          "phase_marker": "phase=hold_latched_word"
+        },
+        {
+          "cycle": 2,
+          "phase": "release_latched_word",
+          "phase_marker": "phase=release_latched_word"
+        },
+        {
+          "cycle": 3,
+          "phase": "latch_next_clean_word",
+          "phase_marker": "phase=latch_next_clean_word"
+        },
+        {
+          "cycle": 4,
+          "phase": "reject_error_word",
+          "phase_marker": "phase=reject_error_word"
+        },
+        {
+          "cycle": 5,
+          "phase": "empty_or_ready",
+          "phase_marker": "phase=empty_or_ready"
+        }
+      ],
       "expected_stdout_markers": [
         "module=ingress_sram",
+        "case=reset_empty",
+        "case=single_stream_word",
+        "case=array_backpressure",
         "E1_H1_MODULE_DPI_CYCLE",
         "phase=latch_first_word",
         "phase=hold_latched_word",
@@ -251,6 +816,28 @@
         "phase=latch_next_clean_word",
         "phase=reject_error_word",
         "phase=empty_or_ready"
+      ],
+      "expected_vip_case_markers": [
+        "case=reset_empty",
+        "case=single_stream_word",
+        "case=array_backpressure"
+      ],
+      "expected_vip_case_trace": [
+        {
+          "case": "reset_empty",
+          "case_marker": "case=reset_empty",
+          "index": 0
+        },
+        {
+          "case": "single_stream_word",
+          "case_marker": "case=single_stream_word",
+          "index": 1
+        },
+        {
+          "case": "array_backpressure",
+          "case_marker": "case=array_backpressure",
+          "index": 2
+        }
       ],
       "flist": "e1/e1-h1/generated/module_dpi/flists/ingress_sram.f",
       "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_ingress_sram_main.cpp",
@@ -263,8 +850,77 @@
         "phase=reject_error_word",
         "phase=empty_or_ready"
       ],
+      "observed_phase_signal_trace_count": 6,
+      "observed_phase_signal_trace_prefix": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 4,
+          "expected": 4,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 5,
+          "expected": 5,
+          "signal": "probe_cycle_phase_o"
+        }
+      ],
+      "observed_phase_trace_count": 6,
+      "observed_phase_trace_prefix": [
+        {
+          "cycle": 0,
+          "phase": "latch_first_word",
+          "phase_marker": "phase=latch_first_word"
+        },
+        {
+          "cycle": 1,
+          "phase": "hold_latched_word",
+          "phase_marker": "phase=hold_latched_word"
+        },
+        {
+          "cycle": 2,
+          "phase": "release_latched_word",
+          "phase_marker": "phase=release_latched_word"
+        },
+        {
+          "cycle": 3,
+          "phase": "latch_next_clean_word",
+          "phase_marker": "phase=latch_next_clean_word"
+        },
+        {
+          "cycle": 4,
+          "phase": "reject_error_word",
+          "phase_marker": "phase=reject_error_word"
+        },
+        {
+          "cycle": 5,
+          "phase": "empty_or_ready",
+          "phase_marker": "phase=empty_or_ready"
+        }
+      ],
       "observed_stdout_markers": [
         "module=ingress_sram",
+        "case=reset_empty",
+        "case=single_stream_word",
+        "case=array_backpressure",
         "E1_H1_MODULE_DPI_CYCLE",
         "phase=latch_first_word",
         "phase=hold_latched_word",
@@ -272,6 +928,29 @@
         "phase=latch_next_clean_word",
         "phase=reject_error_word",
         "phase=empty_or_ready"
+      ],
+      "observed_vip_case_markers": [
+        "case=reset_empty",
+        "case=single_stream_word",
+        "case=array_backpressure"
+      ],
+      "observed_vip_case_trace_count": 3,
+      "observed_vip_case_trace_prefix": [
+        {
+          "case": "reset_empty",
+          "case_marker": "case=reset_empty",
+          "index": 0
+        },
+        {
+          "case": "single_stream_word",
+          "case_marker": "case=single_stream_word",
+          "index": 1
+        },
+        {
+          "case": "array_backpressure",
+          "case_marker": "case=array_backpressure",
+          "index": 2
+        }
       ],
       "run_executable": "<build-root>/obj_module_dpi_ingress_sram/Ve1_h1_module_dpi_ingress_sram",
       "run_returncode": 0,
@@ -311,12 +990,71 @@
         "phase=initialized_hold_0",
         "phase=initialized_hold_1"
       ],
+      "expected_phase_signal_trace": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "probe_cycle_phase_o"
+        }
+      ],
+      "expected_phase_trace": [
+        {
+          "cycle": 0,
+          "phase": "initialization_latch",
+          "phase_marker": "phase=initialization_latch"
+        },
+        {
+          "cycle": 1,
+          "phase": "initialized_hold_0",
+          "phase_marker": "phase=initialized_hold_0"
+        },
+        {
+          "cycle": 2,
+          "phase": "initialized_hold_1",
+          "phase_marker": "phase=initialized_hold_1"
+        }
+      ],
       "expected_stdout_markers": [
         "module=activation_sram",
+        "case=reset_empty",
+        "case=single_config_read",
+        "case=parameterized_size",
         "E1_H1_MODULE_DPI_CYCLE",
         "phase=initialization_latch",
         "phase=initialized_hold_0",
         "phase=initialized_hold_1"
+      ],
+      "expected_vip_case_markers": [
+        "case=reset_empty",
+        "case=single_config_read",
+        "case=parameterized_size"
+      ],
+      "expected_vip_case_trace": [
+        {
+          "case": "reset_empty",
+          "case_marker": "case=reset_empty",
+          "index": 0
+        },
+        {
+          "case": "single_config_read",
+          "case_marker": "case=single_config_read",
+          "index": 1
+        },
+        {
+          "case": "parameterized_size",
+          "case_marker": "case=parameterized_size",
+          "index": 2
+        }
       ],
       "flist": "e1/e1-h1/generated/module_dpi/flists/activation_sram.f",
       "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_activation_sram_main.cpp",
@@ -326,12 +1064,74 @@
         "phase=initialized_hold_0",
         "phase=initialized_hold_1"
       ],
+      "observed_phase_signal_trace_count": 3,
+      "observed_phase_signal_trace_prefix": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "probe_cycle_phase_o"
+        }
+      ],
+      "observed_phase_trace_count": 3,
+      "observed_phase_trace_prefix": [
+        {
+          "cycle": 0,
+          "phase": "initialization_latch",
+          "phase_marker": "phase=initialization_latch"
+        },
+        {
+          "cycle": 1,
+          "phase": "initialized_hold_0",
+          "phase_marker": "phase=initialized_hold_0"
+        },
+        {
+          "cycle": 2,
+          "phase": "initialized_hold_1",
+          "phase_marker": "phase=initialized_hold_1"
+        }
+      ],
       "observed_stdout_markers": [
         "module=activation_sram",
+        "case=reset_empty",
+        "case=single_config_read",
+        "case=parameterized_size",
         "E1_H1_MODULE_DPI_CYCLE",
         "phase=initialization_latch",
         "phase=initialized_hold_0",
         "phase=initialized_hold_1"
+      ],
+      "observed_vip_case_markers": [
+        "case=reset_empty",
+        "case=single_config_read",
+        "case=parameterized_size"
+      ],
+      "observed_vip_case_trace_count": 3,
+      "observed_vip_case_trace_prefix": [
+        {
+          "case": "reset_empty",
+          "case_marker": "case=reset_empty",
+          "index": 0
+        },
+        {
+          "case": "single_config_read",
+          "case_marker": "case=single_config_read",
+          "index": 1
+        },
+        {
+          "case": "parameterized_size",
+          "case_marker": "case=parameterized_size",
+          "index": 2
+        }
       ],
       "run_executable": "<build-root>/obj_module_dpi_activation_sram/Ve1_h1_module_dpi_activation_sram",
       "run_returncode": 0,
@@ -371,12 +1171,71 @@
         "phase=initialized_hold_0",
         "phase=initialized_hold_1"
       ],
+      "expected_phase_signal_trace": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "probe_cycle_phase_o"
+        }
+      ],
+      "expected_phase_trace": [
+        {
+          "cycle": 0,
+          "phase": "initialization_latch",
+          "phase_marker": "phase=initialization_latch"
+        },
+        {
+          "cycle": 1,
+          "phase": "initialized_hold_0",
+          "phase_marker": "phase=initialized_hold_0"
+        },
+        {
+          "cycle": 2,
+          "phase": "initialized_hold_1",
+          "phase_marker": "phase=initialized_hold_1"
+        }
+      ],
       "expected_stdout_markers": [
         "module=accumulator_sram",
+        "case=reset_empty",
+        "case=single_config_read",
+        "case=wide_accumulator_word",
         "E1_H1_MODULE_DPI_CYCLE",
         "phase=initialization_latch",
         "phase=initialized_hold_0",
         "phase=initialized_hold_1"
+      ],
+      "expected_vip_case_markers": [
+        "case=reset_empty",
+        "case=single_config_read",
+        "case=wide_accumulator_word"
+      ],
+      "expected_vip_case_trace": [
+        {
+          "case": "reset_empty",
+          "case_marker": "case=reset_empty",
+          "index": 0
+        },
+        {
+          "case": "single_config_read",
+          "case_marker": "case=single_config_read",
+          "index": 1
+        },
+        {
+          "case": "wide_accumulator_word",
+          "case_marker": "case=wide_accumulator_word",
+          "index": 2
+        }
       ],
       "flist": "e1/e1-h1/generated/module_dpi/flists/accumulator_sram.f",
       "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_accumulator_sram_main.cpp",
@@ -386,12 +1245,74 @@
         "phase=initialized_hold_0",
         "phase=initialized_hold_1"
       ],
+      "observed_phase_signal_trace_count": 3,
+      "observed_phase_signal_trace_prefix": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "probe_cycle_phase_o"
+        }
+      ],
+      "observed_phase_trace_count": 3,
+      "observed_phase_trace_prefix": [
+        {
+          "cycle": 0,
+          "phase": "initialization_latch",
+          "phase_marker": "phase=initialization_latch"
+        },
+        {
+          "cycle": 1,
+          "phase": "initialized_hold_0",
+          "phase_marker": "phase=initialized_hold_0"
+        },
+        {
+          "cycle": 2,
+          "phase": "initialized_hold_1",
+          "phase_marker": "phase=initialized_hold_1"
+        }
+      ],
       "observed_stdout_markers": [
         "module=accumulator_sram",
+        "case=reset_empty",
+        "case=single_config_read",
+        "case=wide_accumulator_word",
         "E1_H1_MODULE_DPI_CYCLE",
         "phase=initialization_latch",
         "phase=initialized_hold_0",
         "phase=initialized_hold_1"
+      ],
+      "observed_vip_case_markers": [
+        "case=reset_empty",
+        "case=single_config_read",
+        "case=wide_accumulator_word"
+      ],
+      "observed_vip_case_trace_count": 3,
+      "observed_vip_case_trace_prefix": [
+        {
+          "case": "reset_empty",
+          "case_marker": "case=reset_empty",
+          "index": 0
+        },
+        {
+          "case": "single_config_read",
+          "case_marker": "case=single_config_read",
+          "index": 1
+        },
+        {
+          "case": "wide_accumulator_word",
+          "case_marker": "case=wide_accumulator_word",
+          "index": 2
+        }
       ],
       "run_executable": "<build-root>/obj_module_dpi_accumulator_sram/Ve1_h1_module_dpi_accumulator_sram",
       "run_returncode": 0,
@@ -436,8 +1357,95 @@
         "phase=completion_pulse",
         "phase=return_ready"
       ],
+      "expected_phase_signal_trace": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 4,
+          "expected": 4,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 5,
+          "expected": 5,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 6,
+          "expected": 6,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 7,
+          "expected": 7,
+          "signal": "probe_cycle_phase_o"
+        }
+      ],
+      "expected_phase_trace": [
+        {
+          "cycle": 0,
+          "phase": "array_idle",
+          "phase_marker": "phase=array_idle"
+        },
+        {
+          "cycle": 1,
+          "phase": "accept_array_command",
+          "phase_marker": "phase=accept_array_command"
+        },
+        {
+          "cycle": 2,
+          "phase": "enter_busy",
+          "phase_marker": "phase=enter_busy"
+        },
+        {
+          "cycle": 3,
+          "phase": "consume_input_beat_0",
+          "phase_marker": "phase=consume_input_beat_0"
+        },
+        {
+          "cycle": 4,
+          "phase": "consume_input_beat_1",
+          "phase_marker": "phase=consume_input_beat_1"
+        },
+        {
+          "cycle": 5,
+          "phase": "consume_input_beat_2",
+          "phase_marker": "phase=consume_input_beat_2"
+        },
+        {
+          "cycle": 6,
+          "phase": "completion_pulse",
+          "phase_marker": "phase=completion_pulse"
+        },
+        {
+          "cycle": 7,
+          "phase": "return_ready",
+          "phase_marker": "phase=return_ready"
+        }
+      ],
       "expected_stdout_markers": [
         "module=systolic_array",
+        "case=command_acceptance",
+        "case=input_burst",
+        "case=completion_pulse",
         "E1_H1_MODULE_DPI_CYCLE",
         "phase=array_idle",
         "phase=accept_array_command",
@@ -446,7 +1454,30 @@
         "phase=consume_input_beat_1",
         "phase=consume_input_beat_2",
         "phase=completion_pulse",
-        "phase=return_ready"
+        "phase=return_ready",
+        "E1_H1_MODULE_DPI_SYSTOLIC_DIGEST"
+      ],
+      "expected_vip_case_markers": [
+        "case=command_acceptance",
+        "case=input_burst",
+        "case=completion_pulse"
+      ],
+      "expected_vip_case_trace": [
+        {
+          "case": "command_acceptance",
+          "case_marker": "case=command_acceptance",
+          "index": 0
+        },
+        {
+          "case": "input_burst",
+          "case_marker": "case=input_burst",
+          "index": 1
+        },
+        {
+          "case": "completion_pulse",
+          "case_marker": "case=completion_pulse",
+          "index": 2
+        }
       ],
       "flist": "e1/e1-h1/generated/module_dpi/flists/systolic_array.f",
       "main": "e1/e1-h1/generated/module_dpi/e1_h1_module_dpi_systolic_array_main.cpp",
@@ -461,8 +1492,97 @@
         "phase=completion_pulse",
         "phase=return_ready"
       ],
+      "observed_phase_signal_trace_count": 8,
+      "observed_phase_signal_trace_prefix": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 4,
+          "expected": 4,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 5,
+          "expected": 5,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 6,
+          "expected": 6,
+          "signal": "probe_cycle_phase_o"
+        },
+        {
+          "cycle": 7,
+          "expected": 7,
+          "signal": "probe_cycle_phase_o"
+        }
+      ],
+      "observed_phase_trace_count": 8,
+      "observed_phase_trace_prefix": [
+        {
+          "cycle": 0,
+          "phase": "array_idle",
+          "phase_marker": "phase=array_idle"
+        },
+        {
+          "cycle": 1,
+          "phase": "accept_array_command",
+          "phase_marker": "phase=accept_array_command"
+        },
+        {
+          "cycle": 2,
+          "phase": "enter_busy",
+          "phase_marker": "phase=enter_busy"
+        },
+        {
+          "cycle": 3,
+          "phase": "consume_input_beat_0",
+          "phase_marker": "phase=consume_input_beat_0"
+        },
+        {
+          "cycle": 4,
+          "phase": "consume_input_beat_1",
+          "phase_marker": "phase=consume_input_beat_1"
+        },
+        {
+          "cycle": 5,
+          "phase": "consume_input_beat_2",
+          "phase_marker": "phase=consume_input_beat_2"
+        },
+        {
+          "cycle": 6,
+          "phase": "completion_pulse",
+          "phase_marker": "phase=completion_pulse"
+        },
+        {
+          "cycle": 7,
+          "phase": "return_ready",
+          "phase_marker": "phase=return_ready"
+        }
+      ],
       "observed_stdout_markers": [
         "module=systolic_array",
+        "case=command_acceptance",
+        "case=input_burst",
+        "case=completion_pulse",
         "E1_H1_MODULE_DPI_CYCLE",
         "phase=array_idle",
         "phase=accept_array_command",
@@ -471,7 +1591,31 @@
         "phase=consume_input_beat_1",
         "phase=consume_input_beat_2",
         "phase=completion_pulse",
-        "phase=return_ready"
+        "phase=return_ready",
+        "E1_H1_MODULE_DPI_SYSTOLIC_DIGEST"
+      ],
+      "observed_vip_case_markers": [
+        "case=command_acceptance",
+        "case=input_burst",
+        "case=completion_pulse"
+      ],
+      "observed_vip_case_trace_count": 3,
+      "observed_vip_case_trace_prefix": [
+        {
+          "case": "command_acceptance",
+          "case_marker": "case=command_acceptance",
+          "index": 0
+        },
+        {
+          "case": "input_burst",
+          "case_marker": "case=input_burst",
+          "index": 1
+        },
+        {
+          "case": "completion_pulse",
+          "case_marker": "case=completion_pulse",
+          "index": 2
+        }
       ],
       "run_executable": "<build-root>/obj_module_dpi_systolic_array/Ve1_h1_module_dpi_systolic_array",
       "run_returncode": 0,

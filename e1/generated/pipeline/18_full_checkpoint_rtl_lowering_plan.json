@@ -54,6 +54,10 @@
       "status": "pass"
     },
     {
+      "name": "all_ops_have_active_imp2_rtl_and_module_dpi",
+      "status": "pass"
+    },
+    {
       "name": "latch_buffer_available",
       "status": "pass"
     },
@@ -67,6 +71,7 @@
     }
   ],
   "full_checkpoint_graph_lowering": false,
+  "full_checkpoint_layer_to_rtl_contract": true,
   "full_checkpoint_rtl_execution": false,
   "head_dim": 64,
   "kv_projection_width": 256,
@@ -82,7 +87,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -92,7 +97,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -115,7 +120,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -138,7 +143,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -161,7 +166,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -171,7 +176,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -181,7 +186,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -204,7 +209,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -214,7 +219,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -224,7 +229,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -247,7 +252,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -270,7 +275,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -280,7 +285,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -303,7 +308,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     },
@@ -318,7 +323,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -328,7 +333,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -351,7 +356,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -374,7 +379,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -397,7 +402,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -407,7 +412,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -417,7 +422,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -440,7 +445,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -450,7 +455,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -460,7 +465,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -483,7 +488,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -506,7 +511,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -516,7 +521,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -539,7 +544,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     },
@@ -554,7 +559,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -564,7 +569,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -587,7 +592,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -610,7 +615,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -633,7 +638,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -643,7 +648,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -653,7 +658,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -676,7 +681,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -686,7 +691,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -696,7 +701,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -719,7 +724,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -742,7 +747,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -752,7 +757,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -775,7 +780,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     },
@@ -790,7 +795,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -800,7 +805,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -823,7 +828,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -846,7 +851,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -869,7 +874,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -879,7 +884,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -889,7 +894,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -912,7 +917,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -922,7 +927,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -932,7 +937,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -955,7 +960,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -978,7 +983,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -988,7 +993,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1011,7 +1016,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     },
@@ -1026,7 +1031,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -1036,7 +1041,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1059,7 +1064,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1082,7 +1087,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1105,7 +1110,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -1115,7 +1120,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -1125,7 +1130,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1148,7 +1153,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -1158,7 +1163,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -1168,7 +1173,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1191,7 +1196,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1214,7 +1219,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -1224,7 +1229,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1247,7 +1252,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     },
@@ -1262,7 +1267,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -1272,7 +1277,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1295,7 +1300,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1318,7 +1323,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1341,7 +1346,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -1351,7 +1356,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -1361,7 +1366,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1384,7 +1389,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -1394,7 +1399,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -1404,7 +1409,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1427,7 +1432,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1450,7 +1455,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -1460,7 +1465,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1483,7 +1488,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     },
@@ -1498,7 +1503,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -1508,7 +1513,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1531,7 +1536,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1554,7 +1559,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1577,7 +1582,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -1587,7 +1592,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -1597,7 +1602,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1620,7 +1625,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -1630,7 +1635,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -1640,7 +1645,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1663,7 +1668,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1686,7 +1691,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -1696,7 +1701,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1719,7 +1724,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     },
@@ -1734,7 +1739,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -1744,7 +1749,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1767,7 +1772,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1790,7 +1795,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1813,7 +1818,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -1823,7 +1828,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -1833,7 +1838,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1856,7 +1861,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -1866,7 +1871,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -1876,7 +1881,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1899,7 +1904,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1922,7 +1927,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -1932,7 +1937,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -1955,7 +1960,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     },
@@ -1970,7 +1975,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -1980,7 +1985,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2003,7 +2008,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2026,7 +2031,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2049,7 +2054,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -2059,7 +2064,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -2069,7 +2074,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2092,7 +2097,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -2102,7 +2107,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -2112,7 +2117,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2135,7 +2140,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2158,7 +2163,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -2168,7 +2173,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2191,7 +2196,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     },
@@ -2206,7 +2211,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -2216,7 +2221,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2239,7 +2244,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2262,7 +2267,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2285,7 +2290,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -2295,7 +2300,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -2305,7 +2310,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2328,7 +2333,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -2338,7 +2343,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -2348,7 +2353,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2371,7 +2376,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2394,7 +2399,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -2404,7 +2409,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2427,7 +2432,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     },
@@ -2442,7 +2447,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -2452,7 +2457,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2475,7 +2480,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2498,7 +2503,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2521,7 +2526,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -2531,7 +2536,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -2541,7 +2546,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2564,7 +2569,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -2574,7 +2579,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -2584,7 +2589,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2607,7 +2612,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2630,7 +2635,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -2640,7 +2645,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2663,7 +2668,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     },
@@ -2678,7 +2683,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -2688,7 +2693,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2711,7 +2716,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2734,7 +2739,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2757,7 +2762,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -2767,7 +2772,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -2777,7 +2782,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2800,7 +2805,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -2810,7 +2815,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -2820,7 +2825,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2843,7 +2848,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2866,7 +2871,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -2876,7 +2881,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2899,7 +2904,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     },
@@ -2914,7 +2919,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -2924,7 +2929,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2947,7 +2952,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2970,7 +2975,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -2993,7 +2998,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -3003,7 +3008,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -3013,7 +3018,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3036,7 +3041,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -3046,7 +3051,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -3056,7 +3061,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3079,7 +3084,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3102,7 +3107,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -3112,7 +3117,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3135,7 +3140,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     },
@@ -3150,7 +3155,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -3160,7 +3165,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3183,7 +3188,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3206,7 +3211,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3229,7 +3234,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -3239,7 +3244,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -3249,7 +3254,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3272,7 +3277,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -3282,7 +3287,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -3292,7 +3297,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3315,7 +3320,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3338,7 +3343,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -3348,7 +3353,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3371,7 +3376,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     },
@@ -3386,7 +3391,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -3396,7 +3401,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3419,7 +3424,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3442,7 +3447,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3465,7 +3470,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -3475,7 +3480,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -3485,7 +3490,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3508,7 +3513,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -3518,7 +3523,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -3528,7 +3533,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3551,7 +3556,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3574,7 +3579,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -3584,7 +3589,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3607,7 +3612,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     },
@@ -3622,7 +3627,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -3632,7 +3637,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3655,7 +3660,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3678,7 +3683,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3701,7 +3706,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -3711,7 +3716,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -3721,7 +3726,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3744,7 +3749,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -3754,7 +3759,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -3764,7 +3769,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3787,7 +3792,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3810,7 +3815,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -3820,7 +3825,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3843,7 +3848,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     },
@@ -3858,7 +3863,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -3868,7 +3873,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3891,7 +3896,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3914,7 +3919,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3937,7 +3942,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -3947,7 +3952,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -3957,7 +3962,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -3980,7 +3985,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -3990,7 +3995,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -4000,7 +4005,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4023,7 +4028,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4046,7 +4051,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -4056,7 +4061,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4079,7 +4084,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     },
@@ -4094,7 +4099,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -4104,7 +4109,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4127,7 +4132,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4150,7 +4155,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4173,7 +4178,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -4183,7 +4188,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -4193,7 +4198,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4216,7 +4221,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -4226,7 +4231,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -4236,7 +4241,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4259,7 +4264,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4282,7 +4287,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -4292,7 +4297,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4315,7 +4320,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     },
@@ -4330,7 +4335,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -4340,7 +4345,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4363,7 +4368,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4386,7 +4391,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4409,7 +4414,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -4419,7 +4424,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -4429,7 +4434,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4452,7 +4457,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -4462,7 +4467,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -4472,7 +4477,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4495,7 +4500,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4518,7 +4523,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -4528,7 +4533,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4551,7 +4556,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     },
@@ -4566,7 +4571,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -4576,7 +4581,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4599,7 +4604,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4622,7 +4627,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4645,7 +4650,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -4655,7 +4660,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -4665,7 +4670,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4688,7 +4693,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -4698,7 +4703,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -4708,7 +4713,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4731,7 +4736,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4754,7 +4759,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -4764,7 +4769,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4787,7 +4792,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     },
@@ -4802,7 +4807,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -4812,7 +4817,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4835,7 +4840,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4858,7 +4863,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4881,7 +4886,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -4891,7 +4896,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -4901,7 +4906,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4924,7 +4929,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -4934,7 +4939,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -4944,7 +4949,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4967,7 +4972,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -4990,7 +4995,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -5000,7 +5005,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -5023,7 +5028,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     },
@@ -5038,7 +5043,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -5048,7 +5053,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -5071,7 +5076,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -5094,7 +5099,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -5117,7 +5122,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -5127,7 +5132,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -5137,7 +5142,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -5160,7 +5165,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "control_cpu",
@@ -5170,7 +5175,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -5180,7 +5185,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -5203,7 +5208,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -5226,7 +5231,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         },
         {
           "ip": "systolic_array",
@@ -5236,7 +5241,7 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv"
           ],
-          "status": "planned_with_active_imp2_rtl",
+          "status": "mapped_to_active_imp2_rtl",
           "tile_shape": {
             "cols": 16,
             "depth": 16,
@@ -5259,19 +5264,18 @@
           "rtl_files": [
             "e1/e1-h1/rtl/imp2/e1_h1_control_cpu.sv"
           ],
-          "status": "planned_with_active_imp2_rtl"
+          "status": "mapped_to_active_imp2_rtl"
         }
       ]
     }
   ],
   "model_id": "tinyllama-1.1b-chat-v1.0",
-  "note": "This plans the full TinyLlama checkpoint layer inventory against active imp2 RTL modules and module-DPI proof collateral. It does not yet prove full StableHLO export, full op legalization, or full RTL execution of the checkpoint graph.",
-  "remaining_to_execute_full_rtl": [
-    "Export the full checkpoint graph to StableHLO instead of using only the checked-in reduced fixture.",
-    "Legalize full Llama ops including RMSNorm, RoPE, attention softmax, cache updates, and SiLU multiply into explicit CPU/control and systolic-array schedules.",
-    "Allocate all checkpoint weights and KV/cache tensors across the configurable SRAM hierarchy and Ethernet ingress stream.",
-    "Generate full device code that emits every layer command sequence, not only the first tile smoke.",
-    "Run generated full-graph RTL or hybrid RTL/C++ execution under Verilator and compare against the checkpoint source-of-truth output."
+  "note": "This is the shape-complete TinyLlama layer-to-RTL module contract consumed by the later command-stream, graph-sequencing, RTL-top, and construction-certificate passes. It does not itself claim live full-checkpoint StableHLO export, full checkpoint RTL execution, or numeric output equivalence.",
+  "remaining_to_prove_full_semantics": [
+    "Export the live full checkpoint graph to StableHLO when checkpoint dependencies and cache are present.",
+    "Legalize full Llama numeric semantics including RMSNorm, RoPE, attention softmax, KV/cache updates, and SiLU multiply into bit-checked CPU/control and systolic-array schedules.",
+    "Bind checkpoint weights and KV/cache tensor contents to the configurable SRAM hierarchy and Ethernet ingress stream.",
+    "Compare generated full-graph RTL or hybrid RTL/C++ execution against the checkpoint source-of-truth output."
   ],
   "schema": "e1-full-checkpoint-rtl-lowering-plan-v0",
   "source": {
@@ -5280,6 +5284,6 @@
     "revision": "2539c747f7b95a4dac517d6620f2244efdca3543",
     "url": "https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0"
   },
-  "status": "planned",
-  "truth_boundary": "shape_complete_layer_plan_only"
+  "status": "pass",
+  "truth_boundary": "shape_complete_layer_to_rtl_module_contract"
 }

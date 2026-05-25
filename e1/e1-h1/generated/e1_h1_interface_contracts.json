@@ -623,6 +623,12 @@
           "direction": "output",
           "name": "debug_busy_o",
           "width": 1
+        },
+        {
+          "connect": "top.debug_array_result_digest_o",
+          "direction": "output",
+          "name": "result_digest_o",
+          "width": 32
         }
       ],
       "replaceable": true,
@@ -630,11 +636,11 @@
       "rtl_validation": {
         "module": "e1_h1_systolic_array",
         "parameter_count": 4,
-        "port_count": 16,
+        "port_count": 17,
         "rtl": "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv",
         "status": "pass"
       },
-      "signature_sha256": "90742450371d8b9635a2091568ae8a1695881102efe7fb8d77861e3d2d4ee51b",
+      "signature_sha256": "0d5497cb10a8df7bbc77140497342b6993a7b13b584b7e055f730d07ca5d7283",
       "spec": "e1/e1-h1/docs/modules/systolic_array.md",
       "subsystem": "accelerator_subsystem"
     }

@@ -12,6 +12,17 @@
       "template": "cpu_command_8_cycle_template",
       "cycle_period": 8,
       "phase_source": "e1_h1_module_dpi_cycle",
+      "primary_phase_signal": "probe_cycle_phase_o",
+      "expected_phase_signal_trace": [
+        {"cycle": 0, "signal": "probe_cycle_phase_o", "expected": 0},
+        {"cycle": 1, "signal": "probe_cycle_phase_o", "expected": 1},
+        {"cycle": 2, "signal": "probe_cycle_phase_o", "expected": 2},
+        {"cycle": 3, "signal": "probe_cycle_phase_o", "expected": 3},
+        {"cycle": 4, "signal": "probe_cycle_phase_o", "expected": 4},
+        {"cycle": 5, "signal": "probe_cycle_phase_o", "expected": 5},
+        {"cycle": 6, "signal": "probe_cycle_phase_o", "expected": 6},
+        {"cycle": 7, "signal": "probe_cycle_phase_o", "expected": 7}
+      ],
       "cycles": [
         {"cycle": 0, "phase": "reset_release", "responsibility": "Release reset and present the first command payload.", "observed_signals": "cmd_valid_o, debug_halted_o", "dpi_check": "DPI compares imp1 and imp2 CPU outputs."},
         {"cycle": 1, "phase": "command_backpressure", "responsibility": "Hold cmd_valid_o while command ready is asserted late.", "observed_signals": "cmd_valid_o, cmd_ready_i", "dpi_check": "DPI compares the held command payload."},
@@ -24,6 +35,7 @@
       ],
       "checks": [
         {"name": "cycle_indices_contiguous", "status": "pass"},
+        {"name": "probe_phase_signal_trace_declared", "status": "pass"},
         {"name": "dpi_probe_reports_cycles", "status": "pass"},
         {"name": "dpi_probe_reports_named_phases", "status": "pass"},
         {"name": "readme_cycle_diagram_declared", "status": "pass"}
@@ -37,6 +49,19 @@
       "template": "digital_rgmii_ingress_10_cycle_template",
       "cycle_period": 10,
       "phase_source": "e1_h1_module_dpi_cycle",
+      "primary_phase_signal": "probe_cycle_phase_o",
+      "expected_phase_signal_trace": [
+        {"cycle": 0, "signal": "probe_cycle_phase_o", "expected": 0},
+        {"cycle": 1, "signal": "probe_cycle_phase_o", "expected": 1},
+        {"cycle": 2, "signal": "probe_cycle_phase_o", "expected": 2},
+        {"cycle": 3, "signal": "probe_cycle_phase_o", "expected": 3},
+        {"cycle": 4, "signal": "probe_cycle_phase_o", "expected": 4},
+        {"cycle": 5, "signal": "probe_cycle_phase_o", "expected": 5},
+        {"cycle": 6, "signal": "probe_cycle_phase_o", "expected": 6},
+        {"cycle": 7, "signal": "probe_cycle_phase_o", "expected": 7},
+        {"cycle": 8, "signal": "probe_cycle_phase_o", "expected": 8},
+        {"cycle": 9, "signal": "probe_cycle_phase_o", "expected": 9}
+      ],
       "cycles": [
         {"cycle": 0, "phase": "idle_after_reset", "responsibility": "Hold digital RGMII input idle after reset.", "observed_signals": "rgmii_rx_ctl_i, stream_valid_o", "dpi_check": "DPI compares idle stream outputs."},
         {"cycle": 1, "phase": "frame_nibble_0", "responsibility": "Start a minimum digital RGMII frame.", "observed_signals": "rgmii_rx_ctl_i, rgmii_rxd_i", "dpi_check": "DPI compares stream assembly."},
@@ -51,6 +76,7 @@
       ],
       "checks": [
         {"name": "cycle_indices_contiguous", "status": "pass"},
+        {"name": "probe_phase_signal_trace_declared", "status": "pass"},
         {"name": "dpi_probe_reports_cycles", "status": "pass"},
         {"name": "dpi_probe_reports_named_phases", "status": "pass"},
         {"name": "readme_cycle_diagram_declared", "status": "pass"}
@@ -64,6 +90,15 @@
       "template": "latch_buffer_6_cycle_template",
       "cycle_period": 6,
       "phase_source": "e1_h1_module_dpi_cycle",
+      "primary_phase_signal": "probe_cycle_phase_o",
+      "expected_phase_signal_trace": [
+        {"cycle": 0, "signal": "probe_cycle_phase_o", "expected": 0},
+        {"cycle": 1, "signal": "probe_cycle_phase_o", "expected": 1},
+        {"cycle": 2, "signal": "probe_cycle_phase_o", "expected": 2},
+        {"cycle": 3, "signal": "probe_cycle_phase_o", "expected": 3},
+        {"cycle": 4, "signal": "probe_cycle_phase_o", "expected": 4},
+        {"cycle": 5, "signal": "probe_cycle_phase_o", "expected": 5}
+      ],
       "cycles": [
         {"cycle": 0, "phase": "latch_first_word", "responsibility": "Latch the first stream word while the array is not ready.", "observed_signals": "stream_valid_i, array_ready_i, array_valid_o", "dpi_check": "DPI compares latched valid/data."},
         {"cycle": 1, "phase": "hold_latched_word", "responsibility": "Hold the latched word under array backpressure.", "observed_signals": "array_ready_i, array_valid_o, array_data_o", "dpi_check": "DPI compares held data."},
@@ -74,6 +109,7 @@
       ],
       "checks": [
         {"name": "cycle_indices_contiguous", "status": "pass"},
+        {"name": "probe_phase_signal_trace_declared", "status": "pass"},
         {"name": "dpi_probe_reports_cycles", "status": "pass"},
         {"name": "dpi_probe_reports_named_phases", "status": "pass"},
         {"name": "readme_cycle_diagram_declared", "status": "pass"}
@@ -87,6 +123,12 @@
       "template": "config_sram_3_cycle_template",
       "cycle_period": 3,
       "phase_source": "e1_h1_module_dpi_cycle",
+      "primary_phase_signal": "probe_cycle_phase_o",
+      "expected_phase_signal_trace": [
+        {"cycle": 0, "signal": "probe_cycle_phase_o", "expected": 0},
+        {"cycle": 1, "signal": "probe_cycle_phase_o", "expected": 1},
+        {"cycle": 2, "signal": "probe_cycle_phase_o", "expected": 2}
+      ],
       "cycles": [
         {"cycle": 0, "phase": "initialization_latch", "responsibility": "Latch initialized_q after reset release.", "observed_signals": "initialized_q", "dpi_check": "DPI compares parameterized imp1 and imp2 initialized state."},
         {"cycle": 1, "phase": "initialized_hold_0", "responsibility": "Hold initialized_q in the configured SRAM shell.", "observed_signals": "initialized_q", "dpi_check": "DPI compares hold behavior."},
@@ -94,6 +136,7 @@
       ],
       "checks": [
         {"name": "cycle_indices_contiguous", "status": "pass"},
+        {"name": "probe_phase_signal_trace_declared", "status": "pass"},
         {"name": "dpi_probe_reports_cycles", "status": "pass"},
         {"name": "dpi_probe_reports_named_phases", "status": "pass"},
         {"name": "readme_cycle_diagram_declared", "status": "pass"}
@@ -107,6 +150,12 @@
       "template": "config_sram_3_cycle_template",
       "cycle_period": 3,
       "phase_source": "e1_h1_module_dpi_cycle",
+      "primary_phase_signal": "probe_cycle_phase_o",
+      "expected_phase_signal_trace": [
+        {"cycle": 0, "signal": "probe_cycle_phase_o", "expected": 0},
+        {"cycle": 1, "signal": "probe_cycle_phase_o", "expected": 1},
+        {"cycle": 2, "signal": "probe_cycle_phase_o", "expected": 2}
+      ],
       "cycles": [
         {"cycle": 0, "phase": "initialization_latch", "responsibility": "Latch initialized_q after reset release.", "observed_signals": "initialized_q", "dpi_check": "DPI compares parameterized imp1 and imp2 initialized state."},
         {"cycle": 1, "phase": "initialized_hold_0", "responsibility": "Hold initialized_q in the configured SRAM shell.", "observed_signals": "initialized_q", "dpi_check": "DPI compares hold behavior."},
@@ -114,6 +163,7 @@
       ],
       "checks": [
         {"name": "cycle_indices_contiguous", "status": "pass"},
+        {"name": "probe_phase_signal_trace_declared", "status": "pass"},
         {"name": "dpi_probe_reports_cycles", "status": "pass"},
         {"name": "dpi_probe_reports_named_phases", "status": "pass"},
         {"name": "readme_cycle_diagram_declared", "status": "pass"}
@@ -127,6 +177,17 @@
       "template": "systolic_array_8_cycle_template",
       "cycle_period": 8,
       "phase_source": "e1_h1_module_dpi_cycle",
+      "primary_phase_signal": "probe_cycle_phase_o",
+      "expected_phase_signal_trace": [
+        {"cycle": 0, "signal": "probe_cycle_phase_o", "expected": 0},
+        {"cycle": 1, "signal": "probe_cycle_phase_o", "expected": 1},
+        {"cycle": 2, "signal": "probe_cycle_phase_o", "expected": 2},
+        {"cycle": 3, "signal": "probe_cycle_phase_o", "expected": 3},
+        {"cycle": 4, "signal": "probe_cycle_phase_o", "expected": 4},
+        {"cycle": 5, "signal": "probe_cycle_phase_o", "expected": 5},
+        {"cycle": 6, "signal": "probe_cycle_phase_o", "expected": 6},
+        {"cycle": 7, "signal": "probe_cycle_phase_o", "expected": 7}
+      ],
       "cycles": [
         {"cycle": 0, "phase": "array_idle", "responsibility": "Keep the array idle and command-ready after reset.", "observed_signals": "cmd_ready_o, debug_busy_o", "dpi_check": "DPI compares idle readiness."},
         {"cycle": 1, "phase": "accept_array_command", "responsibility": "Accept the command from probe/C++ stimulus.", "observed_signals": "cmd_valid_i, cmd_ready_o, cmd_*_i", "dpi_check": "DPI compares command acceptance."},
@@ -134,11 +195,12 @@
         {"cycle": 3, "phase": "consume_input_beat_0", "responsibility": "Consume the first input beat.", "observed_signals": "input_valid_i, input_ready_o, input_data_i", "dpi_check": "DPI compares input readiness."},
         {"cycle": 4, "phase": "consume_input_beat_1", "responsibility": "Consume the second input beat.", "observed_signals": "input_valid_i, input_ready_o, input_data_i", "dpi_check": "DPI compares input readiness."},
         {"cycle": 5, "phase": "consume_input_beat_2", "responsibility": "Consume the third input beat.", "observed_signals": "input_valid_i, input_ready_o, input_data_i", "dpi_check": "DPI compares input readiness."},
-        {"cycle": 6, "phase": "completion_pulse", "responsibility": "Consume the final beat and pulse done_o.", "observed_signals": "input_valid_i, done_o, debug_busy_o", "dpi_check": "DPI compares completion."},
-        {"cycle": 7, "phase": "return_ready", "responsibility": "Return to ready/idle state for the next command.", "observed_signals": "cmd_ready_o, done_o, debug_busy_o", "dpi_check": "DPI compares return-to-ready."}
+        {"cycle": 6, "phase": "completion_pulse", "responsibility": "Consume the final beat and update result digest.", "observed_signals": "input_valid_i, done_o, debug_busy_o, result_digest_o", "dpi_check": "DPI compares completion and C++-expected digest."},
+        {"cycle": 7, "phase": "return_ready", "responsibility": "Return to ready/idle state for the next command.", "observed_signals": "cmd_ready_o, done_o, debug_busy_o, result_digest_o", "dpi_check": "DPI compares return-to-ready and held digest."}
       ],
       "checks": [
         {"name": "cycle_indices_contiguous", "status": "pass"},
+        {"name": "probe_phase_signal_trace_declared", "status": "pass"},
         {"name": "dpi_probe_reports_cycles", "status": "pass"},
         {"name": "dpi_probe_reports_named_phases", "status": "pass"},
         {"name": "readme_cycle_diagram_declared", "status": "pass"}

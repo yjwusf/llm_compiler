@@ -108,6 +108,7 @@ Each section is the review contract for a generated RTL module and its module-on
 | `buffer_array_data_o` | 64 | Latched stream data toward the array. |
 | `array_done_o` | 1 | Array completion pulse. |
 | `array_debug_busy_o` | 1 | Array debug busy signal. |
+| `array_result_digest_o` | 32 | Observed systolic-array result digest. |
 
 ### Cycle Notes
 
@@ -281,6 +282,7 @@ Each section is the review contract for a generated RTL module and its module-on
 | `buffer_array_data_o` | 64 | Latched stream data toward the array. |
 | `array_done_o` | 1 | Array completion pulse. |
 | `array_debug_busy_o` | 1 | Array debug busy signal. |
+| `array_result_digest_o` | 32 | Observed systolic-array result digest. |
 
 ### Cycle Notes
 
@@ -396,6 +398,7 @@ Each section is the review contract for a generated RTL module and its module-on
 | `buffer_array_ready_o` | 1 | Array input-ready signal toward the latch buffer. |
 | `array_done_o` | 1 | Array completion pulse. |
 | `array_debug_busy_o` | 1 | Array debug busy signal. |
+| `array_result_digest_o` | 32 | Observed systolic-array result digest. |
 | `debug_scheduler_cmd_valid_o` | 1 | Observed scheduler command-valid at the full top boundary. |
 | `debug_array_cmd_valid_o` | 1 | Observed array command-valid at the full top boundary. |
 | `debug_array_cmd_ready_o` | 1 | Observed array command-ready at the full top boundary. |
@@ -409,6 +412,11 @@ Each section is the review contract for a generated RTL module and its module-on
 | `debug_linear_op_index_o` | 3 | Observed linear op index for payload schedule checks. |
 | `debug_linear_input_tile_o` | 9 | Observed input tile index for payload schedule checks. |
 | `debug_linear_output_tile_o` | 9 | Observed output tile index for payload schedule checks. |
+| `debug_control_valid_o` | 1 | Observed CPU/control slot payload-valid at the full top boundary. |
+| `debug_control_commit_o` | 1 | Observed CPU/control slot commit at the full top boundary. |
+| `debug_control_layer_o` | 32 | Observed CPU/control slot layer for graph schedule checks. |
+| `debug_control_op_index_o` | 3 | Observed CPU/control op index for graph schedule checks. |
+| `debug_control_kind_o` | 4 | Observed CPU/control op kind for graph schedule checks. |
 
 ### Cycle Notes
 

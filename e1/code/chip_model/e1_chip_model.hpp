@@ -95,10 +95,12 @@ class SystolicArrayModel {
   void submit(SystolicCommand command);
   void tick(PerfCounters& counters);
   bool busy() const;
+  std::uint32_t result_digest() const;
 
  private:
   std::deque<SystolicCommand> pending_;
   std::uint32_t cycles_remaining_ = 0;
+  std::uint32_t result_digest_ = 0;
 };
 
 class ChipModel {

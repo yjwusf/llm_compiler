@@ -2,7 +2,15 @@
 
 module e1_h1_module_dpi_control_cpu;
   import "DPI-C" function void e1_h1_module_dpi_begin(input string module_name, input string vip_case);
+  import "DPI-C" function void e1_h1_module_dpi_case(input string module_name, input string vip_case);
   import "DPI-C" function void e1_h1_module_dpi_cycle(input string module_name, input int cycle, input string phase);
+  import "DPI-C" function int e1_h1_module_dpi_phase_signal(
+    input string module_name,
+    input string signal_name,
+    input int cycle,
+    input int expected,
+    input int actual
+  );
   import "DPI-C" function int e1_h1_module_dpi_compare_u32(
     input string signal_name,
     input int cycle,
@@ -10,6 +18,7 @@ module e1_h1_module_dpi_control_cpu;
     input int imp2_value
   );
 
+  logic [7:0] probe_cycle_phase_o;
   logic clk_i;
   logic rst_ni;
   logic cmd_ready_i;
@@ -94,6 +103,9 @@ module e1_h1_module_dpi_control_cpu;
 
   initial begin
     e1_h1_module_dpi_begin("control_cpu", "module_only_control_cpu");
+    e1_h1_module_dpi_case("control_cpu", "reset_to_first_command");
+    e1_h1_module_dpi_case("control_cpu", "command_backpressure");
+    e1_h1_module_dpi_case("control_cpu", "array_completion");
     clk_i = 1'b0;
     rst_ni = 1'b0;
     cmd_ready_i = 1'b0;
@@ -102,7 +114,11 @@ module e1_h1_module_dpi_control_cpu;
     tick();
     rst_ni = 1'b1;
     for (int cycle = 0; cycle < 8; cycle++) begin
+      probe_cycle_phase_o = cycle[7:0];
       e1_h1_module_dpi_cycle("control_cpu", cycle, phase_name(cycle));
+      if (e1_h1_module_dpi_phase_signal("control_cpu", "probe_cycle_phase_o", cycle, cycle, int'(probe_cycle_phase_o)) == 0) begin
+        $fatal(1, "control_cpu phase signal mismatch cycle %0d", cycle);
+      end
       cmd_ready_i = (cycle >= 1 && cycle <= 2);
       array_done_i = (cycle == 5);
       array_error_i = 1'b0;

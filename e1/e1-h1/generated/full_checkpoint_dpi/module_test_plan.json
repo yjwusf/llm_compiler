@@ -8,6 +8,17 @@
       "name": "linear_scheduler",
       "scope": "generated_full_checkpoint_module_only",
       "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_scheduler.sv",
+      "primary_phase_signal": "cycle_phase_o",
+      "expected_phase_signal_trace": [
+        {"cycle": 0, "signal": "cycle_phase_o", "expected": 0},
+        {"cycle": 1, "signal": "cycle_phase_o", "expected": 1},
+        {"cycle": 2, "signal": "cycle_phase_o", "expected": 2},
+        {"cycle": 3, "signal": "cycle_phase_o", "expected": 3},
+        {"cycle": 4, "signal": "cycle_phase_o", "expected": 4},
+        {"cycle": 5, "signal": "cycle_phase_o", "expected": 5},
+        {"cycle": 6, "signal": "cycle_phase_o", "expected": 6},
+        {"cycle": 7, "signal": "cycle_phase_o", "expected": 7}
+      ],
       "verilator": {
         "top_module": "e1_h1_full_checkpoint_module_dpi_linear_scheduler",
         "dut_module": "e1_h1_tinyllama_linear_scheduler",
@@ -16,8 +27,19 @@
         "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_scheduler_main.cpp",
         "obj_dir_placeholder": "<obj_dir>",
         "run_executable": "Ve1_h1_full_checkpoint_module_dpi_linear_scheduler",
+        "primary_phase_signal": "cycle_phase_o",
         "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
-        "expected_stdout_markers": ["module=linear_scheduler", "E1_H1_FULL_MODULE_DPI_CYCLE", "phase=setup_tile_command", "phase=assert_scheduler_valid", "phase=accept_command_handshake", "phase=wait_for_array_progress_0", "phase=wait_for_array_progress_1", "phase=wait_for_array_progress_2", "phase=sample_array_done", "phase=advance_tile_counters"]
+        "expected_stdout_markers": ["module=linear_scheduler", "E1_H1_FULL_MODULE_DPI_CYCLE", "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL", "phase=setup_tile_command", "phase=assert_scheduler_valid", "phase=accept_command_handshake", "phase=wait_for_array_progress_0", "phase=wait_for_array_progress_1", "phase=wait_for_array_progress_2", "phase=sample_array_done", "phase=advance_tile_counters"],
+        "expected_phase_signal_trace": [
+          {"cycle": 0, "signal": "cycle_phase_o", "expected": 0},
+          {"cycle": 1, "signal": "cycle_phase_o", "expected": 1},
+          {"cycle": 2, "signal": "cycle_phase_o", "expected": 2},
+          {"cycle": 3, "signal": "cycle_phase_o", "expected": 3},
+          {"cycle": 4, "signal": "cycle_phase_o", "expected": 4},
+          {"cycle": 5, "signal": "cycle_phase_o", "expected": 5},
+          {"cycle": 6, "signal": "cycle_phase_o", "expected": 6},
+          {"cycle": 7, "signal": "cycle_phase_o", "expected": 7}
+        ]
       },
       "checks": [
         {"name": "probe_exists", "status": "pass"},
@@ -31,6 +53,17 @@
       "name": "linear_tile_engine",
       "scope": "generated_full_checkpoint_module_only",
       "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine.sv",
+      "primary_phase_signal": "cycle_phase_o",
+      "expected_phase_signal_trace": [
+        {"cycle": 0, "signal": "cycle_phase_o", "expected": 0},
+        {"cycle": 1, "signal": "cycle_phase_o", "expected": 1},
+        {"cycle": 2, "signal": "cycle_phase_o", "expected": 2},
+        {"cycle": 3, "signal": "cycle_phase_o", "expected": 3},
+        {"cycle": 4, "signal": "cycle_phase_o", "expected": 4},
+        {"cycle": 5, "signal": "cycle_phase_o", "expected": 5},
+        {"cycle": 6, "signal": "cycle_phase_o", "expected": 6},
+        {"cycle": 7, "signal": "cycle_phase_o", "expected": 7}
+      ],
       "verilator": {
         "top_module": "e1_h1_full_checkpoint_module_dpi_linear_tile_engine",
         "dut_module": "e1_h1_tinyllama_linear_tile_engine",
@@ -39,8 +72,19 @@
         "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine_main.cpp",
         "obj_dir_placeholder": "<obj_dir>",
         "run_executable": "Ve1_h1_full_checkpoint_module_dpi_linear_tile_engine",
+        "primary_phase_signal": "cycle_phase_o",
         "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
-        "expected_stdout_markers": ["module=linear_tile_engine", "E1_H1_FULL_MODULE_DPI_CYCLE", "phase=setup_tile_engine", "phase=scheduler_valid_visible", "phase=array_command_handshake", "phase=latch_to_array_beat_0", "phase=latch_to_array_beat_1", "phase=latch_to_array_beat_2", "phase=array_done_pulse", "phase=return_ready"]
+        "expected_stdout_markers": ["module=linear_tile_engine", "E1_H1_FULL_MODULE_DPI_CYCLE", "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL", "phase=setup_tile_engine", "phase=scheduler_valid_visible", "phase=array_command_handshake", "phase=latch_to_array_beat_0", "phase=latch_to_array_beat_1", "phase=latch_to_array_beat_2", "phase=array_done_pulse", "phase=return_ready"],
+        "expected_phase_signal_trace": [
+          {"cycle": 0, "signal": "cycle_phase_o", "expected": 0},
+          {"cycle": 1, "signal": "cycle_phase_o", "expected": 1},
+          {"cycle": 2, "signal": "cycle_phase_o", "expected": 2},
+          {"cycle": 3, "signal": "cycle_phase_o", "expected": 3},
+          {"cycle": 4, "signal": "cycle_phase_o", "expected": 4},
+          {"cycle": 5, "signal": "cycle_phase_o", "expected": 5},
+          {"cycle": 6, "signal": "cycle_phase_o", "expected": 6},
+          {"cycle": 7, "signal": "cycle_phase_o", "expected": 7}
+        ]
       },
       "checks": [
         {"name": "probe_exists", "status": "pass"},
@@ -54,6 +98,13 @@
       "name": "control_scheduler",
       "scope": "generated_full_checkpoint_module_only",
       "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_scheduler.sv",
+      "primary_phase_signal": "cycle_phase_o",
+      "expected_phase_signal_trace": [
+        {"cycle": 0, "signal": "cycle_phase_o", "expected": 0},
+        {"cycle": 1, "signal": "cycle_phase_o", "expected": 1},
+        {"cycle": 2, "signal": "cycle_phase_o", "expected": 2},
+        {"cycle": 3, "signal": "cycle_phase_o", "expected": 3}
+      ],
       "verilator": {
         "top_module": "e1_h1_full_checkpoint_module_dpi_control_scheduler",
         "dut_module": "e1_h1_tinyllama_control_scheduler",
@@ -62,8 +113,15 @@
         "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_scheduler_main.cpp",
         "obj_dir_placeholder": "<obj_dir>",
         "run_executable": "Ve1_h1_full_checkpoint_module_dpi_control_scheduler",
+        "primary_phase_signal": "cycle_phase_o",
         "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
-        "expected_stdout_markers": ["module=control_scheduler", "E1_H1_FULL_MODULE_DPI_CYCLE", "phase=issue_control_op", "phase=read_control_metadata", "phase=execute_control_op", "phase=commit_control_op"]
+        "expected_stdout_markers": ["module=control_scheduler", "E1_H1_FULL_MODULE_DPI_CYCLE", "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL", "phase=issue_control_op", "phase=read_control_metadata", "phase=execute_control_op", "phase=commit_control_op"],
+        "expected_phase_signal_trace": [
+          {"cycle": 0, "signal": "cycle_phase_o", "expected": 0},
+          {"cycle": 1, "signal": "cycle_phase_o", "expected": 1},
+          {"cycle": 2, "signal": "cycle_phase_o", "expected": 2},
+          {"cycle": 3, "signal": "cycle_phase_o", "expected": 3}
+        ]
       },
       "checks": [
         {"name": "probe_exists", "status": "pass"},
@@ -77,6 +135,13 @@
       "name": "graph_sequencer",
       "scope": "generated_full_checkpoint_module_only",
       "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_graph_sequencer.sv",
+      "primary_phase_signal": "cycle_phase_o",
+      "expected_phase_signal_trace": [
+        {"cycle": 0, "signal": "cycle_phase_o", "expected": 0},
+        {"cycle": 1, "signal": "cycle_phase_o", "expected": 1},
+        {"cycle": 2, "signal": "cycle_phase_o", "expected": 2},
+        {"cycle": 3, "signal": "cycle_phase_o", "expected": 3}
+      ],
       "verilator": {
         "top_module": "e1_h1_full_checkpoint_module_dpi_graph_sequencer",
         "dut_module": "e1_h1_tinyllama_graph_sequencer",
@@ -85,8 +150,15 @@
         "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_graph_sequencer_main.cpp",
         "obj_dir_placeholder": "<obj_dir>",
         "run_executable": "Ve1_h1_full_checkpoint_module_dpi_graph_sequencer",
+        "primary_phase_signal": "cycle_phase_o",
         "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
-        "expected_stdout_markers": ["module=graph_sequencer", "E1_H1_FULL_MODULE_DPI_CYCLE", "phase=present_graph_slot", "phase=launch_selected_engine", "phase=wait_for_slot_done", "phase=commit_graph_slot"]
+        "expected_stdout_markers": ["module=graph_sequencer", "E1_H1_FULL_MODULE_DPI_CYCLE", "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL", "phase=present_graph_slot", "phase=launch_selected_engine", "phase=wait_for_slot_done", "phase=commit_graph_slot"],
+        "expected_phase_signal_trace": [
+          {"cycle": 0, "signal": "cycle_phase_o", "expected": 0},
+          {"cycle": 1, "signal": "cycle_phase_o", "expected": 1},
+          {"cycle": 2, "signal": "cycle_phase_o", "expected": 2},
+          {"cycle": 3, "signal": "cycle_phase_o", "expected": 3}
+        ]
       },
       "checks": [
         {"name": "probe_exists", "status": "pass"},
@@ -100,6 +172,17 @@
       "name": "linear_slot_engine",
       "scope": "generated_full_checkpoint_module_only",
       "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine.sv",
+      "primary_phase_signal": "cycle_phase_o",
+      "expected_phase_signal_trace": [
+        {"cycle": 0, "signal": "cycle_phase_o", "expected": 0},
+        {"cycle": 1, "signal": "cycle_phase_o", "expected": 1},
+        {"cycle": 2, "signal": "cycle_phase_o", "expected": 2},
+        {"cycle": 3, "signal": "cycle_phase_o", "expected": 3},
+        {"cycle": 4, "signal": "cycle_phase_o", "expected": 4},
+        {"cycle": 5, "signal": "cycle_phase_o", "expected": 5},
+        {"cycle": 6, "signal": "cycle_phase_o", "expected": 6},
+        {"cycle": 7, "signal": "cycle_phase_o", "expected": 7}
+      ],
       "verilator": {
         "top_module": "e1_h1_full_checkpoint_module_dpi_linear_slot_engine",
         "dut_module": "e1_h1_tinyllama_linear_slot_engine",
@@ -108,8 +191,19 @@
         "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine_main.cpp",
         "obj_dir_placeholder": "<obj_dir>",
         "run_executable": "Ve1_h1_full_checkpoint_module_dpi_linear_slot_engine",
+        "primary_phase_signal": "cycle_phase_o",
         "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
-        "expected_stdout_markers": ["module=linear_slot_engine", "E1_H1_FULL_MODULE_DPI_CYCLE", "phase=latch_selected_linear_slot", "phase=slot_command_valid", "phase=array_command_handshake", "phase=latch_to_array_beat_0", "phase=latch_to_array_beat_1", "phase=latch_to_array_beat_2", "phase=array_done_pulse", "phase=slot_done_or_next_tile"]
+        "expected_stdout_markers": ["module=linear_slot_engine", "E1_H1_FULL_MODULE_DPI_CYCLE", "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL", "phase=latch_selected_linear_slot", "phase=slot_command_valid", "phase=array_command_handshake", "phase=latch_to_array_beat_0", "phase=latch_to_array_beat_1", "phase=latch_to_array_beat_2", "phase=array_done_pulse", "phase=slot_done_or_next_tile"],
+        "expected_phase_signal_trace": [
+          {"cycle": 0, "signal": "cycle_phase_o", "expected": 0},
+          {"cycle": 1, "signal": "cycle_phase_o", "expected": 1},
+          {"cycle": 2, "signal": "cycle_phase_o", "expected": 2},
+          {"cycle": 3, "signal": "cycle_phase_o", "expected": 3},
+          {"cycle": 4, "signal": "cycle_phase_o", "expected": 4},
+          {"cycle": 5, "signal": "cycle_phase_o", "expected": 5},
+          {"cycle": 6, "signal": "cycle_phase_o", "expected": 6},
+          {"cycle": 7, "signal": "cycle_phase_o", "expected": 7}
+        ]
       },
       "checks": [
         {"name": "probe_exists", "status": "pass"},
@@ -123,6 +217,13 @@
       "name": "control_slot_engine",
       "scope": "generated_full_checkpoint_module_only",
       "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine.sv",
+      "primary_phase_signal": "cycle_phase_o",
+      "expected_phase_signal_trace": [
+        {"cycle": 0, "signal": "cycle_phase_o", "expected": 0},
+        {"cycle": 1, "signal": "cycle_phase_o", "expected": 1},
+        {"cycle": 2, "signal": "cycle_phase_o", "expected": 2},
+        {"cycle": 3, "signal": "cycle_phase_o", "expected": 3}
+      ],
       "verilator": {
         "top_module": "e1_h1_full_checkpoint_module_dpi_control_slot_engine",
         "dut_module": "e1_h1_tinyllama_control_slot_engine",
@@ -131,8 +232,15 @@
         "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine_main.cpp",
         "obj_dir_placeholder": "<obj_dir>",
         "run_executable": "Ve1_h1_full_checkpoint_module_dpi_control_slot_engine",
+        "primary_phase_signal": "cycle_phase_o",
         "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
-        "expected_stdout_markers": ["module=control_slot_engine", "E1_H1_FULL_MODULE_DPI_CYCLE", "phase=issue_selected_control_slot", "phase=read_selected_control_metadata", "phase=execute_selected_control_slot", "phase=commit_selected_control_slot"]
+        "expected_stdout_markers": ["module=control_slot_engine", "E1_H1_FULL_MODULE_DPI_CYCLE", "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL", "phase=issue_selected_control_slot", "phase=read_selected_control_metadata", "phase=execute_selected_control_slot", "phase=commit_selected_control_slot"],
+        "expected_phase_signal_trace": [
+          {"cycle": 0, "signal": "cycle_phase_o", "expected": 0},
+          {"cycle": 1, "signal": "cycle_phase_o", "expected": 1},
+          {"cycle": 2, "signal": "cycle_phase_o", "expected": 2},
+          {"cycle": 3, "signal": "cycle_phase_o", "expected": 3}
+        ]
       },
       "checks": [
         {"name": "probe_exists", "status": "pass"},
@@ -146,6 +254,13 @@
       "name": "full_checkpoint_top",
       "scope": "generated_full_checkpoint_module_only",
       "probe": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_full_checkpoint_top.sv",
+      "primary_phase_signal": "graph_cycle_phase_o",
+      "expected_phase_signal_trace": [
+        {"cycle": 0, "signal": "graph_cycle_phase_o", "expected": 0},
+        {"cycle": 1, "signal": "graph_cycle_phase_o", "expected": 1},
+        {"cycle": 2, "signal": "graph_cycle_phase_o", "expected": 2},
+        {"cycle": 3, "signal": "graph_cycle_phase_o", "expected": 3}
+      ],
       "verilator": {
         "top_module": "e1_h1_full_checkpoint_module_dpi_full_checkpoint_top",
         "dut_module": "e1_h1_tinyllama_full_checkpoint_top",
@@ -154,8 +269,15 @@
         "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_full_checkpoint_top_main.cpp",
         "obj_dir_placeholder": "<obj_dir>",
         "run_executable": "Ve1_h1_full_checkpoint_module_dpi_full_checkpoint_top",
+        "primary_phase_signal": "graph_cycle_phase_o",
         "fixed_args": ["--cc", "--exe", "--build", "--sv", "-Wall", "-Wno-DECLFILENAME", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM", "-Wno-WIDTHEXPAND", "--timing"],
-        "expected_stdout_markers": ["module=full_checkpoint_top", "E1_H1_FULL_MODULE_DPI_CYCLE", "phase=present_top_graph_slot", "phase=start_selected_slot_engine", "phase=run_selected_slot_engine", "phase=commit_top_graph_slot"]
+        "expected_stdout_markers": ["module=full_checkpoint_top", "E1_H1_FULL_MODULE_DPI_CYCLE", "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL", "phase=present_top_graph_slot", "phase=start_selected_slot_engine", "phase=run_selected_slot_engine", "phase=commit_top_graph_slot"],
+        "expected_phase_signal_trace": [
+          {"cycle": 0, "signal": "graph_cycle_phase_o", "expected": 0},
+          {"cycle": 1, "signal": "graph_cycle_phase_o", "expected": 1},
+          {"cycle": 2, "signal": "graph_cycle_phase_o", "expected": 2},
+          {"cycle": 3, "signal": "graph_cycle_phase_o", "expected": 3}
+        ]
       },
       "checks": [
         {"name": "probe_exists", "status": "pass"},

@@ -31,7 +31,8 @@ module e1_h1_tinyllama_linear_tile_engine (
   output logic        buffer_array_ready_o,
   output logic [63:0] buffer_array_data_o,
   output logic        array_done_o,
-  output logic        array_debug_busy_o
+  output logic        array_debug_busy_o,
+  output logic [31:0] array_result_digest_o
 );
 
   logic scheduler_done;
@@ -94,7 +95,8 @@ module e1_h1_tinyllama_linear_tile_engine (
     .input_data_i(buffer_array_data_o),
     .done_o(array_done_o),
     .error_o(array_error),
-    .debug_busy_o(array_debug_busy_o)
+    .debug_busy_o(array_debug_busy_o),
+    .result_digest_o(array_result_digest_o)
   );
 
   assign done_o = scheduler_done;

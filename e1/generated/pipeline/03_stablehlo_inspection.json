@@ -24,6 +24,126 @@
     "multiply": 2,
     "tanh": 1
   },
+  "operation_instances": [
+    {
+      "operation": "stablehlo.constant",
+      "source_end_line": 13,
+      "source_index": 0,
+      "source_line": 13,
+      "source_snippet": "%cst_zero = stablehlo.constant dense<0.000000e+00> : tensor<1x16xf16>",
+      "ssa_result": "%cst_zero",
+      "stablehlo_op": "constant"
+    },
+    {
+      "operation": "stablehlo.gather",
+      "source_end_line": 20,
+      "source_index": 1,
+      "source_line": 14,
+      "source_snippet": "%embedded = stablehlo.gather %embedding_table, %token, offset_dims = [1], collapsed_slice_dims = [0], start_index_map = [0], index_vector_dim = 1, slice_sizes = array<i64: 1, 16> : (tensor<32000x16xf16>, tensor<1x1xi32>) -> tensor<1x16xf16>",
+      "ssa_result": "%embedded",
+      "stablehlo_op": "gather"
+    },
+    {
+      "operation": "stablehlo.dot_general",
+      "source_end_line": 24,
+      "source_index": 2,
+      "source_line": 21,
+      "source_snippet": "%q = stablehlo.dot_general %embedded, %q_weight, contracting_dims = [1] x [0], precision = [DEFAULT, DEFAULT] : (tensor<1x16xf16>, tensor<16x16xf16>) -> tensor<1x16xf16>",
+      "ssa_result": "%q",
+      "stablehlo_op": "dot_general"
+    },
+    {
+      "operation": "stablehlo.dot_general",
+      "source_end_line": 28,
+      "source_index": 3,
+      "source_line": 25,
+      "source_snippet": "%k = stablehlo.dot_general %embedded, %k_weight, contracting_dims = [1] x [0], precision = [DEFAULT, DEFAULT] : (tensor<1x16xf16>, tensor<16x16xf16>) -> tensor<1x16xf16>",
+      "ssa_result": "%k",
+      "stablehlo_op": "dot_general"
+    },
+    {
+      "operation": "stablehlo.dot_general",
+      "source_end_line": 32,
+      "source_index": 4,
+      "source_line": 29,
+      "source_snippet": "%v = stablehlo.dot_general %embedded, %v_weight, contracting_dims = [1] x [0], precision = [DEFAULT, DEFAULT] : (tensor<1x16xf16>, tensor<16x16xf16>) -> tensor<1x16xf16>",
+      "ssa_result": "%v",
+      "stablehlo_op": "dot_general"
+    },
+    {
+      "operation": "stablehlo.multiply",
+      "source_end_line": 34,
+      "source_index": 5,
+      "source_line": 33,
+      "source_snippet": "%attention_score = stablehlo.multiply %q, %k : tensor<1x16xf16>",
+      "ssa_result": "%attention_score",
+      "stablehlo_op": "multiply"
+    },
+    {
+      "operation": "stablehlo.multiply",
+      "source_end_line": 36,
+      "source_index": 6,
+      "source_line": 35,
+      "source_snippet": "%attention_value = stablehlo.multiply %attention_score, %v : tensor<1x16xf16>",
+      "ssa_result": "%attention_value",
+      "stablehlo_op": "multiply"
+    },
+    {
+      "operation": "stablehlo.dot_general",
+      "source_end_line": 40,
+      "source_index": 7,
+      "source_line": 37,
+      "source_snippet": "%projected = stablehlo.dot_general %attention_value, %o_weight, contracting_dims = [1] x [0], precision = [DEFAULT, DEFAULT] : (tensor<1x16xf16>, tensor<16x16xf16>) -> tensor<1x16xf16>",
+      "ssa_result": "%projected",
+      "stablehlo_op": "dot_general"
+    },
+    {
+      "operation": "stablehlo.add",
+      "source_end_line": 42,
+      "source_index": 8,
+      "source_line": 41,
+      "source_snippet": "%residual = stablehlo.add %projected, %cst_zero : tensor<1x16xf16>",
+      "ssa_result": "%residual",
+      "stablehlo_op": "add"
+    },
+    {
+      "operation": "stablehlo.dot_general",
+      "source_end_line": 46,
+      "source_index": 9,
+      "source_line": 43,
+      "source_snippet": "%mlp_up = stablehlo.dot_general %residual, %mlp_up_weight, contracting_dims = [1] x [0], precision = [DEFAULT, DEFAULT] : (tensor<1x16xf16>, tensor<16x64xf16>) -> tensor<1x64xf16>",
+      "ssa_result": "%mlp_up",
+      "stablehlo_op": "dot_general"
+    },
+    {
+      "operation": "stablehlo.tanh",
+      "source_end_line": 47,
+      "source_index": 10,
+      "source_line": 47,
+      "source_snippet": "%mlp_act = stablehlo.tanh %mlp_up : tensor<1x64xf16>",
+      "ssa_result": "%mlp_act",
+      "stablehlo_op": "tanh"
+    },
+    {
+      "operation": "stablehlo.dot_general",
+      "source_end_line": 51,
+      "source_index": 11,
+      "source_line": 48,
+      "source_snippet": "%mlp_down = stablehlo.dot_general %mlp_act, %mlp_down_weight, contracting_dims = [1] x [0], precision = [DEFAULT, DEFAULT] : (tensor<1x64xf16>, tensor<64x16xf16>) -> tensor<1x16xf16>",
+      "ssa_result": "%mlp_down",
+      "stablehlo_op": "dot_general"
+    },
+    {
+      "operation": "stablehlo.add",
+      "source_end_line": 52,
+      "source_index": 12,
+      "source_line": 52,
+      "source_snippet": "%out = stablehlo.add %mlp_down, %residual : tensor<1x16xf16>",
+      "ssa_result": "%out",
+      "stablehlo_op": "add"
+    }
+  ],
+  "schema": "e1-stablehlo-inspection-v0",
   "systolic_array_ops": [
     "dot_general"
   ],

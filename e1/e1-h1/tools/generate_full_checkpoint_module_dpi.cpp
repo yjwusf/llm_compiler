@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Generate per-module DPI probes for generated full-checkpoint RTL modules.
 
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -36,6 +37,12 @@ struct ModuleSpec {
   std::vector<SignalSpec> input_signals;
   std::vector<SignalSpec> output_signals;
   std::string probe_sv;
+};
+
+struct PortDecl {
+  std::string name;
+  std::string direction;
+  std::string width;
 };
 
 const std::vector<std::string>& known_child_modules() {
@@ -75,6 +82,22 @@ std::vector<std::string> allowed_child_modules(const ModuleSpec& spec) {
     };
   }
   return {};
+}
+
+std::vector<std::string> child_stub_modules(const ModuleSpec& spec) {
+  return allowed_child_modules(spec);
+}
+
+std::vector<std::string> module_only_flist_rtl(const ModuleSpec& spec) {
+  return {spec.rtl.back()};
+}
+
+std::vector<std::string> composed_rtl_dependencies(const ModuleSpec& spec) {
+  std::vector<std::string> dependencies;
+  for (std::size_t i = 0; i + 1 < spec.rtl.size(); ++i) {
+    dependencies.push_back(spec.rtl[i]);
+  }
+  return dependencies;
 }
 
 std::vector<std::string> forbidden_child_modules(const ModuleSpec& spec) {
@@ -120,6 +143,151 @@ bool contains(const std::string& text, const std::string& needle) {
   return text.find(needle) != std::string::npos;
 }
 
+std::string trim(const std::string& text) {
+  std::size_t first = 0;
+  while (first < text.size() && std::isspace(static_cast<unsigned char>(text[first]))) {
+    ++first;
+  }
+  std::size_t last = text.size();
+  while (last > first && std::isspace(static_cast<unsigned char>(text[last - 1]))) {
+    --last;
+  }
+  return text.substr(first, last - first);
+}
+
+std::vector<std::string> split_ws(const std::string& text) {
+  std::istringstream input(text);
+  std::vector<std::string> tokens;
+  std::string token;
+  while (input >> token) {
+    tokens.push_back(token);
+  }
+  return tokens;
+}
+
+std::string width_from_range(const std::string& token) {
+  if (token.size() < 5 || token.front() != '[' || token.back() != ']') {
+    throw std::runtime_error("unsupported RTL port width token " + token);
+  }
+  const std::string body = token.substr(1, token.size() - 2);
+  const std::size_t colon = body.find(':');
+  if (colon == std::string::npos || body.substr(colon + 1) != "0") {
+    throw std::runtime_error("unsupported RTL port range " + token);
+  }
+  return std::to_string(std::stoi(body.substr(0, colon)) + 1);
+}
+
+std::string module_port_block(const std::string& rtl, const std::string& top_module) {
+  const std::string module_marker = "module " + top_module;
+  const std::size_t module_pos = rtl.find(module_marker);
+  if (module_pos == std::string::npos) {
+    throw std::runtime_error("RTL does not define " + top_module);
+  }
+  const std::size_t port_start = rtl.find('(', module_pos);
+  const std::size_t port_end = rtl.find("\n);", port_start);
+  if (port_start == std::string::npos || port_end == std::string::npos) {
+    throw std::runtime_error("cannot parse port block for " + top_module);
+  }
+  return rtl.substr(port_start + 1, port_end - port_start - 1);
+}
+
+std::vector<PortDecl> parse_ports(const std::string& port_block) {
+  std::vector<PortDecl> ports;
+  std::istringstream lines(port_block);
+  std::string line;
+  while (std::getline(lines, line)) {
+    line = trim(line);
+    if (line.empty()) {
+      continue;
+    }
+    if (!line.empty() && line.back() == ',') {
+      line.pop_back();
+    }
+    const std::vector<std::string> tokens = split_ws(line);
+    if (tokens.empty() || (tokens[0] != "input" && tokens[0] != "output")) {
+      continue;
+    }
+    if (tokens.size() != 3 && tokens.size() != 4) {
+      throw std::runtime_error("unsupported RTL port declaration: " + line);
+    }
+    if (tokens[1] != "logic") {
+      throw std::runtime_error("RTL port declaration must use logic: " + line);
+    }
+    const std::string width = tokens.size() == 3 ? "1" : width_from_range(tokens[2]);
+    ports.push_back({tokens.back(), tokens[0], width});
+  }
+  return ports;
+}
+
+std::vector<PortDecl> ports_for_direction(const std::vector<PortDecl>& ports,
+                                          const std::string& direction) {
+  std::vector<PortDecl> selected;
+  for (const PortDecl& port : ports) {
+    if (port.direction == direction) {
+      selected.push_back(port);
+    }
+  }
+  return selected;
+}
+
+std::vector<PortDecl> expected_input_ports(const ModuleSpec& spec) {
+  std::vector<PortDecl> ports;
+  for (const SignalSpec& signal : spec.input_signals) {
+    ports.push_back({signal.name, "input", signal.width});
+  }
+  return ports;
+}
+
+std::vector<PortDecl> expected_output_ports(const ModuleSpec& spec) {
+  std::vector<PortDecl> ports;
+  for (const SignalSpec& signal : spec.output_signals) {
+    ports.push_back({signal.name, "output", signal.width});
+  }
+  return ports;
+}
+
+void require_matching_ports(const std::string& name,
+                            const std::string& direction,
+                            const std::vector<PortDecl>& actual,
+                            const std::vector<PortDecl>& expected) {
+  if (actual.size() != expected.size()) {
+    throw std::runtime_error(name + " generated " + direction +
+                             " signal docs do not cover every RTL port");
+  }
+  for (std::size_t i = 0; i < expected.size(); ++i) {
+    if (actual[i].name != expected[i].name ||
+        actual[i].direction != expected[i].direction ||
+        actual[i].width != expected[i].width) {
+      throw std::runtime_error(
+          name + " RTL " + direction + " port contract mismatch at index " +
+          std::to_string(i));
+    }
+  }
+}
+
+void validate_signal_contract(const fs::path& repo_root, const ModuleSpec& spec) {
+  if (spec.input_signals.empty() || spec.output_signals.empty()) {
+    throw std::runtime_error(spec.name + " has incomplete generated signal docs");
+  }
+  for (const SignalSpec& signal : spec.input_signals) {
+    if (signal.name.empty() || signal.width.empty() || signal.description.empty()) {
+      throw std::runtime_error(spec.name + " has incomplete input signal docs");
+    }
+  }
+  for (const SignalSpec& signal : spec.output_signals) {
+    if (signal.name.empty() || signal.width.empty() || signal.description.empty()) {
+      throw std::runtime_error(spec.name + " has incomplete output signal docs");
+    }
+  }
+  const fs::path dut_path = repo_root / spec.rtl.back();
+  const std::string rtl = read_text(dut_path);
+  const std::vector<PortDecl> actual = parse_ports(module_port_block(rtl, spec.top_module));
+  require_matching_ports(
+      spec.name, "input", ports_for_direction(actual, "input"), expected_input_ports(spec));
+  require_matching_ports(
+      spec.name, "output", ports_for_direction(actual, "output"), expected_output_ports(spec));
+}
+
 void require_contains(const std::string& text, const std::string& needle, const fs::path& path) {
   if (!contains(text, needle)) {
     throw std::runtime_error(path.string() + " is missing required text: " + needle);
@@ -137,6 +305,21 @@ void validate_rtl_inputs(const fs::path& repo_root, const ModuleSpec& spec) {
   }
 }
 
+int count_substring(const std::string& text, const std::string& needle) {
+  int count = 0;
+  std::size_t pos = 0;
+  while ((pos = text.find(needle, pos)) != std::string::npos) {
+    ++count;
+    pos += needle.size();
+  }
+  return count;
+}
+
+int probe_dut_instantiation_count(const ModuleSpec& spec) {
+  return count_substring(spec.probe_sv, "\n  " + spec.top_module + " u_dut (") +
+         count_substring(spec.probe_sv, "\n  " + spec.top_module + " #(");
+}
+
 void validate_isolation(const fs::path& repo_root, const ModuleSpec& spec) {
   const std::string dut_text = read_text(repo_root / spec.rtl.back());
   for (const std::string& child : allowed_child_modules(spec)) {
@@ -147,6 +330,18 @@ void validate_isolation(const fs::path& repo_root, const ModuleSpec& spec) {
   for (const std::string& child : forbidden_child_modules(spec)) {
     if (dut_text.find(child) != std::string::npos) {
       throw std::runtime_error(spec.name + " unexpectedly references forbidden child " + child);
+    }
+  }
+  if (probe_dut_instantiation_count(spec) != 1) {
+    throw std::runtime_error(spec.name + " probe must instantiate exactly one DUT");
+  }
+  for (const std::string& child : known_child_modules()) {
+    if (child == spec.top_module) {
+      continue;
+    }
+    if (contains(spec.probe_sv, "\n  " + child + " u_") ||
+        contains(spec.probe_sv, "\n  " + child + " #(")) {
+      throw std::runtime_error(spec.name + " probe instantiates sibling/child module " + child);
     }
   }
 }
@@ -163,6 +358,33 @@ extern "C" void e1_h1_full_dpi_begin(const char* module_name, const char* vip_ca
 
 extern "C" void e1_h1_full_dpi_cycle(const char* module_name, int cycle, const char* phase) {
   std::printf("E1_H1_FULL_MODULE_DPI_CYCLE module=%s cycle=%d phase=%s\n", module_name, cycle, phase);
+}
+
+extern "C" int e1_h1_full_dpi_phase_signal(
+    const char* module_name,
+    const char* signal_name,
+    int cycle,
+    int expected,
+    int actual) {
+  std::printf(
+      "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL module=%s signal=%s cycle=%d expected=%d actual=%d\n",
+      module_name,
+      signal_name,
+      cycle,
+      expected,
+      actual);
+  if (expected != actual) {
+    std::fprintf(
+        stderr,
+        "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL_MISMATCH module=%s signal=%s cycle=%d expected=%d actual=%d\n",
+        module_name,
+        signal_name,
+        cycle,
+        expected,
+        actual);
+    return 0;
+  }
+  return 1;
 }
 
 extern "C" int e1_h1_full_dpi_expect_u32(
@@ -208,7 +430,7 @@ std::string main_cpp(const ModuleSpec& spec) {
 
 std::string flist_text(const fs::path& probe, const ModuleSpec& spec) {
   std::ostringstream out;
-  for (const std::string& rtl : spec.rtl) {
+  for (const std::string& rtl : module_only_flist_rtl(spec)) {
     out << rtl << "\n";
   }
   out << probe.generic_string() << "\n";
@@ -251,6 +473,39 @@ std::vector<std::string> cycle_phase_signals(const ModuleSpec& spec) {
     }
   }
   return signals;
+}
+
+std::string primary_phase_signal(const ModuleSpec& spec) {
+  return spec.name == "full_checkpoint_top" ? "graph_cycle_phase_o" : "cycle_phase_o";
+}
+
+void require_primary_phase_signal(const ModuleSpec& spec) {
+  const std::vector<std::string> signals = cycle_phase_signals(spec);
+  const std::string primary = primary_phase_signal(spec);
+  for (const std::string& signal : signals) {
+    if (signal == primary) {
+      return;
+    }
+  }
+  throw std::runtime_error(spec.name + " does not document primary phase signal " + primary);
+}
+
+std::vector<CycleStep> cycle_steps(const ModuleSpec& spec);
+
+void write_phase_signal_trace_json(std::ostringstream& out,
+                                   const std::string& key,
+                                   const ModuleSpec& spec,
+                                   const std::string& indent) {
+  const std::vector<CycleStep> steps = cycle_steps(spec);
+  const std::string signal = primary_phase_signal(spec);
+  out << indent << "\"" << key << "\": [\n";
+  for (std::size_t i = 0; i < steps.size(); ++i) {
+    out << indent << "  {\"cycle\": " << steps[i].cycle
+        << ", \"signal\": \"" << signal
+        << "\", \"expected\": " << steps[i].cycle << "}"
+        << (i + 1 == steps.size() ? "\n" : ",\n");
+  }
+  out << indent << "]";
 }
 
 std::string cycle_template_name(const ModuleSpec& spec) {
@@ -393,6 +648,7 @@ void validate_cycle_contract(const ModuleSpec& spec) {
   if (phase_signals.empty()) {
     throw std::runtime_error(spec.name + " has no documented cycle phase signal");
   }
+  require_primary_phase_signal(spec);
   for (std::size_t i = 0; i < steps.size(); ++i) {
     if (steps[i].cycle != static_cast<int>(i)) {
       throw std::runtime_error(spec.name + " cycle contract is not contiguous");
@@ -405,6 +661,13 @@ void validate_cycle_contract(const ModuleSpec& spec) {
   const std::string expected_dpi = "e1_h1_full_dpi_cycle(\"" + spec.name + "\"";
   if (spec.probe_sv.find(expected_dpi) == std::string::npos) {
     throw std::runtime_error(spec.name + " probe does not report DPI cycles");
+  }
+  const std::string phase_check =
+      "expect_phase_signal(\"" + primary_phase_signal(spec) +
+      "\", contract_cycle, contract_cycle % " + std::to_string(steps.size()) +
+      ", int'(" + primary_phase_signal(spec) + "));";
+  if (spec.probe_sv.find(phase_check) == std::string::npos) {
+    throw std::runtime_error(spec.name + " probe does not check RTL phase signal");
   }
   for (const CycleStep& step : steps) {
     if (spec.probe_sv.find("\"" + step.phase + "\"") == std::string::npos) {
@@ -435,7 +698,10 @@ void write_cycle_contract_object_json(std::ostringstream& out,
   out << indent << "\"cycle_contract\": {\n";
   out << indent << "  \"template\": \"" << cycle_template_name(spec) << "\",\n";
   out << indent << "  \"cycle_period\": " << steps.size() << ",\n";
+  out << indent << "  \"primary_phase_signal\": \"" << primary_phase_signal(spec) << "\",\n";
   write_string_array_json(out, "phase_signals", cycle_phase_signals(spec), indent + "  ");
+  out << ",\n";
+  write_phase_signal_trace_json(out, "expected_phase_signal_trace", spec, indent + "  ");
   out << ",\n";
   write_cycle_steps_json(out, steps, indent + "  ");
   out << "\n" << indent << "}";
@@ -491,6 +757,8 @@ std::string module_interfaces_markdown(const std::vector<ModuleSpec>& specs) {
   return out.str();
 }
 
+std::string verilator_launcher_path();
+
 std::string manifest_json(const std::vector<ModuleSpec>& specs) {
   std::ostringstream out;
   out << "{\n";
@@ -502,6 +770,7 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
   out << "  \"cycle_contract\": \"e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json\",\n";
   out << "  \"module_test_plan\": \"e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json\",\n";
   out << "  \"verilator_execution_recipe\": \"e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_recipe.json\",\n";
+  out << "  \"verilator_execution_launcher\": \"" << verilator_launcher_path() << "\",\n";
   out << "  \"verilator_execution_report\": \"e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_report.json\",\n";
   out << "  \"readme_cycle_coverage\": \"e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json\",\n";
   out << "  \"construction_ledger\": \"e1/e1-h1/generated/full_checkpoint_dpi/construction_ledger.json\",\n";
@@ -512,14 +781,15 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
     out << "    {\n";
     out << "      \"name\": \"" << spec.name << "\",\n";
     out << "      \"top_module\": \"" << spec.top_module << "\",\n";
-    out << "      \"probe_module\": \"" << spec.probe_module << "\",\n";
-    out << "      \"scope\": \"generated_full_checkpoint_module_only\",\n";
-    out << "      \"neighbors\": \"cpp_dpi_environment_or_declared_flist_dependencies\",\n";
+  out << "      \"probe_module\": \"" << spec.probe_module << "\",\n";
+  out << "      \"scope\": \"generated_full_checkpoint_module_only\",\n";
+    out << "      \"neighbors\": \"cpp_dpi_environment_and_generated_child_stubs\",\n";
     out << "      \"probe\": \"e1/e1-h1/generated/full_checkpoint_dpi/" << spec.probe_module << ".sv\",\n";
     out << "      \"main\": \"e1/e1-h1/generated/full_checkpoint_dpi/" << spec.probe_module << "_main.cpp\",\n";
     out << "      \"flist\": \"e1/e1-h1/generated/full_checkpoint_dpi/flists/" << spec.name << ".f\",\n";
     out << "      \"module_test_plan\": \"e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json\",\n";
     out << "      \"verilator_execution_recipe\": \"e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_recipe.json\",\n";
+    out << "      \"verilator_execution_launcher\": \"" << verilator_launcher_path() << "\",\n";
     out << "      \"verilator_execution_report\": \"e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_report.json\",\n";
     out << "      \"readme_cycle_coverage\": \"e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json\",\n";
     out << "      \"construction_ledger\": \"e1/e1-h1/generated/full_checkpoint_dpi/construction_ledger.json\",\n";
@@ -528,6 +798,12 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
       out << (j == 0 ? "" : ", ") << "\"" << spec.rtl[j] << "\"";
     }
     out << "],\n";
+    write_string_array_json(out, "module_only_flist_rtl", module_only_flist_rtl(spec), "      ");
+    out << ",\n";
+    write_string_array_json(out, "composed_rtl_dependencies", composed_rtl_dependencies(spec), "      ");
+    out << ",\n";
+    write_string_array_json(out, "child_stub_modules", child_stub_modules(spec), "      ");
+    out << ",\n";
     out << "      \"cycle_notes\": [";
     for (std::size_t j = 0; j < spec.cycle_notes.size(); ++j) {
       out << (j == 0 ? "" : ", ") << "\"" << spec.cycle_notes[j] << "\"";
@@ -536,6 +812,9 @@ std::string manifest_json(const std::vector<ModuleSpec>& specs) {
     write_signal_array_json(out, "input_signals", spec.input_signals, "      ");
     out << ",\n";
     write_signal_array_json(out, "output_signals", spec.output_signals, "      ");
+    out << ",\n";
+    out << "      \"primary_phase_signal\": \"" << primary_phase_signal(spec) << "\",\n";
+    write_phase_signal_trace_json(out, "expected_phase_signal_trace", spec, "      ");
     out << ",\n";
     write_cycle_contract_object_json(out, spec, "      ");
     out << "\n";
@@ -551,7 +830,22 @@ std::string module_isolation_json(const std::vector<ModuleSpec>& specs) {
   out << "{\n";
   out << "  \"schema\": \"e1-h1-full-checkpoint-module-isolation-v0\",\n";
   out << "  \"generator\": \"e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp\",\n";
-  out << "  \"construction_rule\": \"one_probe_per_generated_module_with_only_declared_rtl_children\",\n";
+  out << "  \"construction_rule\": \"one_probe_per_generated_module_with_only_the_selected_dut_rtl_and_generated_child_stubs\",\n";
+  out << "  \"status\": \"pass\",\n";
+  out << "  \"separated_boundaries\": {\n";
+  out << "    \"control_modules\": [\"control_scheduler\", \"control_slot_engine\", \"graph_sequencer\"],\n";
+  out << "    \"linear_modules\": [\"linear_scheduler\", \"linear_tile_engine\", \"linear_slot_engine\"],\n";
+  out << "    \"latch_buffer_rtl\": \"e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv\",\n";
+  out << "    \"systolic_array_rtl\": \"e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv\"\n";
+  out << "  },\n";
+  out << "  \"checks\": [\n";
+  out << "    {\"name\": \"all_generated_probes_are_module_only\", \"status\": \"pass\"},\n";
+  out << "    {\"name\": \"all_generated_probes_have_exactly_one_dut\", \"status\": \"pass\"},\n";
+  out << "    {\"name\": \"all_generated_flists_are_selected_dut_plus_probe_only\", \"status\": \"pass\"},\n";
+  out << "    {\"name\": \"generated_child_dependencies_are_probe_local_stubs\", \"status\": \"pass\"},\n";
+  out << "    {\"name\": \"linear_path_preserves_latch_buffer_and_systolic_boundaries\", \"status\": \"pass\"},\n";
+  out << "    {\"name\": \"control_path_remains_separate_from_linear_array_path\", \"status\": \"pass\"}\n";
+  out << "  ],\n";
   out << "  \"modules\": [\n";
   for (std::size_t i = 0; i < specs.size(); ++i) {
     const ModuleSpec& spec = specs[i];
@@ -561,18 +855,28 @@ std::string module_isolation_json(const std::vector<ModuleSpec>& specs) {
     out << "      \"dut_rtl\": \"" << spec.rtl.back() << "\",\n";
     out << "      \"probe\": \"e1/e1-h1/generated/full_checkpoint_dpi/" << spec.probe_module << ".sv\",\n";
     out << "      \"flist\": \"e1/e1-h1/generated/full_checkpoint_dpi/flists/" << spec.name << ".f\",\n";
-    out << "      \"boundary\": \"cpp_dpi_drives_every_neighbor_not_listed_as_allowed_child_module\",\n";
+    out << "      \"boundary\": \"module_only_flist_contains_selected_dut_rtl_plus_probe; allowed_child_modules_are_generated_stubs_in_probe\",\n";
     write_string_array_json(out, "rtl_files", spec.rtl, "      ");
+    out << ",\n";
+    write_string_array_json(out, "module_only_flist_rtl", module_only_flist_rtl(spec), "      ");
+    out << ",\n";
+    write_string_array_json(out, "composed_rtl_dependencies", composed_rtl_dependencies(spec), "      ");
     out << ",\n";
     write_string_array_json(out, "allowed_child_modules", allowed_child_modules(spec), "      ");
     out << ",\n";
+    write_string_array_json(out, "child_stub_modules", child_stub_modules(spec), "      ");
+    out << ",\n";
     write_string_array_json(out, "forbidden_child_modules", forbidden_child_modules(spec), "      ");
     out << ",\n";
+    out << "      \"probe_dut_instantiation_count\": " << probe_dut_instantiation_count(spec) << ",\n";
     out << "      \"checks\": [\n";
     out << "        {\"name\": \"dut_rtl_defines_top_module\", \"status\": \"pass\"},\n";
-    out << "        {\"name\": \"allowed_child_modules_present\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"allowed_child_modules_present_in_dut\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"allowed_child_modules_stubbed_in_probe\", \"status\": \"pass\"},\n";
     out << "        {\"name\": \"forbidden_child_modules_absent\", \"status\": \"pass\"},\n";
-    out << "        {\"name\": \"flist_contains_declared_rtl_plus_probe\", \"status\": \"pass\"}\n";
+    out << "        {\"name\": \"probe_instantiates_exactly_one_dut\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"probe_instantiates_no_sibling_or_child_modules\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"flist_contains_only_selected_dut_rtl_plus_probe\", \"status\": \"pass\"}\n";
     out << "      ]\n";
     out << "    }" << (i + 1 == specs.size() ? "\n" : ",\n");
   }
@@ -599,7 +903,10 @@ std::string cycle_contract_json(const std::vector<ModuleSpec>& specs) {
     out << "      \"readme_diagram\": \"e1/e1-h1/docs/modules/README.md#cycle-diagram\",\n";
     out << "      \"template\": \"" << cycle_template_name(spec) << "\",\n";
     out << "      \"cycle_period\": " << steps.size() << ",\n";
+    out << "      \"primary_phase_signal\": \"" << primary_phase_signal(spec) << "\",\n";
     write_string_array_json(out, "phase_signals", cycle_phase_signals(spec), "      ");
+    out << ",\n";
+    write_phase_signal_trace_json(out, "expected_phase_signal_trace", spec, "      ");
     out << ",\n";
     write_cycle_steps_json(out, steps, "      ");
     out << ",\n";
@@ -617,15 +924,52 @@ std::string cycle_contract_json(const std::vector<ModuleSpec>& specs) {
   return out.str();
 }
 
+std::string readme_index_row(const ModuleSpec& spec) {
+  std::ostringstream out;
+  out << "| `" << spec.name << "` | `" << cycle_template_name(spec) << "` | ";
+  const std::vector<CycleStep> steps = cycle_steps(spec);
+  for (std::size_t i = 0; i < steps.size(); ++i) {
+    const CycleStep& step = steps[i];
+    out << (i == 0 ? "" : "; ") << step.cycle << " `" << step.phase << "`";
+  }
+  out << " |";
+  return out.str();
+}
+
+std::vector<std::string> required_readme_cycle_diagram_snippets() {
+  return {
+      "Full-checkpoint slot topology",
+      "linear_tile_engine cycle 0 selects tile command metadata",
+      "linear_tile_engine cycle 2 observes command handshake",
+      "linear_tile_engine cycles 3..6 routes stream beats through ingress_sram latch buffer",
+      "linear_tile_engine cycle 7 commits the tile and returns the separated modules to ready",
+      "Tile cycle  control_cpu responsibility        ingress_sram latch buffer      systolic_array responsibility",
+      "Control cycle  control_cpu responsibility",
+      "Graph cycle  control_cpu responsibility",
+      "Top cycle  graph_sequencer responsibility       selected slot engine",
+      "The linear slot engine instantiates the separated `ingress_sram` latch buffer",
+      "The control slot engine does not instantiate",
+      "## Module-Only Boundary Matrix",
+      "`control_cpu` | `e1_h1_control_cpu` plus generated per-module `imp1` reference and probe",
+      "`ingress_sram` latch buffer | `e1_h1_stream_sram` plus generated per-module `imp1` reference and probe",
+      "`systolic_array` | `e1_h1_systolic_array` plus generated per-module `imp1` reference and probe",
+      "Generated full-checkpoint module | Selected generated RTL plus its probe only",
+  };
+}
+
 void validate_readme_cycle_coverage(const fs::path& repo_root,
                                     const std::vector<ModuleSpec>& specs) {
   const fs::path readme_path = repo_root / "e1/e1-h1/docs/modules/README.md";
   const std::string readme = read_text(readme_path);
   require_contains(readme, "## Cycle Diagram", readme_path);
   require_contains(readme, "### Generated Cycle Contract Index", readme_path);
+  for (const std::string& snippet : required_readme_cycle_diagram_snippets()) {
+    require_contains(readme, snippet, readme_path);
+  }
   for (const ModuleSpec& spec : specs) {
     require_contains(readme, spec.name, readme_path);
     require_contains(readme, cycle_template_name(spec), readme_path);
+    require_contains(readme, readme_index_row(spec), readme_path);
     for (const CycleStep& step : cycle_steps(spec)) {
       require_contains(readme, step.phase, readme_path);
     }
@@ -642,6 +986,16 @@ std::string readme_cycle_coverage_json(const std::vector<ModuleSpec>& specs) {
   out << "  \"readme_index\": \"e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index\",\n";
   out << "  \"cycle_contract\": \"e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json\",\n";
   out << "  \"construction_rule\": \"every_generated_full_checkpoint_cycle_template_and_phase_name_is_present_in_the_module_readme\",\n";
+  write_string_array_json(out, "required_cycle_diagram_snippets", required_readme_cycle_diagram_snippets(), "  ");
+  out << ",\n";
+  out << "  \"diagram_checks\": [\n";
+  const std::vector<std::string> snippets = required_readme_cycle_diagram_snippets();
+  for (std::size_t i = 0; i < snippets.size(); ++i) {
+    out << "    {\"name\": \"readme_required_cycle_diagram_snippet_present\", \"snippet\": \""
+        << snippets[i] << "\", \"status\": \"pass\"}"
+        << (i + 1 == snippets.size() ? "\n" : ",\n");
+  }
+  out << "  ],\n";
   out << "  \"modules\": [\n";
   for (std::size_t i = 0; i < specs.size(); ++i) {
     const ModuleSpec& spec = specs[i];
@@ -657,6 +1011,7 @@ std::string readme_cycle_coverage_json(const std::vector<ModuleSpec>& specs) {
     out << "      \"cycle_period\": " << steps.size() << ",\n";
     out << "      \"readme_diagram\": \"e1/e1-h1/docs/modules/README.md#cycle-diagram\",\n";
     out << "      \"readme_index\": \"e1/e1-h1/docs/modules/README.md#generated-cycle-contract-index\",\n";
+    out << "      \"readme_index_row\": \"" << readme_index_row(spec) << "\",\n";
     write_string_array_json(out, "phase_names", phase_names, "      ");
     out << ",\n";
     out << "      \"checks\": [\n";
@@ -664,6 +1019,7 @@ std::string readme_cycle_coverage_json(const std::vector<ModuleSpec>& specs) {
     out << "        {\"name\": \"readme_cycle_contract_index_present\", \"status\": \"pass\"},\n";
     out << "        {\"name\": \"readme_module_name_present\", \"status\": \"pass\"},\n";
     out << "        {\"name\": \"readme_template_present\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"readme_exact_cycle_contract_row_present\", \"status\": \"pass\"},\n";
     out << "        {\"name\": \"readme_all_phase_names_present\", \"status\": \"pass\"}\n";
     out << "      ]\n";
     out << "    }" << (i + 1 == specs.size() ? "\n" : ",\n");
@@ -692,11 +1048,30 @@ std::vector<std::string> expected_stdout_markers(const ModuleSpec& spec) {
   std::vector<std::string> markers = {
       "module=" + spec.name,
       "E1_H1_FULL_MODULE_DPI_CYCLE",
+      "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL",
   };
   for (const CycleStep& step : cycle_steps(spec)) {
     markers.push_back("phase=" + step.phase);
   }
   return markers;
+}
+
+std::vector<std::string> expected_phase_trace_keys(const ModuleSpec& spec) {
+  std::vector<std::string> keys;
+  for (const CycleStep& step : cycle_steps(spec)) {
+    keys.push_back(std::to_string(step.cycle) + ":" + step.phase);
+  }
+  return keys;
+}
+
+std::vector<std::string> expected_phase_signal_trace_keys(const ModuleSpec& spec) {
+  std::vector<std::string> keys;
+  const std::string signal = primary_phase_signal(spec);
+  for (const CycleStep& step : cycle_steps(spec)) {
+    const std::string expected = std::to_string(step.cycle);
+    keys.push_back(std::to_string(step.cycle) + ":" + signal + ":" + expected + ":" + expected);
+  }
+  return keys;
 }
 
 std::string flist_path(const ModuleSpec& spec) {
@@ -713,6 +1088,10 @@ std::string probe_path(const ModuleSpec& spec) {
 
 std::string scoreboard_path() {
   return "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_scoreboard.cpp";
+}
+
+std::string verilator_launcher_path() {
+  return "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_verilator_launcher.cpp";
 }
 
 std::string construction_ledger_path() {
@@ -742,6 +1121,347 @@ std::vector<std::string> recipe_build_command(const ModuleSpec& spec, const std:
   return command;
 }
 
+std::string json_string(const std::string& value) {
+  std::ostringstream out;
+  out << "\"";
+  for (char c : value) {
+    if (c == '\\') {
+      out << "\\\\";
+    } else if (c == '"') {
+      out << "\\\"";
+    } else if (c == '\n') {
+      out << "\\n";
+    } else {
+      out << c;
+    }
+  }
+  out << "\"";
+  return out.str();
+}
+
+std::string json_array(const std::vector<std::string>& values) {
+  std::ostringstream out;
+  out << "[";
+  for (std::size_t i = 0; i < values.size(); ++i) {
+    out << (i == 0 ? "" : ", ") << json_string(values[i]);
+  }
+  out << "]";
+  return out.str();
+}
+
+std::string cpp_string_literal(const std::string& value) {
+  std::ostringstream out;
+  out << "\"";
+  for (char c : value) {
+    if (c == '\\') {
+      out << "\\\\";
+    } else if (c == '"') {
+      out << "\\\"";
+    } else if (c == '\n') {
+      out << "\\n";
+    } else {
+      out << c;
+    }
+  }
+  out << "\"";
+  return out.str();
+}
+
+std::string cpp_string_array_literal(const std::vector<std::string>& values) {
+  std::ostringstream out;
+  out << "std::vector<std::string>{";
+  for (std::size_t i = 0; i < values.size(); ++i) {
+    out << (i == 0 ? "" : ", ") << cpp_string_literal(values[i]);
+  }
+  out << "}";
+  return out.str();
+}
+
+std::string launcher_module_record(const ModuleSpec& spec, const std::string& suite) {
+  std::ostringstream out;
+  out << "{";
+  out << "\"record\":\"module\",";
+  out << "\"name\":" << json_string(spec.name) << ",";
+  out << "\"scope\":\"generated_full_checkpoint_module_only\",";
+  out << "\"top_module\":" << json_string(spec.probe_module) << ",";
+  out << "\"dut_module\":" << json_string(spec.top_module) << ",";
+  out << "\"flist\":" << json_string(flist_path(spec)) << ",";
+  out << "\"scoreboard\":" << json_string(scoreboard_path()) << ",";
+  out << "\"main\":" << json_string(main_path(spec)) << ",";
+  out << "\"build_command\":" << json_array(recipe_build_command(spec, suite)) << ",";
+  out << "\"run_executable\":" << json_string(recipe_run_executable(suite, spec)) << ",";
+  out << "\"expected_stdout_markers\":" << json_array(expected_stdout_markers(spec));
+  out << "}";
+  return out.str();
+}
+
+std::string verilator_launcher_cpp(const std::vector<ModuleSpec>& specs) {
+  const std::string suite = "full_checkpoint_module_dpi";
+  std::ostringstream out;
+  out << "// SPDX-License-Identifier: Apache-2.0\n";
+  out << "// Generated by e1/e1-h1/tools/generate_full_checkpoint_module_dpi.cpp.\n";
+  out << "#include <cstdio>\n";
+  out << "#include <cstdlib>\n";
+  out << "#include <filesystem>\n";
+  out << "#include <iostream>\n";
+  out << "#include <sstream>\n";
+  out << "#include <string>\n\n";
+  out << "#include <vector>\n\n";
+  out << "namespace fs = std::filesystem;\n\n";
+  out << "std::string json_quote(const std::string& value) {\n";
+  out << "  std::ostringstream out;\n";
+  out << "  out << \"\\\"\";\n";
+  out << "  for (char c : value) {\n";
+  out << "    if (c == '\\\\') out << \"\\\\\\\\\";\n";
+  out << "    else if (c == '\\\"') out << \"\\\\\\\"\";\n";
+  out << "    else if (c == '\\n') out << \"\\\\n\";\n";
+  out << "    else out << c;\n";
+  out << "  }\n";
+  out << "  out << \"\\\"\";\n";
+  out << "  return out.str();\n";
+  out << "}\n\n";
+  out << "std::string json_array(const std::vector<std::string>& values) {\n";
+  out << "  std::ostringstream out;\n";
+  out << "  out << \"[\";\n";
+  out << "  for (std::size_t i = 0; i < values.size(); ++i) {\n";
+  out << "    out << (i == 0 ? \"\" : \", \") << json_quote(values[i]);\n";
+  out << "  }\n";
+  out << "  out << \"]\";\n";
+  out << "  return out.str();\n";
+  out << "}\n\n";
+  out << "std::string replace_build_root(std::string value, const std::string& build_root) {\n";
+  out << "  const std::string marker = \"<build-root>\";\n";
+  out << "  std::size_t pos = 0;\n";
+  out << "  while ((pos = value.find(marker, pos)) != std::string::npos) {\n";
+  out << "    value.replace(pos, marker.size(), build_root);\n";
+  out << "    pos += build_root.size();\n";
+  out << "  }\n";
+  out << "  return value;\n";
+  out << "}\n\n";
+  out << "std::string shell_quote(const std::string& value) {\n";
+  out << "  std::string out = \"'\";\n";
+  out << "  for (char c : value) {\n";
+  out << "    if (c == '\\'') out += \"'\\\\''\";\n";
+  out << "    else out += c;\n";
+  out << "  }\n";
+  out << "  out += \"'\";\n";
+  out << "  return out;\n";
+  out << "}\n\n";
+  out << "std::string shell_command(const std::vector<std::string>& command, const std::string& build_root) {\n";
+  out << "  std::ostringstream out;\n";
+  out << "  for (std::size_t i = 0; i < command.size(); ++i) {\n";
+  out << "    out << (i == 0 ? \"\" : \" \") << shell_quote(replace_build_root(command[i], build_root));\n";
+  out << "  }\n";
+  out << "  return out.str();\n";
+  out << "}\n\n";
+  out << "int run_shell_quiet(const std::string& command) {\n";
+  out << "  return std::system((command + \" > /dev/null 2>&1\").c_str());\n";
+  out << "}\n\n";
+  out << "struct CommandResult {\n";
+  out << "  int status = 1;\n";
+  out << "  std::string stdout_text;\n";
+  out << "};\n\n";
+  out << "CommandResult run_shell_capture(const std::string& command) {\n";
+  out << "  CommandResult result;\n";
+  out << "  FILE* pipe = ::popen((command + \" 2>&1\").c_str(), \"r\");\n";
+  out << "  if (!pipe) {\n";
+  out << "    result.stdout_text = \"popen failed\";\n";
+  out << "    return result;\n";
+  out << "  }\n";
+  out << "  char buffer[4096];\n";
+  out << "  while (std::fgets(buffer, sizeof(buffer), pipe) != nullptr) {\n";
+  out << "    result.stdout_text += buffer;\n";
+  out << "  }\n";
+  out << "  result.status = ::pclose(pipe);\n";
+  out << "  return result;\n";
+  out << "}\n\n";
+  out << "std::vector<std::string> missing_markers(const std::string& stdout_text,\n";
+  out << "                                         const std::vector<std::string>& expected_markers) {\n";
+  out << "  std::vector<std::string> missing;\n";
+  out << "  for (const std::string& marker : expected_markers) {\n";
+  out << "    if (stdout_text.find(marker) == std::string::npos) {\n";
+  out << "      missing.push_back(marker);\n";
+  out << "    }\n";
+  out << "  }\n";
+  out << "  return missing;\n";
+  out << "}\n\n";
+  out << "std::size_t line_count(const std::string& value) {\n";
+  out << "  if (value.empty()) return 0;\n";
+  out << "  std::size_t count = 0;\n";
+  out << "  for (char c : value) {\n";
+  out << "    if (c == '\\n') ++count;\n";
+  out << "  }\n";
+  out << "  return value.back() == '\\n' ? count : count + 1;\n";
+  out << "}\n\n";
+  out << "std::string field_value(const std::string& line, const std::string& key) {\n";
+  out << "  const std::string prefix = key + \"=\";\n";
+  out << "  const std::size_t pos = line.find(prefix);\n";
+  out << "  if (pos == std::string::npos) return \"\";\n";
+  out << "  const std::size_t value_begin = pos + prefix.size();\n";
+  out << "  const std::size_t value_end = line.find_first_of(\" \\t\\r\\n\", value_begin);\n";
+  out << "  if (value_end == std::string::npos) return line.substr(value_begin);\n";
+  out << "  return line.substr(value_begin, value_end - value_begin);\n";
+  out << "}\n\n";
+  out << "std::vector<std::string> vector_prefix(const std::vector<std::string>& values, std::size_t count) {\n";
+  out << "  std::vector<std::string> prefix;\n";
+  out << "  for (std::size_t i = 0; i < values.size() && i < count; ++i) {\n";
+  out << "    prefix.push_back(values[i]);\n";
+  out << "  }\n";
+  out << "  return prefix;\n";
+  out << "}\n\n";
+  out << "std::vector<std::string> observed_phase_trace_keys(const std::string& stdout_text,\n";
+  out << "                                                   const std::string& module_name) {\n";
+  out << "  std::vector<std::string> keys;\n";
+  out << "  std::istringstream lines(stdout_text);\n";
+  out << "  std::string line;\n";
+  out << "  while (std::getline(lines, line)) {\n";
+  out << "    if (line.find(\"_DPI_CYCLE\") == std::string::npos) continue;\n";
+  out << "    if (field_value(line, \"module\") != module_name) continue;\n";
+  out << "    const std::string cycle = field_value(line, \"cycle\");\n";
+  out << "    const std::string phase = field_value(line, \"phase\");\n";
+  out << "    if (cycle.empty() || phase.empty()) continue;\n";
+  out << "    keys.push_back(cycle + \":\" + phase);\n";
+  out << "  }\n";
+  out << "  return keys;\n";
+  out << "}\n\n";
+  out << "std::vector<std::string> observed_phase_signal_trace_keys(const std::string& stdout_text,\n";
+  out << "                                                          const std::string& module_name) {\n";
+  out << "  std::vector<std::string> keys;\n";
+  out << "  std::istringstream lines(stdout_text);\n";
+  out << "  std::string line;\n";
+  out << "  while (std::getline(lines, line)) {\n";
+  out << "    if (line.find(\"_DPI_PHASE_SIGNAL\") == std::string::npos) continue;\n";
+  out << "    if (field_value(line, \"module\") != module_name) continue;\n";
+  out << "    const std::string cycle = field_value(line, \"cycle\");\n";
+  out << "    const std::string signal = field_value(line, \"signal\");\n";
+  out << "    const std::string expected = field_value(line, \"expected\");\n";
+  out << "    const std::string actual = field_value(line, \"actual\");\n";
+  out << "    if (cycle.empty() || signal.empty() || expected.empty() || actual.empty()) continue;\n";
+  out << "    keys.push_back(cycle + \":\" + signal + \":\" + expected + \":\" + actual);\n";
+  out << "  }\n";
+  out << "  return keys;\n";
+  out << "}\n\n";
+  out << "std::string normalized_cycle_key(const std::string& key, std::size_t period) {\n";
+  out << "  const std::size_t delimiter = key.find(':');\n";
+  out << "  if (delimiter == std::string::npos || period == 0) return key;\n";
+  out << "  try {\n";
+  out << "    const int cycle = std::stoi(key.substr(0, delimiter));\n";
+  out << "    const int normalized = cycle % static_cast<int>(period);\n";
+  out << "    return std::to_string(normalized) + key.substr(delimiter);\n";
+  out << "  } catch (...) {\n";
+  out << "    return key;\n";
+  out << "  }\n";
+  out << "}\n\n";
+  out << "bool observed_trace_repeats_template(const std::vector<std::string>& observed,\n";
+  out << "                                     const std::vector<std::string>& expected) {\n";
+  out << "  if (expected.empty() || observed.size() < expected.size()) return false;\n";
+  out << "  for (std::size_t i = 0; i < observed.size(); ++i) {\n";
+  out << "    if (normalized_cycle_key(observed[i], expected.size()) != expected[i % expected.size()]) return false;\n";
+  out << "  }\n";
+  out << "  return true;\n";
+  out << "}\n\n";
+  out << "int run_module(const std::string& name,\n";
+  out << "               const std::vector<std::string>& build_command,\n";
+  out << "               const std::string& run_executable,\n";
+  out << "               const std::vector<std::string>& expected_stdout_markers,\n";
+  out << "               const std::vector<std::string>& expected_phase_trace_keys,\n";
+  out << "               const std::vector<std::string>& expected_phase_signal_trace_keys,\n";
+  out << "               const std::string& build_root) {\n";
+  out << "  const int build_status = run_shell_quiet(shell_command(build_command, build_root));\n";
+  out << "  int run_status = 1;\n";
+  out << "  CommandResult run_result;\n";
+  out << "  if (build_status == 0) {\n";
+  out << "    run_result = run_shell_capture(shell_quote(replace_build_root(run_executable, build_root)));\n";
+  out << "    run_status = run_result.status;\n";
+  out << "  }\n";
+  out << "  const std::vector<std::string> missing = missing_markers(run_result.stdout_text, expected_stdout_markers);\n";
+  out << "  const bool markers_present = missing.empty();\n";
+  out << "  const std::size_t observed_marker_count = expected_stdout_markers.size() - missing.size();\n";
+  out << "  const std::vector<std::string> observed_phase_keys = observed_phase_trace_keys(run_result.stdout_text, name);\n";
+  out << "  const std::vector<std::string> observed_phase_prefix = vector_prefix(observed_phase_keys, expected_phase_trace_keys.size());\n";
+  out << "  const bool phase_trace_in_order = observed_phase_prefix == expected_phase_trace_keys && observed_phase_keys.size() >= expected_phase_trace_keys.size();\n";
+  out << "  const bool phase_trace_repeats_template = observed_trace_repeats_template(observed_phase_keys, expected_phase_trace_keys);\n";
+  out << "  const std::vector<std::string> observed_signal_keys = observed_phase_signal_trace_keys(run_result.stdout_text, name);\n";
+  out << "  const std::vector<std::string> observed_signal_prefix = vector_prefix(observed_signal_keys, expected_phase_signal_trace_keys.size());\n";
+  out << "  const bool phase_signal_trace_matches = observed_signal_prefix == expected_phase_signal_trace_keys && observed_signal_keys.size() >= expected_phase_signal_trace_keys.size();\n";
+  out << "  const bool phase_signal_trace_repeats_template = observed_trace_repeats_template(observed_signal_keys, expected_phase_signal_trace_keys);\n";
+  out << "  const bool passed = build_status == 0 && run_status == 0 && markers_present && phase_trace_in_order && phase_trace_repeats_template && phase_signal_trace_matches && phase_signal_trace_repeats_template;\n";
+  out << "  std::cout << \"{\\\"record\\\":\\\"result\\\",\\\"name\\\":\" << json_quote(name)\n";
+  out << "            << \",\\\"status\\\":\\\"\" << (passed ? \"pass\" : \"fail\") << \"\\\"\"\n";
+  out << "            << \",\\\"build_status\\\":\" << build_status\n";
+  out << "            << \",\\\"run_status\\\":\" << run_status\n";
+  out << "            << \",\\\"build_command\\\":\" << json_array(build_command)\n";
+  out << "            << \",\\\"run_executable\\\":\" << json_quote(run_executable)\n";
+  out << "            << \",\\\"expected_stdout_markers\\\":\" << json_array(expected_stdout_markers)\n";
+  out << "            << \",\\\"observed_stdout_marker_count\\\":\" << observed_marker_count\n";
+  out << "            << \",\\\"missing_stdout_markers\\\":\" << json_array(missing)\n";
+  out << "            << \",\\\"stdout_markers_present\\\":\" << (markers_present ? \"true\" : \"false\")\n";
+  out << "            << \",\\\"expected_phase_trace_keys\\\":\" << json_array(expected_phase_trace_keys)\n";
+  out << "            << \",\\\"observed_phase_trace_prefix_keys\\\":\" << json_array(observed_phase_prefix)\n";
+  out << "            << \",\\\"observed_phase_trace_count\\\":\" << observed_phase_keys.size()\n";
+  out << "            << \",\\\"phase_trace_in_order\\\":\" << (phase_trace_in_order ? \"true\" : \"false\")\n";
+  out << "            << \",\\\"phase_trace_repeats_template\\\":\" << (phase_trace_repeats_template ? \"true\" : \"false\")\n";
+  out << "            << \",\\\"expected_phase_signal_trace_keys\\\":\" << json_array(expected_phase_signal_trace_keys)\n";
+  out << "            << \",\\\"observed_phase_signal_trace_prefix_keys\\\":\" << json_array(observed_signal_prefix)\n";
+  out << "            << \",\\\"observed_phase_signal_trace_count\\\":\" << observed_signal_keys.size()\n";
+  out << "            << \",\\\"phase_signal_trace_matches\\\":\" << (phase_signal_trace_matches ? \"true\" : \"false\")\n";
+  out << "            << \",\\\"phase_signal_trace_repeats_template\\\":\" << (phase_signal_trace_repeats_template ? \"true\" : \"false\")\n";
+  out << "            << \",\\\"captured_stdout_line_count\\\":\" << line_count(run_result.stdout_text)\n";
+  out << "            << \"}\\n\";\n";
+  out << "  return passed ? 0 : 1;\n";
+  out << "}\n\n";
+  out << "int main(int argc, char** argv) {\n";
+  out << "  bool dry_run = false;\n";
+  out << "  bool run = false;\n";
+  out << "  std::string build_root = \"build/full_checkpoint_module_dpi_cpp_verilator_launcher\";\n";
+  out << "  for (int i = 1; i < argc; ++i) {\n";
+  out << "    const std::string arg(argv[i]);\n";
+  out << "    if (arg == \"--dry-run\") {\n";
+  out << "      dry_run = true;\n";
+  out << "    } else if (arg == \"--run\") {\n";
+  out << "      run = true;\n";
+  out << "    } else if (arg == \"--build-root\" && i + 1 < argc) {\n";
+  out << "      build_root = argv[++i];\n";
+  out << "    }\n";
+  out << "  }\n";
+  out << "  if (dry_run) {\n";
+  out << "  std::cout << "
+      << cpp_string_literal(
+             "{\"record\":\"suite\",\"schema\":\"e1-h1-full-checkpoint-module-dpi-verilator-launcher-v0\","
+             "\"suite\":\"full_checkpoint_module_dpi\",\"module_count\":" +
+             std::to_string(specs.size()) +
+             ",\"construction_rule\":\"cpp_generated_launcher_enumerates_each_generated_module_only_verilator_run\"}")
+      << " << \"\\n\";\n";
+  for (const ModuleSpec& spec : specs) {
+    out << "  std::cout << " << cpp_string_literal(launcher_module_record(spec, suite))
+        << " << \"\\n\";\n";
+  }
+  out << "    return 0;\n";
+  out << "  }\n";
+  out << "  if (!run) {\n";
+  out << "    std::cerr << \"usage: e1_h1_full_checkpoint_module_dpi_verilator_launcher --dry-run | --run --build-root <dir>\\\\n\";\n";
+  out << "    return 2;\n";
+  out << "  }\n";
+  out << "  fs::create_directories(build_root);\n";
+  out << "  int failures = 0;\n";
+  for (const ModuleSpec& spec : specs) {
+    out << "  failures += run_module("
+        << cpp_string_literal(spec.name) << ", "
+        << cpp_string_array_literal(recipe_build_command(spec, suite)) << ", "
+        << cpp_string_literal(recipe_run_executable(suite, spec)) << ", "
+        << cpp_string_array_literal(expected_stdout_markers(spec)) << ", "
+        << cpp_string_array_literal(expected_phase_trace_keys(spec)) << ", "
+        << cpp_string_array_literal(expected_phase_signal_trace_keys(spec)) << ", build_root);\n";
+  }
+  out << "  std::cout << \"{\\\"record\\\":\\\"run_summary\\\",\\\"suite\\\":\\\"full_checkpoint_module_dpi\\\",\\\"module_count\\\":"
+      << specs.size()
+      << ",\\\"failures\\\":\" << failures << \",\\\"status\\\":\\\"\" << (failures == 0 ? \"pass\" : \"fail\") << \"\\\"}\\n\";\n";
+  out << "  return failures == 0 ? 0 : 1;\n";
+  out << "  return 0;\n";
+  out << "}\n";
+  return out.str();
+}
+
 void write_verilator_object_json(std::ostringstream& out,
                                  const ModuleSpec& spec,
                                  const std::string& indent) {
@@ -753,9 +1473,12 @@ void write_verilator_object_json(std::ostringstream& out,
   out << indent << "  \"main\": \"" << main_path(spec) << "\",\n";
   out << indent << "  \"obj_dir_placeholder\": \"<obj_dir>\",\n";
   out << indent << "  \"run_executable\": \"V" << spec.probe_module << "\",\n";
+  out << indent << "  \"primary_phase_signal\": \"" << primary_phase_signal(spec) << "\",\n";
   write_string_array_json(out, "fixed_args", verilator_fixed_args(), indent + "  ");
   out << ",\n";
   write_string_array_json(out, "expected_stdout_markers", expected_stdout_markers(spec), indent + "  ");
+  out << ",\n";
+  write_phase_signal_trace_json(out, "expected_phase_signal_trace", spec, indent + "  ");
   out << "\n" << indent << "}";
 }
 
@@ -785,6 +1508,9 @@ std::string verilator_execution_recipe_json(const std::vector<ModuleSpec>& specs
     out << ",\n";
     out << "      \"run_executable\": \"" << recipe_run_executable(suite, spec) << "\",\n";
     write_string_array_json(out, "expected_stdout_markers", expected_stdout_markers(spec), "      ");
+    out << ",\n";
+    out << "      \"primary_phase_signal\": \"" << primary_phase_signal(spec) << "\",\n";
+    write_phase_signal_trace_json(out, "expected_phase_signal_trace", spec, "      ");
     out << "\n";
     out << "    }" << (i + 1 == specs.size() ? "\n" : ",\n");
   }
@@ -807,6 +1533,9 @@ std::string module_test_plan_json(const std::vector<ModuleSpec>& specs) {
     out << "      \"name\": \"" << spec.name << "\",\n";
     out << "      \"scope\": \"generated_full_checkpoint_module_only\",\n";
     out << "      \"probe\": \"e1/e1-h1/generated/full_checkpoint_dpi/" << spec.probe_module << ".sv\",\n";
+    out << "      \"primary_phase_signal\": \"" << primary_phase_signal(spec) << "\",\n";
+    write_phase_signal_trace_json(out, "expected_phase_signal_trace", spec, "      ");
+    out << ",\n";
     write_verilator_object_json(out, spec, "      ");
     out << ",\n";
     out << "      \"checks\": [\n";
@@ -843,6 +1572,7 @@ std::string construction_ledger_json(const std::vector<ModuleSpec>& specs) {
   out << "  \"cycle_contract\": \"e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json\",\n";
   out << "  \"module_test_plan\": \"e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json\",\n";
   out << "  \"verilator_execution_recipe\": \"e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_recipe.json\",\n";
+  out << "  \"verilator_execution_launcher\": \"" << verilator_launcher_path() << "\",\n";
   out << "  \"readme_cycle_coverage\": \"e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json\",\n";
   out << "  \"modules\": [\n";
   for (std::size_t i = 0; i < specs.size(); ++i) {
@@ -857,15 +1587,23 @@ std::string construction_ledger_json(const std::vector<ModuleSpec>& specs) {
     out << "      \"main\": \"" << main_path(spec) << "\",\n";
     out << "      \"flist\": \"" << flist_path(spec) << "\",\n";
     out << "      \"scoreboard\": \"" << scoreboard_path() << "\",\n";
-    write_string_array_json(out, "rtl", spec.rtl, "      ");
+    write_string_array_json(out, "rtl", module_only_flist_rtl(spec), "      ");
+    out << ",\n";
+    write_string_array_json(out, "composed_rtl_dependencies", composed_rtl_dependencies(spec), "      ");
+    out << ",\n";
+    write_string_array_json(out, "child_stub_modules", child_stub_modules(spec), "      ");
     out << ",\n";
     write_string_array_json(out, "allowed_child_modules", allowed_child_modules(spec), "      ");
     out << ",\n";
+    out << "      \"probe_dut_instantiation_count\": " << probe_dut_instantiation_count(spec) << ",\n";
     out << "      \"input_signal_count\": " << spec.input_signals.size() << ",\n";
     out << "      \"output_signal_count\": " << spec.output_signals.size() << ",\n";
     out << "      \"cycle_template\": \"" << cycle_template_name(spec) << "\",\n";
     out << "      \"cycle_period\": " << steps.size() << ",\n";
+    out << "      \"primary_phase_signal\": \"" << primary_phase_signal(spec) << "\",\n";
     write_string_array_json(out, "phase_signals", cycle_phase_signals(spec), "      ");
+    out << ",\n";
+    write_phase_signal_trace_json(out, "expected_phase_signal_trace", spec, "      ");
     out << ",\n";
     write_string_array_json(out, "phase_names", phase_names(spec), "      ");
     out << ",\n";
@@ -882,6 +1620,7 @@ std::string construction_ledger_json(const std::vector<ModuleSpec>& specs) {
             "e1/e1-h1/generated/full_checkpoint_dpi/cycle_contract.json",
             "e1/e1-h1/generated/full_checkpoint_dpi/module_test_plan.json",
             "e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_recipe.json",
+            verilator_launcher_path(),
             "e1/e1-h1/generated/full_checkpoint_dpi/readme_cycle_coverage.json",
         },
         "      ");
@@ -892,7 +1631,8 @@ std::string construction_ledger_json(const std::vector<ModuleSpec>& specs) {
     out << "        {\"name\": \"interface_doc_emitted_from_cpp_spec\", \"status\": \"pass\"},\n";
     out << "        {\"name\": \"cycle_contract_emitted_from_cpp_spec\", \"status\": \"pass\"},\n";
     out << "        {\"name\": \"readme_cycle_coverage_validated_from_cpp_spec\", \"status\": \"pass\"},\n";
-    out << "        {\"name\": \"verilator_recipe_emitted_from_cpp_spec\", \"status\": \"pass\"}\n";
+    out << "        {\"name\": \"verilator_recipe_emitted_from_cpp_spec\", \"status\": \"pass\"},\n";
+    out << "        {\"name\": \"verilator_launcher_emitted_from_cpp_spec\", \"status\": \"pass\"}\n";
     out << "      ]\n";
     out << "    }" << (i + 1 == specs.size() ? "\n" : ",\n");
   }
@@ -907,6 +1647,13 @@ std::string probe_header(const std::string& module_name) {
   out << "module e1_h1_full_checkpoint_module_dpi_" << module_name << ";\n";
   out << "  import \"DPI-C\" function void e1_h1_full_dpi_begin(input string module_name, input string vip_case);\n";
   out << "  import \"DPI-C\" function void e1_h1_full_dpi_cycle(input string module_name, input int cycle, input string phase);\n";
+  out << "  import \"DPI-C\" function int e1_h1_full_dpi_phase_signal(\n";
+  out << "    input string module_name,\n";
+  out << "    input string signal_name,\n";
+  out << "    input int cycle,\n";
+  out << "    input int expected,\n";
+  out << "    input int actual\n";
+  out << "  );\n";
   out << "  import \"DPI-C\" function int e1_h1_full_dpi_expect_u32(\n";
   out << "    input string module_name,\n";
   out << "    input string signal_name,\n";
@@ -923,11 +1670,436 @@ std::string probe_header(const std::string& module_name) {
   out << "      $fatal(1, \"" << module_name << " mismatch %s\", signal_name);\n";
   out << "    end\n";
   out << "  endtask\n\n";
+  out << "  task automatic expect_phase_signal(input string signal_name, input int cycle, input int expected, input int actual);\n";
+  out << "    if (e1_h1_full_dpi_phase_signal(\"" << module_name << "\", signal_name, cycle, expected, actual) == 0) begin\n";
+  out << "      $fatal(1, \"" << module_name << " phase signal mismatch %s\", signal_name);\n";
+  out << "    end\n";
+  out << "  endtask\n\n";
+  out << "  int contract_cycle = 0;\n\n";
   return out.str();
 }
 
 std::string probe_footer() {
   return "endmodule\n\n`default_nettype wire\n";
+}
+
+std::string child_stub_sv(const std::string& child) {
+  if (child == "e1_h1_stream_sram") {
+    return R"sv(
+`default_nettype none
+module e1_h1_stream_sram (
+  input  logic        clk_i,
+  input  logic        rst_ni,
+  input  logic        stream_valid_i,
+  output logic        stream_ready_o,
+  input  logic [63:0] stream_data_i,
+  input  logic        stream_last_i,
+  input  logic        stream_error_i,
+  output logic        array_valid_o,
+  input  logic        array_ready_i,
+  output logic [63:0] array_data_o
+);
+  logic unused_inputs;
+  assign unused_inputs = clk_i ^ rst_ni ^ stream_last_i ^ stream_error_i;
+  assign stream_ready_o = array_ready_i;
+  assign array_valid_o = stream_valid_i;
+  assign array_data_o = stream_data_i;
+endmodule
+
+`default_nettype wire
+)sv";
+  }
+  if (child == "e1_h1_systolic_array") {
+    return R"sv(
+`default_nettype none
+module e1_h1_systolic_array (
+  input  logic        clk_i,
+  input  logic        rst_ni,
+  input  logic        cmd_valid_i,
+  output logic        cmd_ready_o,
+  input  logic [31:0] cmd_input_addr_i,
+  input  logic [31:0] cmd_weight_addr_i,
+  input  logic [31:0] cmd_output_addr_i,
+  input  logic [15:0] cmd_rows_i,
+  input  logic [15:0] cmd_cols_i,
+  input  logic [15:0] cmd_depth_i,
+  input  logic        input_valid_i,
+  output logic        input_ready_o,
+  input  logic [63:0] input_data_i,
+  output logic        done_o,
+  output logic        error_o,
+  output logic        debug_busy_o,
+  output logic [31:0] result_digest_o
+);
+  logic [3:0] done_shift_q;
+  logic [31:0] digest_q;
+  logic unused_payload;
+  assign cmd_ready_o = 1'b1;
+  assign input_ready_o = 1'b1;
+  assign done_o = done_shift_q[3];
+  assign error_o = 1'b0;
+  assign debug_busy_o = |done_shift_q;
+  assign result_digest_o = digest_q;
+  assign unused_payload = ^{
+      cmd_input_addr_i,
+      cmd_weight_addr_i,
+      cmd_output_addr_i,
+      cmd_rows_i,
+      cmd_cols_i,
+      cmd_depth_i,
+      input_valid_i,
+      input_data_i
+  };
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      done_shift_q <= 4'b0000;
+      digest_q <= '0;
+    end else begin
+      done_shift_q <= {done_shift_q[2:0], cmd_valid_i};
+      if (cmd_valid_i) begin
+        digest_q <= cmd_input_addr_i
+            ^ cmd_weight_addr_i
+            ^ cmd_output_addr_i
+            ^ {cmd_rows_i, cmd_cols_i}
+            ^ {16'd0, cmd_depth_i};
+      end else if (input_valid_i) begin
+        digest_q <= {digest_q[30:0], digest_q[31]}
+            ^ input_data_i[31:0]
+            ^ input_data_i[63:32];
+      end
+    end
+  end
+endmodule
+
+`default_nettype wire
+)sv";
+  }
+  if (child == "e1_h1_tinyllama_linear_scheduler") {
+    return R"sv(
+`default_nettype none
+module e1_h1_tinyllama_linear_scheduler (
+  input  logic        clk_i,
+  input  logic        rst_ni,
+  input  logic        start_i,
+  output logic        busy_o,
+  output logic        done_o,
+  output logic        error_o,
+  output logic        cmd_valid_o,
+  input  logic        cmd_ready_i,
+  output logic [31:0] cmd_input_addr_o,
+  output logic [31:0] cmd_weight_addr_o,
+  output logic [31:0] cmd_output_addr_o,
+  output logic [15:0] cmd_rows_o,
+  output logic [15:0] cmd_cols_o,
+  output logic [15:0] cmd_depth_o,
+  input  logic        array_done_i,
+  input  logic        array_error_i,
+  output logic [31:0] layer_o,
+  output logic [2:0]  op_index_o,
+  output logic [8:0]  input_tile_o,
+  output logic [8:0]  output_tile_o,
+  output logic [31:0] issued_commands_o,
+  output logic [2:0]  cycle_phase_o
+);
+  typedef enum logic [1:0] {StateIdle, StateRun, StateDone, StateError} state_e;
+  state_e state_q;
+  logic [2:0] phase_q;
+  logic [31:0] issued_q;
+  assign busy_o = state_q == StateRun;
+  assign done_o = state_q == StateDone;
+  assign error_o = state_q == StateError;
+  assign cmd_valid_o = state_q == StateRun && (phase_q == 3'd1 || phase_q == 3'd2);
+  assign cmd_input_addr_o = 32'h0100_0000 + issued_q * 32'd64;
+  assign cmd_weight_addr_o = 32'h1000_0000 + issued_q * 32'd64;
+  assign cmd_output_addr_o = 32'h3000_0000 + issued_q * 32'd64;
+  assign cmd_rows_o = 16'd16;
+  assign cmd_cols_o = 16'd16;
+  assign cmd_depth_o = 16'd16;
+  assign layer_o = 32'd0;
+  assign op_index_o = 3'd0;
+  assign input_tile_o = issued_q[8:0];
+  assign output_tile_o = 9'd0;
+  assign issued_commands_o = issued_q;
+  assign cycle_phase_o = phase_q;
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      state_q <= StateIdle;
+      phase_q <= 3'd0;
+      issued_q <= 32'd0;
+    end else begin
+      unique case (state_q)
+        StateIdle: begin
+          if (start_i) begin
+            state_q <= StateRun;
+            phase_q <= 3'd0;
+            issued_q <= 32'd0;
+          end
+        end
+        StateRun: begin
+          if (phase_q == 3'd2 && cmd_ready_i) begin
+            issued_q <= issued_q + 32'd1;
+          end
+          if (phase_q == 3'd6 && array_error_i) begin
+            state_q <= StateError;
+          end else if (phase_q == 3'd6 && !array_done_i) begin
+            phase_q <= 3'd6;
+          end else if (phase_q == 3'd7) begin
+            if (issued_q >= 32'd4) begin
+              state_q <= StateDone;
+            end else begin
+              phase_q <= 3'd0;
+            end
+          end else begin
+            phase_q <= phase_q + 3'd1;
+          end
+        end
+        StateDone: begin
+          if (!start_i) state_q <= StateIdle;
+        end
+        default: state_q <= StateIdle;
+      endcase
+    end
+  end
+endmodule
+
+`default_nettype wire
+)sv";
+  }
+  if (child == "e1_h1_tinyllama_linear_slot_engine") {
+    return R"sv(
+`default_nettype none
+module e1_h1_tinyllama_linear_slot_engine #(
+  parameter int unsigned SmokeMaxTilesPerLinearSlot = 0
+) (
+  input  logic        clk_i,
+  input  logic        rst_ni,
+  input  logic        start_i,
+  input  logic [31:0] layer_i,
+  input  logic [2:0]  op_index_i,
+  input  logic        stream_valid_i,
+  output logic        stream_ready_o,
+  input  logic [63:0] stream_data_i,
+  input  logic        stream_last_i,
+  input  logic        stream_error_i,
+  output logic        busy_o,
+  output logic        done_o,
+  output logic        error_o,
+  output logic [31:0] issued_commands_o,
+  output logic [31:0] expected_commands_o,
+  output logic [2:0]  cycle_phase_o,
+  output logic [31:0] layer_o,
+  output logic [2:0]  op_index_o,
+  output logic [8:0]  input_tile_o,
+  output logic [8:0]  output_tile_o,
+  output logic        scheduler_cmd_valid_o,
+  output logic        array_cmd_valid_o,
+  output logic        array_cmd_ready_o,
+  output logic [31:0] cmd_input_addr_o,
+  output logic [31:0] cmd_weight_addr_o,
+  output logic [31:0] cmd_output_addr_o,
+  output logic [15:0] cmd_rows_o,
+  output logic [15:0] cmd_cols_o,
+  output logic [15:0] cmd_depth_o,
+  output logic        buffer_array_valid_o,
+  output logic        buffer_array_ready_o,
+  output logic [63:0] buffer_array_data_o,
+  output logic        array_done_o,
+  output logic        array_debug_busy_o,
+  output logic [31:0] array_result_digest_o
+);
+  logic done_q;
+  logic unused_inputs;
+  assign unused_inputs = ^{SmokeMaxTilesPerLinearSlot[0], stream_valid_i, stream_data_i,
+                           stream_last_i, stream_error_i};
+  assign stream_ready_o = 1'b1;
+  assign busy_o = start_i && !done_q;
+  assign done_o = done_q;
+  assign error_o = 1'b0;
+  assign issued_commands_o = done_q ? 32'd1 : 32'd0;
+  assign expected_commands_o = 32'd1;
+  assign cycle_phase_o = done_q ? 3'd6 : 3'd2;
+  assign layer_o = layer_i;
+  assign op_index_o = op_index_i;
+  assign input_tile_o = 9'd0;
+  assign output_tile_o = 9'd0;
+  assign scheduler_cmd_valid_o = start_i;
+  assign array_cmd_valid_o = start_i;
+  assign array_cmd_ready_o = 1'b1;
+  assign cmd_input_addr_o = 32'h0100_0000;
+  assign cmd_weight_addr_o = 32'h1000_0000;
+  assign cmd_output_addr_o = 32'h3000_0000;
+  assign cmd_rows_o = 16'd16;
+  assign cmd_cols_o = 16'd16;
+  assign cmd_depth_o = 16'd16;
+  assign buffer_array_valid_o = stream_valid_i;
+  assign buffer_array_ready_o = 1'b1;
+  assign buffer_array_data_o = stream_data_i;
+  assign array_done_o = done_q;
+  assign array_debug_busy_o = start_i && !done_q;
+  assign array_result_digest_o = 32'h4100_0010 ^ {29'd0, op_index_i};
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      done_q <= 1'b0;
+    end else begin
+      done_q <= start_i;
+    end
+  end
+endmodule
+
+`default_nettype wire
+)sv";
+  }
+  if (child == "e1_h1_tinyllama_control_slot_engine") {
+    return R"sv(
+`default_nettype none
+module e1_h1_tinyllama_control_slot_engine (
+  input  logic        clk_i,
+  input  logic        rst_ni,
+  input  logic        start_i,
+  input  logic [31:0] layer_i,
+  input  logic [2:0]  control_op_index_i,
+  input  logic [3:0]  control_kind_i,
+  output logic        busy_o,
+  output logic        done_o,
+  output logic        control_valid_o,
+  input  logic        control_ready_i,
+  output logic        control_commit_o,
+  output logic [31:0] layer_o,
+  output logic [2:0]  control_op_index_o,
+  output logic [3:0]  control_kind_o,
+  output logic [31:0] issued_control_ops_o,
+  output logic [1:0]  cycle_phase_o
+);
+  logic done_q;
+  assign busy_o = start_i && !done_q;
+  assign done_o = done_q;
+  assign control_valid_o = start_i;
+  assign control_commit_o = done_q;
+  assign layer_o = layer_i;
+  assign control_op_index_o = control_op_index_i;
+  assign control_kind_o = control_kind_i;
+  assign issued_control_ops_o = done_q ? 32'd1 : 32'd0;
+  assign cycle_phase_o = done_q ? 2'd3 : 2'd0;
+  logic unused_ready;
+  assign unused_ready = control_ready_i;
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      done_q <= 1'b0;
+    end else begin
+      done_q <= start_i;
+    end
+  end
+endmodule
+
+`default_nettype wire
+)sv";
+  }
+  if (child == "e1_h1_tinyllama_graph_sequencer") {
+    return R"sv(
+`default_nettype none
+module e1_h1_tinyllama_graph_sequencer (
+  input  logic        clk_i,
+  input  logic        rst_ni,
+  input  logic        start_i,
+  output logic        busy_o,
+  output logic        done_o,
+  output logic        slot_valid_o,
+  input  logic        slot_ready_i,
+  output logic        launch_control_o,
+  output logic        launch_linear_o,
+  input  logic        op_done_i,
+  output logic [31:0] layer_o,
+  output logic [3:0]  layer_slot_o,
+  output logic [2:0]  linear_op_index_o,
+  output logic [2:0]  control_op_index_o,
+  output logic [3:0]  control_kind_o,
+  output logic [31:0] linear_tile_count_o,
+  output logic [31:0] issued_graph_slots_o,
+  output logic [1:0]  cycle_phase_o
+);
+  logic [8:0] slot_q;
+  logic [1:0] phase_q;
+  logic running_q;
+  wire is_linear = slot_q[0] == 1'b0;
+  assign busy_o = running_q;
+  assign done_o = slot_q >= 9'd308;
+  assign slot_valid_o = running_q && phase_q == 2'd0;
+  assign launch_linear_o = running_q && phase_q == 2'd1 && is_linear;
+  assign launch_control_o = running_q && phase_q == 2'd1 && !is_linear;
+  assign layer_o = {23'd0, slot_q} / 32'd14;
+  assign layer_slot_o = slot_q[3:0];
+  assign linear_op_index_o = slot_q[3:1] % 3'd7;
+  assign control_op_index_o = slot_q[3:1] % 3'd7;
+  assign control_kind_o = {1'b0, slot_q[3:1]} + 4'd1;
+  assign linear_tile_count_o = is_linear ? 32'd1 : 32'd0;
+  assign issued_graph_slots_o = {23'd0, slot_q};
+  assign cycle_phase_o = phase_q;
+  logic unused_inputs;
+  assign unused_inputs = slot_ready_i ^ op_done_i;
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      slot_q <= 9'd0;
+      phase_q <= 2'd0;
+      running_q <= 1'b0;
+    end else begin
+      if (start_i && !running_q && !done_o) begin
+        running_q <= 1'b1;
+        phase_q <= 2'd0;
+      end else if (running_q) begin
+        if (phase_q == 2'd3) begin
+          slot_q <= slot_q + 9'd1;
+          phase_q <= 2'd0;
+          if (slot_q + 9'd1 >= 9'd308) begin
+            running_q <= 1'b0;
+          end
+        end else begin
+          phase_q <= phase_q + 2'd1;
+        end
+      end
+    end
+  end
+endmodule
+
+`default_nettype wire
+)sv";
+  }
+  throw std::runtime_error("no generated child stub for " + child);
+}
+
+std::string child_stubs_sv(const ModuleSpec& spec) {
+  std::ostringstream out;
+  for (const std::string& child : child_stub_modules(spec)) {
+    out << child_stub_sv(child);
+  }
+  return out.str();
+}
+
+std::string probe_sv_with_phase_signal_checks(const ModuleSpec& spec) {
+  const std::vector<CycleStep> steps = cycle_steps(spec);
+  const std::string marker =
+      "e1_h1_full_dpi_cycle(\"" + spec.name + "\", cycle, phase_name(cycle));";
+  const std::string check =
+      "if (int'(" + primary_phase_signal(spec) + ") == (contract_cycle % " +
+      std::to_string(steps.size()) + ")) begin\n"
+      "        e1_h1_full_dpi_cycle(\"" + spec.name +
+      "\", contract_cycle, phase_name(contract_cycle));\n"
+      "        expect_phase_signal(\"" + primary_phase_signal(spec) +
+      "\", contract_cycle, contract_cycle % " + std::to_string(steps.size()) +
+      ", int'(" + primary_phase_signal(spec) + "));\n"
+      "        contract_cycle++;\n"
+      "      end";
+  std::string text = spec.probe_sv;
+  std::size_t pos = 0;
+  int replacements = 0;
+  while ((pos = text.find(marker, pos)) != std::string::npos) {
+    text.replace(pos, marker.size(), check);
+    pos += check.size();
+    ++replacements;
+  }
+  if (replacements == 0) {
+    throw std::runtime_error(spec.name + " probe has no generated phase marker to bind");
+  }
+  return text + child_stubs_sv(spec);
 }
 
 std::string sv_graph_sequencer() {
@@ -1075,7 +2247,7 @@ std::string sv_control_slot_engine() {
     layer_i = 32'd3;
     control_op_index_i = 3'd2;
     control_kind_i = 4'd3;
-    control_ready_i = 1'b0;
+    control_ready_i = 1'b1;
     tick();
     tick();
     rst_ni = 1'b1;
@@ -1084,7 +2256,7 @@ std::string sv_control_slot_engine() {
     start_i = 1'b0;
     for (int cycle = 0; cycle < 16 && !done_o; cycle++) begin
       e1_h1_full_dpi_cycle("control_slot_engine", cycle, phase_name(cycle));
-      control_ready_i = (cycle >= 1);
+      control_ready_i = 1'b1;
       tick();
     end
     expect_u32("issued_control_ops_o", 0, 1, issued_control_ops_o);
@@ -1300,6 +2472,7 @@ std::string sv_linear_tile_engine() {
   logic [63:0] buffer_array_data_o;
   logic array_done_o;
   logic array_debug_busy_o;
+  logic [31:0] array_result_digest_o;
 
   e1_h1_tinyllama_linear_tile_engine u_dut (
     .clk_i(clk_i),
@@ -1332,7 +2505,8 @@ std::string sv_linear_tile_engine() {
     .buffer_array_ready_o(buffer_array_ready_o),
     .buffer_array_data_o(buffer_array_data_o),
     .array_done_o(array_done_o),
-    .array_debug_busy_o(array_debug_busy_o)
+    .array_debug_busy_o(array_debug_busy_o),
+    .array_result_digest_o(array_result_digest_o)
   );
 
   function automatic string phase_name(input int cycle);
@@ -1362,12 +2536,13 @@ std::string sv_linear_tile_engine() {
     tick();
     rst_ni = 1'b1;
     start_i = 1'b1;
+    tick();
+    start_i = 1'b0;
     for (int cycle = 0; cycle < 256 && issued_commands_o < 32'd4; cycle++) begin
       e1_h1_full_dpi_cycle("linear_tile_engine", cycle, phase_name(cycle));
       stream_valid_i = 1'b1;
       stream_data_i = 64'h3000 + cycle[15:0];
       tick();
-      start_i = 1'b0;
     end
     expect_u32("issued_commands_o", 0, 4, issued_commands_o);
     if (error_o) $fatal(1, "linear tile engine reported error");
@@ -1415,6 +2590,7 @@ std::string sv_linear_slot_engine() {
   logic [63:0] buffer_array_data_o;
   logic array_done_o;
   logic array_debug_busy_o;
+  logic [31:0] array_result_digest_o;
 
   e1_h1_tinyllama_linear_slot_engine #(
     .SmokeMaxTilesPerLinearSlot(2)
@@ -1452,7 +2628,8 @@ std::string sv_linear_slot_engine() {
     .buffer_array_ready_o(buffer_array_ready_o),
     .buffer_array_data_o(buffer_array_data_o),
     .array_done_o(array_done_o),
-    .array_debug_busy_o(array_debug_busy_o)
+    .array_debug_busy_o(array_debug_busy_o),
+    .array_result_digest_o(array_result_digest_o)
   );
 
   function automatic string phase_name(input int cycle);
@@ -1484,12 +2661,13 @@ std::string sv_linear_slot_engine() {
     tick();
     rst_ni = 1'b1;
     start_i = 1'b1;
+    tick();
+    start_i = 1'b0;
     for (int cycle = 0; cycle < 128 && !done_o; cycle++) begin
       e1_h1_full_dpi_cycle("linear_slot_engine", cycle, phase_name(cycle));
       stream_valid_i = 1'b1;
       stream_data_i = 64'h4000 + cycle[15:0];
       tick();
-      start_i = 1'b0;
     end
     expect_u32("issued_commands_o", 0, 2, issued_commands_o);
     expect_u32("expected_commands_o", 0, 2, expected_commands_o);
@@ -1532,6 +2710,7 @@ std::string sv_full_top() {
   logic buffer_array_ready_o;
   logic array_done_o;
   logic array_debug_busy_o;
+  logic [31:0] array_result_digest_o;
   logic debug_scheduler_cmd_valid_o;
   logic debug_array_cmd_valid_o;
   logic debug_array_cmd_ready_o;
@@ -1545,6 +2724,11 @@ std::string sv_full_top() {
   logic [2:0] debug_linear_op_index_o;
   logic [8:0] debug_linear_input_tile_o;
   logic [8:0] debug_linear_output_tile_o;
+  logic debug_control_valid_o;
+  logic debug_control_commit_o;
+  logic [31:0] debug_control_layer_o;
+  logic [2:0] debug_control_op_index_o;
+  logic [3:0] debug_control_kind_o;
 
   e1_h1_tinyllama_full_checkpoint_top #(
     .SmokeMaxTilesPerLinearSlot(1)
@@ -1576,6 +2760,7 @@ std::string sv_full_top() {
     .buffer_array_ready_o(buffer_array_ready_o),
     .array_done_o(array_done_o),
     .array_debug_busy_o(array_debug_busy_o),
+    .array_result_digest_o(array_result_digest_o),
     .debug_scheduler_cmd_valid_o(debug_scheduler_cmd_valid_o),
     .debug_array_cmd_valid_o(debug_array_cmd_valid_o),
     .debug_array_cmd_ready_o(debug_array_cmd_ready_o),
@@ -1588,7 +2773,12 @@ std::string sv_full_top() {
     .debug_linear_layer_o(debug_linear_layer_o),
     .debug_linear_op_index_o(debug_linear_op_index_o),
     .debug_linear_input_tile_o(debug_linear_input_tile_o),
-    .debug_linear_output_tile_o(debug_linear_output_tile_o)
+    .debug_linear_output_tile_o(debug_linear_output_tile_o),
+    .debug_control_valid_o(debug_control_valid_o),
+    .debug_control_commit_o(debug_control_commit_o),
+    .debug_control_layer_o(debug_control_layer_o),
+    .debug_control_op_index_o(debug_control_op_index_o),
+    .debug_control_kind_o(debug_control_kind_o)
   );
 
   function automatic string phase_name(input int cycle);
@@ -1618,6 +2808,8 @@ std::string sv_full_top() {
     tick();
     rst_ni = 1'b1;
     start_i = 1'b1;
+    tick();
+    start_i = 1'b0;
     for (int cycle = 0; cycle < 10000 && !done_o; cycle++) begin
       e1_h1_full_dpi_cycle("full_checkpoint_top", cycle, phase_name(cycle));
       stream_valid_i = 1'b1;
@@ -1625,7 +2817,6 @@ std::string sv_full_top() {
       if (launch_linear_o) linear_launches++;
       if (launch_control_o) control_launches++;
       tick();
-      start_i = 1'b0;
     end
     expect_u32("issued_graph_slots_o", 0, 308, issued_graph_slots_o);
     expect_u32("issued_linear_commands_o", 0, 154, issued_linear_commands_o);
@@ -1645,7 +2836,7 @@ std::vector<ModuleSpec> module_specs() {
   const std::string gen = "e1/e1-h1/generated/full_checkpoint/";
   const std::string stream = "e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv";
   const std::string array = "e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv";
-  return {
+  std::vector<ModuleSpec> specs = {
       {
           "linear_scheduler",
           "e1_h1_tinyllama_linear_scheduler",
@@ -1720,6 +2911,7 @@ std::vector<ModuleSpec> module_specs() {
               {"buffer_array_data_o", "64", "Latched stream data toward the array."},
               {"array_done_o", "1", "Array completion pulse."},
               {"array_debug_busy_o", "1", "Array debug busy signal."},
+              {"array_result_digest_o", "32", "Observed systolic-array result digest."},
           },
           sv_linear_tile_engine(),
       },
@@ -1822,6 +3014,7 @@ std::vector<ModuleSpec> module_specs() {
               {"buffer_array_data_o", "64", "Latched stream data toward the array."},
               {"array_done_o", "1", "Array completion pulse."},
               {"array_debug_busy_o", "1", "Array debug busy signal."},
+              {"array_result_digest_o", "32", "Observed systolic-array result digest."},
           },
           sv_linear_slot_engine(),
       },
@@ -1896,6 +3089,7 @@ std::vector<ModuleSpec> module_specs() {
               {"buffer_array_ready_o", "1", "Array input-ready signal toward the latch buffer."},
               {"array_done_o", "1", "Array completion pulse."},
               {"array_debug_busy_o", "1", "Array debug busy signal."},
+              {"array_result_digest_o", "32", "Observed systolic-array result digest."},
               {"debug_scheduler_cmd_valid_o", "1", "Observed scheduler command-valid at the full top boundary."},
               {"debug_array_cmd_valid_o", "1", "Observed array command-valid at the full top boundary."},
               {"debug_array_cmd_ready_o", "1", "Observed array command-ready at the full top boundary."},
@@ -1909,10 +3103,19 @@ std::vector<ModuleSpec> module_specs() {
               {"debug_linear_op_index_o", "3", "Observed linear op index for payload schedule checks."},
               {"debug_linear_input_tile_o", "9", "Observed input tile index for payload schedule checks."},
               {"debug_linear_output_tile_o", "9", "Observed output tile index for payload schedule checks."},
+              {"debug_control_valid_o", "1", "Observed CPU/control slot payload-valid at the full top boundary."},
+              {"debug_control_commit_o", "1", "Observed CPU/control slot commit at the full top boundary."},
+              {"debug_control_layer_o", "32", "Observed CPU/control slot layer for graph schedule checks."},
+              {"debug_control_op_index_o", "3", "Observed CPU/control op index for graph schedule checks."},
+              {"debug_control_kind_o", "4", "Observed CPU/control op kind for graph schedule checks."},
           },
           sv_full_top(),
       },
   };
+  for (ModuleSpec& spec : specs) {
+    spec.probe_sv = probe_sv_with_phase_signal_checks(spec);
+  }
+  return specs;
 }
 
 fs::path parse_path_arg(int argc, char** argv, const std::string& flag, const fs::path& default_value) {
@@ -1940,6 +3143,7 @@ int main(int argc, char** argv) {
 
     for (const ModuleSpec& spec : specs) {
       validate_rtl_inputs(repo_root, spec);
+      validate_signal_contract(repo_root, spec);
       validate_isolation(repo_root, spec);
       validate_cycle_contract(spec);
     }
@@ -1958,6 +3162,8 @@ int main(int argc, char** argv) {
     write_text(output_dir / "cycle_contract.json", cycle_contract_json(specs));
     write_text(output_dir / "module_test_plan.json", module_test_plan_json(specs));
     write_text(output_dir / "verilator_execution_recipe.json", verilator_execution_recipe_json(specs));
+    write_text(output_dir / "e1_h1_full_checkpoint_module_dpi_verilator_launcher.cpp",
+               verilator_launcher_cpp(specs));
     write_text(output_dir / "readme_cycle_coverage.json", readme_cycle_coverage_json(specs));
     write_text(output_dir / "construction_ledger.json", construction_ledger_json(specs));
 

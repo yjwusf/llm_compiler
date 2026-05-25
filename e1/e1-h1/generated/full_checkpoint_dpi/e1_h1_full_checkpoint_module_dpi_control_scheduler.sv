@@ -3,6 +3,13 @@
 module e1_h1_full_checkpoint_module_dpi_control_scheduler;
   import "DPI-C" function void e1_h1_full_dpi_begin(input string module_name, input string vip_case);
   import "DPI-C" function void e1_h1_full_dpi_cycle(input string module_name, input int cycle, input string phase);
+  import "DPI-C" function int e1_h1_full_dpi_phase_signal(
+    input string module_name,
+    input string signal_name,
+    input int cycle,
+    input int expected,
+    input int actual
+  );
   import "DPI-C" function int e1_h1_full_dpi_expect_u32(
     input string module_name,
     input string signal_name,
@@ -21,6 +28,14 @@ module e1_h1_full_checkpoint_module_dpi_control_scheduler;
       $fatal(1, "control_scheduler mismatch %s", signal_name);
     end
   endtask
+
+  task automatic expect_phase_signal(input string signal_name, input int cycle, input int expected, input int actual);
+    if (e1_h1_full_dpi_phase_signal("control_scheduler", signal_name, cycle, expected, actual) == 0) begin
+      $fatal(1, "control_scheduler phase signal mismatch %s", signal_name);
+    end
+  endtask
+
+  int contract_cycle = 0;
 
   logic clk_i;
   logic rst_ni;
@@ -77,7 +92,11 @@ module e1_h1_full_checkpoint_module_dpi_control_scheduler;
     tick();
     start_i = 1'b0;
     for (int cycle = 0; cycle < 900 && !done_o; cycle++) begin
-      e1_h1_full_dpi_cycle("control_scheduler", cycle, phase_name(cycle));
+      if (int'(cycle_phase_o) == (contract_cycle % 4)) begin
+        e1_h1_full_dpi_cycle("control_scheduler", contract_cycle, phase_name(contract_cycle));
+        expect_phase_signal("cycle_phase_o", contract_cycle, contract_cycle % 4, int'(cycle_phase_o));
+        contract_cycle++;
+      end
       tick();
     end
     expect_u32("issued_control_ops_o", 0, 154, issued_control_ops_o);

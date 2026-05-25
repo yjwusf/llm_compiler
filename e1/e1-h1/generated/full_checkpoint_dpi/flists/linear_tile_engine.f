@@ -1,5 +1,2 @@
-e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_scheduler.sv
-e1/e1-h1/rtl/imp2/e1_h1_stream_sram.sv
-e1/e1-h1/rtl/imp2/e1_h1_systolic_array.sv
 e1/e1-h1/generated/full_checkpoint/e1_h1_tinyllama_linear_tile_engine.sv
 e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine.sv

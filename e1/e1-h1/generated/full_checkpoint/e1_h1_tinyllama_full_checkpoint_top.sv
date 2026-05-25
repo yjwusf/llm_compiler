@@ -30,6 +30,7 @@ module e1_h1_tinyllama_full_checkpoint_top #(
   output logic        buffer_array_ready_o,
   output logic        array_done_o,
   output logic        array_debug_busy_o,
+  output logic [31:0] array_result_digest_o,
   output logic        debug_scheduler_cmd_valid_o,
   output logic        debug_array_cmd_valid_o,
   output logic        debug_array_cmd_ready_o,
@@ -42,7 +43,12 @@ module e1_h1_tinyllama_full_checkpoint_top #(
   output logic [31:0] debug_linear_layer_o,
   output logic [2:0]  debug_linear_op_index_o,
   output logic [8:0]  debug_linear_input_tile_o,
-  output logic [8:0]  debug_linear_output_tile_o
+  output logic [8:0]  debug_linear_output_tile_o,
+  output logic        debug_control_valid_o,
+  output logic        debug_control_commit_o,
+  output logic [31:0] debug_control_layer_o,
+  output logic [2:0]  debug_control_op_index_o,
+  output logic [3:0]  debug_control_kind_o
 );
 
   logic        graph_slot_valid;
@@ -96,6 +102,11 @@ module e1_h1_tinyllama_full_checkpoint_top #(
   assign debug_linear_op_index_o = linear_op_index;
   assign debug_linear_input_tile_o = linear_input_tile;
   assign debug_linear_output_tile_o = linear_output_tile;
+  assign debug_control_valid_o = control_valid;
+  assign debug_control_commit_o = control_commit;
+  assign debug_control_layer_o = control_layer;
+  assign debug_control_op_index_o = control_op_index;
+  assign debug_control_kind_o = control_kind;
 
   e1_h1_tinyllama_graph_sequencer u_graph_sequencer (
     .clk_i(clk_i),
@@ -154,7 +165,8 @@ module e1_h1_tinyllama_full_checkpoint_top #(
     .buffer_array_ready_o(buffer_array_ready_o),
     .buffer_array_data_o(buffer_array_data),
     .array_done_o(array_done_o),
-    .array_debug_busy_o(array_debug_busy_o)
+    .array_debug_busy_o(array_debug_busy_o),
+    .array_result_digest_o(array_result_digest_o)
   );
 
   e1_h1_tinyllama_control_slot_engine u_control_slot_engine (
@@ -193,18 +205,13 @@ module e1_h1_tinyllama_full_checkpoint_top #(
     end
   end
 
-  logic [139:0] unused_debug;
+  logic [98:0] unused_debug;
   assign unused_debug = {
     graph_busy,
     graph_slot_valid,
     linear_slot_expected_commands,
-    control_valid,
-    control_commit,
     buffer_array_data,
-    scheduler_cmd_valid,
-    control_layer,
-    control_op_index,
-    control_kind
+    scheduler_cmd_valid
   };
 
 endmodule

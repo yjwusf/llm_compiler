@@ -1,0 +1,178 @@
+{
+  "checks": [
+    {
+      "name": "all_imp1_mock_rtl_files_run_individually",
+      "status": "pass"
+    },
+    {
+      "name": "all_imp1_mock_runtime_markers_observed",
+      "status": "pass"
+    },
+    {
+      "name": "all_imp1_mock_runtime_mains_are_materialized",
+      "status": "pass"
+    }
+  ],
+  "generated_artifacts": [
+    "e1/e1-h1/generated/imp1_mock_runtime/e1_h1_config_sram_smoke.cpp",
+    "e1/e1-h1/generated/imp1_mock_runtime/e1_h1_control_cpu_smoke.cpp",
+    "e1/e1-h1/generated/imp1_mock_runtime/e1_h1_rgmii_ethernet_ingress_smoke.cpp",
+    "e1/e1-h1/generated/imp1_mock_runtime/e1_h1_stream_sram_smoke.cpp",
+    "e1/e1-h1/generated/imp1_mock_runtime/e1_h1_systolic_array_smoke.cpp"
+  ],
+  "manifest": "e1/e1-h1/generated/imp1_mock_runtime/manifest.json",
+  "rows": [
+    {
+      "build_command": [
+        "/opt/homebrew/bin/verilator",
+        "--cc",
+        "--exe",
+        "--build",
+        "--sv",
+        "-Wall",
+        "-Wno-DECLFILENAME",
+        "-Wno-UNUSEDSIGNAL",
+        "-Wno-UNUSEDPARAM",
+        "--top-module",
+        "e1_h1_config_sram",
+        "-Mdir",
+        "<imp1_mock_runtime_obj_dir_e1_h1_config_sram>",
+        "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv",
+        "e1/e1-h1/generated/imp1_mock_runtime/e1_h1_config_sram_smoke.cpp"
+      ],
+      "expected_stdout_marker": "E1_H1_IMP1_MOCK_RUNTIME module=e1_h1_config_sram cycles=8",
+      "generated_artifacts": [
+        "e1/e1-h1/generated/imp1_mock_runtime/e1_h1_config_sram_smoke.cpp"
+      ],
+      "main": "e1/e1-h1/generated/imp1_mock_runtime/e1_h1_config_sram_smoke.cpp",
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_config_sram.sv",
+      "run_executable": "<imp1_mock_runtime_obj_dir_e1_h1_config_sram>/Ve1_h1_config_sram",
+      "status": "pass",
+      "stdout": "E1_H1_IMP1_MOCK_RUNTIME module=e1_h1_config_sram cycles=8\n",
+      "stdout_marker_present": true,
+      "top_module": "e1_h1_config_sram"
+    },
+    {
+      "build_command": [
+        "/opt/homebrew/bin/verilator",
+        "--cc",
+        "--exe",
+        "--build",
+        "--sv",
+        "-Wall",
+        "-Wno-DECLFILENAME",
+        "-Wno-UNUSEDSIGNAL",
+        "-Wno-UNUSEDPARAM",
+        "--top-module",
+        "e1_h1_control_cpu",
+        "-Mdir",
+        "<imp1_mock_runtime_obj_dir_e1_h1_control_cpu>",
+        "e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv",
+        "e1/e1-h1/generated/imp1_mock_runtime/e1_h1_control_cpu_smoke.cpp"
+      ],
+      "expected_stdout_marker": "E1_H1_IMP1_MOCK_RUNTIME module=e1_h1_control_cpu cycles=8",
+      "generated_artifacts": [
+        "e1/e1-h1/generated/imp1_mock_runtime/e1_h1_control_cpu_smoke.cpp"
+      ],
+      "main": "e1/e1-h1/generated/imp1_mock_runtime/e1_h1_control_cpu_smoke.cpp",
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_control_cpu.sv",
+      "run_executable": "<imp1_mock_runtime_obj_dir_e1_h1_control_cpu>/Ve1_h1_control_cpu",
+      "status": "pass",
+      "stdout": "E1_H1_IMP1_MOCK_RUNTIME module=e1_h1_control_cpu cycles=8\n",
+      "stdout_marker_present": true,
+      "top_module": "e1_h1_control_cpu"
+    },
+    {
+      "build_command": [
+        "/opt/homebrew/bin/verilator",
+        "--cc",
+        "--exe",
+        "--build",
+        "--sv",
+        "-Wall",
+        "-Wno-DECLFILENAME",
+        "-Wno-UNUSEDSIGNAL",
+        "-Wno-UNUSEDPARAM",
+        "--top-module",
+        "e1_h1_rgmii_ethernet_ingress",
+        "-Mdir",
+        "<imp1_mock_runtime_obj_dir_e1_h1_rgmii_ethernet_ingress>",
+        "e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv",
+        "e1/e1-h1/generated/imp1_mock_runtime/e1_h1_rgmii_ethernet_ingress_smoke.cpp"
+      ],
+      "expected_stdout_marker": "E1_H1_IMP1_MOCK_RUNTIME module=e1_h1_rgmii_ethernet_ingress cycles=8",
+      "generated_artifacts": [
+        "e1/e1-h1/generated/imp1_mock_runtime/e1_h1_rgmii_ethernet_ingress_smoke.cpp"
+      ],
+      "main": "e1/e1-h1/generated/imp1_mock_runtime/e1_h1_rgmii_ethernet_ingress_smoke.cpp",
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_rgmii_ethernet_ingress.sv",
+      "run_executable": "<imp1_mock_runtime_obj_dir_e1_h1_rgmii_ethernet_ingress>/Ve1_h1_rgmii_ethernet_ingress",
+      "status": "pass",
+      "stdout": "E1_H1_IMP1_MOCK_RUNTIME module=e1_h1_rgmii_ethernet_ingress cycles=8\n",
+      "stdout_marker_present": true,
+      "top_module": "e1_h1_rgmii_ethernet_ingress"
+    },
+    {
+      "build_command": [
+        "/opt/homebrew/bin/verilator",
+        "--cc",
+        "--exe",
+        "--build",
+        "--sv",
+        "-Wall",
+        "-Wno-DECLFILENAME",
+        "-Wno-UNUSEDSIGNAL",
+        "-Wno-UNUSEDPARAM",
+        "--top-module",
+        "e1_h1_stream_sram",
+        "-Mdir",
+        "<imp1_mock_runtime_obj_dir_e1_h1_stream_sram>",
+        "e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv",
+        "e1/e1-h1/generated/imp1_mock_runtime/e1_h1_stream_sram_smoke.cpp"
+      ],
+      "expected_stdout_marker": "E1_H1_IMP1_MOCK_RUNTIME module=e1_h1_stream_sram cycles=8",
+      "generated_artifacts": [
+        "e1/e1-h1/generated/imp1_mock_runtime/e1_h1_stream_sram_smoke.cpp"
+      ],
+      "main": "e1/e1-h1/generated/imp1_mock_runtime/e1_h1_stream_sram_smoke.cpp",
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_stream_sram.sv",
+      "run_executable": "<imp1_mock_runtime_obj_dir_e1_h1_stream_sram>/Ve1_h1_stream_sram",
+      "status": "pass",
+      "stdout": "E1_H1_IMP1_MOCK_RUNTIME module=e1_h1_stream_sram cycles=8\n",
+      "stdout_marker_present": true,
+      "top_module": "e1_h1_stream_sram"
+    },
+    {
+      "build_command": [
+        "/opt/homebrew/bin/verilator",
+        "--cc",
+        "--exe",
+        "--build",
+        "--sv",
+        "-Wall",
+        "-Wno-DECLFILENAME",
+        "-Wno-UNUSEDSIGNAL",
+        "-Wno-UNUSEDPARAM",
+        "--top-module",
+        "e1_h1_systolic_array",
+        "-Mdir",
+        "<imp1_mock_runtime_obj_dir_e1_h1_systolic_array>",
+        "e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv",
+        "e1/e1-h1/generated/imp1_mock_runtime/e1_h1_systolic_array_smoke.cpp"
+      ],
+      "expected_stdout_marker": "E1_H1_IMP1_MOCK_RUNTIME module=e1_h1_systolic_array cycles=8",
+      "generated_artifacts": [
+        "e1/e1-h1/generated/imp1_mock_runtime/e1_h1_systolic_array_smoke.cpp"
+      ],
+      "main": "e1/e1-h1/generated/imp1_mock_runtime/e1_h1_systolic_array_smoke.cpp",
+      "rtl": "e1/e1-h1/rtl/ip/e1_h1_systolic_array.sv",
+      "run_executable": "<imp1_mock_runtime_obj_dir_e1_h1_systolic_array>/Ve1_h1_systolic_array",
+      "status": "pass",
+      "stdout": "E1_H1_IMP1_MOCK_RUNTIME module=e1_h1_systolic_array cycles=8\n",
+      "stdout_marker_present": true,
+      "top_module": "e1_h1_systolic_array"
+    }
+  ],
+  "schema": "e1-imp1-mock-rtl-runtime-v0",
+  "status": "pass"
+}

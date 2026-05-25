@@ -17,6 +17,15 @@ SystolicCommand first_mock_command() {
   };
 }
 
+std::uint32_t command_digest(const SystolicCommand& command) {
+  return command.input_addr ^
+         command.weight_addr ^
+         command.output_addr ^
+         (static_cast<std::uint32_t>(command.rows) << 16u |
+          static_cast<std::uint32_t>(command.cols)) ^
+         static_cast<std::uint32_t>(command.depth);
+}
+
 }  // namespace
 
 void ControlCpuModel::reset() {
@@ -178,6 +187,7 @@ void SystolicArrayModel::tick(PerfCounters& counters) {
 
   ++counters.array_commands;
   ++counters.input_transfers;
+  result_digest_ = command_digest(command);
 
   const std::uint32_t work =
       static_cast<std::uint32_t>(command.rows) *
@@ -188,6 +198,10 @@ void SystolicArrayModel::tick(PerfCounters& counters) {
 
 bool SystolicArrayModel::busy() const {
   return cycles_remaining_ != 0 || !pending_.empty();
+}
+
+std::uint32_t SystolicArrayModel::result_digest() const {
+  return result_digest_;
 }
 
 ChipModel::ChipModel()

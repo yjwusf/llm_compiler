@@ -36,6 +36,22 @@
     {
       "name": "all_expected_phase_markers_observed",
       "status": "pass"
+    },
+    {
+      "name": "all_expected_vip_case_markers_observed",
+      "status": "pass"
+    },
+    {
+      "name": "all_expected_vip_case_traces_observed_in_order",
+      "status": "pass"
+    },
+    {
+      "name": "all_expected_phase_traces_observed_in_order",
+      "status": "pass"
+    },
+    {
+      "name": "all_expected_phase_signal_traces_observed",
+      "status": "pass"
     }
   ],
   "execution_recipe": "e1/e1-h1/generated/full_checkpoint_dpi/verilator_execution_recipe.json",
@@ -76,9 +92,94 @@
         "phase=sample_array_done",
         "phase=advance_tile_counters"
       ],
+      "expected_phase_signal_trace": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 4,
+          "expected": 4,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 5,
+          "expected": 5,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 6,
+          "expected": 6,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 7,
+          "expected": 7,
+          "signal": "cycle_phase_o"
+        }
+      ],
+      "expected_phase_trace": [
+        {
+          "cycle": 0,
+          "phase": "setup_tile_command",
+          "phase_marker": "phase=setup_tile_command"
+        },
+        {
+          "cycle": 1,
+          "phase": "assert_scheduler_valid",
+          "phase_marker": "phase=assert_scheduler_valid"
+        },
+        {
+          "cycle": 2,
+          "phase": "accept_command_handshake",
+          "phase_marker": "phase=accept_command_handshake"
+        },
+        {
+          "cycle": 3,
+          "phase": "wait_for_array_progress_0",
+          "phase_marker": "phase=wait_for_array_progress_0"
+        },
+        {
+          "cycle": 4,
+          "phase": "wait_for_array_progress_1",
+          "phase_marker": "phase=wait_for_array_progress_1"
+        },
+        {
+          "cycle": 5,
+          "phase": "wait_for_array_progress_2",
+          "phase_marker": "phase=wait_for_array_progress_2"
+        },
+        {
+          "cycle": 6,
+          "phase": "sample_array_done",
+          "phase_marker": "phase=sample_array_done"
+        },
+        {
+          "cycle": 7,
+          "phase": "advance_tile_counters",
+          "phase_marker": "phase=advance_tile_counters"
+        }
+      ],
       "expected_stdout_markers": [
         "module=linear_scheduler",
         "E1_H1_FULL_MODULE_DPI_CYCLE",
+        "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL",
         "phase=setup_tile_command",
         "phase=assert_scheduler_valid",
         "phase=accept_command_handshake",
@@ -88,6 +189,8 @@
         "phase=sample_array_done",
         "phase=advance_tile_counters"
       ],
+      "expected_vip_case_markers": [],
+      "expected_vip_case_trace": [],
       "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_scheduler.f",
       "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_scheduler_main.cpp",
       "name": "linear_scheduler",
@@ -101,9 +204,96 @@
         "phase=sample_array_done",
         "phase=advance_tile_counters"
       ],
+      "observed_phase_signal_trace_count": 27,
+      "observed_phase_signal_trace_prefix": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 4,
+          "expected": 4,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 5,
+          "expected": 5,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 6,
+          "expected": 6,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 7,
+          "expected": 7,
+          "signal": "cycle_phase_o"
+        }
+      ],
+      "observed_phase_trace_count": 27,
+      "observed_phase_trace_prefix": [
+        {
+          "cycle": 0,
+          "phase": "setup_tile_command",
+          "phase_marker": "phase=setup_tile_command"
+        },
+        {
+          "cycle": 1,
+          "phase": "assert_scheduler_valid",
+          "phase_marker": "phase=assert_scheduler_valid"
+        },
+        {
+          "cycle": 2,
+          "phase": "accept_command_handshake",
+          "phase_marker": "phase=accept_command_handshake"
+        },
+        {
+          "cycle": 3,
+          "phase": "wait_for_array_progress_0",
+          "phase_marker": "phase=wait_for_array_progress_0"
+        },
+        {
+          "cycle": 4,
+          "phase": "wait_for_array_progress_1",
+          "phase_marker": "phase=wait_for_array_progress_1"
+        },
+        {
+          "cycle": 5,
+          "phase": "wait_for_array_progress_2",
+          "phase_marker": "phase=wait_for_array_progress_2"
+        },
+        {
+          "cycle": 6,
+          "phase": "sample_array_done",
+          "phase_marker": "phase=sample_array_done"
+        },
+        {
+          "cycle": 7,
+          "phase": "advance_tile_counters",
+          "phase_marker": "phase=advance_tile_counters"
+        }
+      ],
       "observed_stdout_markers": [
         "module=linear_scheduler",
         "E1_H1_FULL_MODULE_DPI_CYCLE",
+        "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL",
         "phase=setup_tile_command",
         "phase=assert_scheduler_valid",
         "phase=accept_command_handshake",
@@ -113,6 +303,9 @@
         "phase=sample_array_done",
         "phase=advance_tile_counters"
       ],
+      "observed_vip_case_markers": [],
+      "observed_vip_case_trace_count": 0,
+      "observed_vip_case_trace_prefix": [],
       "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_linear_scheduler/Ve1_h1_full_checkpoint_module_dpi_linear_scheduler",
       "run_returncode": 0,
       "run_stdout_tail": [],
@@ -156,9 +349,94 @@
         "phase=array_done_pulse",
         "phase=return_ready"
       ],
+      "expected_phase_signal_trace": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 4,
+          "expected": 4,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 5,
+          "expected": 5,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 6,
+          "expected": 6,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 7,
+          "expected": 7,
+          "signal": "cycle_phase_o"
+        }
+      ],
+      "expected_phase_trace": [
+        {
+          "cycle": 0,
+          "phase": "setup_tile_engine",
+          "phase_marker": "phase=setup_tile_engine"
+        },
+        {
+          "cycle": 1,
+          "phase": "scheduler_valid_visible",
+          "phase_marker": "phase=scheduler_valid_visible"
+        },
+        {
+          "cycle": 2,
+          "phase": "array_command_handshake",
+          "phase_marker": "phase=array_command_handshake"
+        },
+        {
+          "cycle": 3,
+          "phase": "latch_to_array_beat_0",
+          "phase_marker": "phase=latch_to_array_beat_0"
+        },
+        {
+          "cycle": 4,
+          "phase": "latch_to_array_beat_1",
+          "phase_marker": "phase=latch_to_array_beat_1"
+        },
+        {
+          "cycle": 5,
+          "phase": "latch_to_array_beat_2",
+          "phase_marker": "phase=latch_to_array_beat_2"
+        },
+        {
+          "cycle": 6,
+          "phase": "array_done_pulse",
+          "phase_marker": "phase=array_done_pulse"
+        },
+        {
+          "cycle": 7,
+          "phase": "return_ready",
+          "phase_marker": "phase=return_ready"
+        }
+      ],
       "expected_stdout_markers": [
         "module=linear_tile_engine",
         "E1_H1_FULL_MODULE_DPI_CYCLE",
+        "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL",
         "phase=setup_tile_engine",
         "phase=scheduler_valid_visible",
         "phase=array_command_handshake",
@@ -168,6 +446,8 @@
         "phase=array_done_pulse",
         "phase=return_ready"
       ],
+      "expected_vip_case_markers": [],
+      "expected_vip_case_trace": [],
       "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_tile_engine.f",
       "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_tile_engine_main.cpp",
       "name": "linear_tile_engine",
@@ -181,9 +461,96 @@
         "phase=array_done_pulse",
         "phase=return_ready"
       ],
+      "observed_phase_signal_trace_count": 27,
+      "observed_phase_signal_trace_prefix": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 4,
+          "expected": 4,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 5,
+          "expected": 5,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 6,
+          "expected": 6,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 7,
+          "expected": 7,
+          "signal": "cycle_phase_o"
+        }
+      ],
+      "observed_phase_trace_count": 27,
+      "observed_phase_trace_prefix": [
+        {
+          "cycle": 0,
+          "phase": "setup_tile_engine",
+          "phase_marker": "phase=setup_tile_engine"
+        },
+        {
+          "cycle": 1,
+          "phase": "scheduler_valid_visible",
+          "phase_marker": "phase=scheduler_valid_visible"
+        },
+        {
+          "cycle": 2,
+          "phase": "array_command_handshake",
+          "phase_marker": "phase=array_command_handshake"
+        },
+        {
+          "cycle": 3,
+          "phase": "latch_to_array_beat_0",
+          "phase_marker": "phase=latch_to_array_beat_0"
+        },
+        {
+          "cycle": 4,
+          "phase": "latch_to_array_beat_1",
+          "phase_marker": "phase=latch_to_array_beat_1"
+        },
+        {
+          "cycle": 5,
+          "phase": "latch_to_array_beat_2",
+          "phase_marker": "phase=latch_to_array_beat_2"
+        },
+        {
+          "cycle": 6,
+          "phase": "array_done_pulse",
+          "phase_marker": "phase=array_done_pulse"
+        },
+        {
+          "cycle": 7,
+          "phase": "return_ready",
+          "phase_marker": "phase=return_ready"
+        }
+      ],
       "observed_stdout_markers": [
         "module=linear_tile_engine",
         "E1_H1_FULL_MODULE_DPI_CYCLE",
+        "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL",
         "phase=setup_tile_engine",
         "phase=scheduler_valid_visible",
         "phase=array_command_handshake",
@@ -193,6 +560,9 @@
         "phase=array_done_pulse",
         "phase=return_ready"
       ],
+      "observed_vip_case_markers": [],
+      "observed_vip_case_trace_count": 0,
+      "observed_vip_case_trace_prefix": [],
       "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_linear_tile_engine/Ve1_h1_full_checkpoint_module_dpi_linear_tile_engine",
       "run_returncode": 0,
       "run_stdout_tail": [],
@@ -232,14 +602,61 @@
         "phase=execute_control_op",
         "phase=commit_control_op"
       ],
+      "expected_phase_signal_trace": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "cycle_phase_o"
+        }
+      ],
+      "expected_phase_trace": [
+        {
+          "cycle": 0,
+          "phase": "issue_control_op",
+          "phase_marker": "phase=issue_control_op"
+        },
+        {
+          "cycle": 1,
+          "phase": "read_control_metadata",
+          "phase_marker": "phase=read_control_metadata"
+        },
+        {
+          "cycle": 2,
+          "phase": "execute_control_op",
+          "phase_marker": "phase=execute_control_op"
+        },
+        {
+          "cycle": 3,
+          "phase": "commit_control_op",
+          "phase_marker": "phase=commit_control_op"
+        }
+      ],
       "expected_stdout_markers": [
         "module=control_scheduler",
         "E1_H1_FULL_MODULE_DPI_CYCLE",
+        "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL",
         "phase=issue_control_op",
         "phase=read_control_metadata",
         "phase=execute_control_op",
         "phase=commit_control_op"
       ],
+      "expected_vip_case_markers": [],
+      "expected_vip_case_trace": [],
       "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_scheduler.f",
       "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_scheduler_main.cpp",
       "name": "control_scheduler",
@@ -249,14 +666,64 @@
         "phase=execute_control_op",
         "phase=commit_control_op"
       ],
+      "observed_phase_signal_trace_count": 616,
+      "observed_phase_signal_trace_prefix": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "cycle_phase_o"
+        }
+      ],
+      "observed_phase_trace_count": 616,
+      "observed_phase_trace_prefix": [
+        {
+          "cycle": 0,
+          "phase": "issue_control_op",
+          "phase_marker": "phase=issue_control_op"
+        },
+        {
+          "cycle": 1,
+          "phase": "read_control_metadata",
+          "phase_marker": "phase=read_control_metadata"
+        },
+        {
+          "cycle": 2,
+          "phase": "execute_control_op",
+          "phase_marker": "phase=execute_control_op"
+        },
+        {
+          "cycle": 3,
+          "phase": "commit_control_op",
+          "phase_marker": "phase=commit_control_op"
+        }
+      ],
       "observed_stdout_markers": [
         "module=control_scheduler",
         "E1_H1_FULL_MODULE_DPI_CYCLE",
+        "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL",
         "phase=issue_control_op",
         "phase=read_control_metadata",
         "phase=execute_control_op",
         "phase=commit_control_op"
       ],
+      "observed_vip_case_markers": [],
+      "observed_vip_case_trace_count": 0,
+      "observed_vip_case_trace_prefix": [],
       "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_control_scheduler/Ve1_h1_full_checkpoint_module_dpi_control_scheduler",
       "run_returncode": 0,
       "run_stdout_tail": [],
@@ -296,14 +763,61 @@
         "phase=wait_for_slot_done",
         "phase=commit_graph_slot"
       ],
+      "expected_phase_signal_trace": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "cycle_phase_o"
+        }
+      ],
+      "expected_phase_trace": [
+        {
+          "cycle": 0,
+          "phase": "present_graph_slot",
+          "phase_marker": "phase=present_graph_slot"
+        },
+        {
+          "cycle": 1,
+          "phase": "launch_selected_engine",
+          "phase_marker": "phase=launch_selected_engine"
+        },
+        {
+          "cycle": 2,
+          "phase": "wait_for_slot_done",
+          "phase_marker": "phase=wait_for_slot_done"
+        },
+        {
+          "cycle": 3,
+          "phase": "commit_graph_slot",
+          "phase_marker": "phase=commit_graph_slot"
+        }
+      ],
       "expected_stdout_markers": [
         "module=graph_sequencer",
         "E1_H1_FULL_MODULE_DPI_CYCLE",
+        "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL",
         "phase=present_graph_slot",
         "phase=launch_selected_engine",
         "phase=wait_for_slot_done",
         "phase=commit_graph_slot"
       ],
+      "expected_vip_case_markers": [],
+      "expected_vip_case_trace": [],
       "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/graph_sequencer.f",
       "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_graph_sequencer_main.cpp",
       "name": "graph_sequencer",
@@ -313,14 +827,64 @@
         "phase=wait_for_slot_done",
         "phase=commit_graph_slot"
       ],
+      "observed_phase_signal_trace_count": 1232,
+      "observed_phase_signal_trace_prefix": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "cycle_phase_o"
+        }
+      ],
+      "observed_phase_trace_count": 1232,
+      "observed_phase_trace_prefix": [
+        {
+          "cycle": 0,
+          "phase": "present_graph_slot",
+          "phase_marker": "phase=present_graph_slot"
+        },
+        {
+          "cycle": 1,
+          "phase": "launch_selected_engine",
+          "phase_marker": "phase=launch_selected_engine"
+        },
+        {
+          "cycle": 2,
+          "phase": "wait_for_slot_done",
+          "phase_marker": "phase=wait_for_slot_done"
+        },
+        {
+          "cycle": 3,
+          "phase": "commit_graph_slot",
+          "phase_marker": "phase=commit_graph_slot"
+        }
+      ],
       "observed_stdout_markers": [
         "module=graph_sequencer",
         "E1_H1_FULL_MODULE_DPI_CYCLE",
+        "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL",
         "phase=present_graph_slot",
         "phase=launch_selected_engine",
         "phase=wait_for_slot_done",
         "phase=commit_graph_slot"
       ],
+      "observed_vip_case_markers": [],
+      "observed_vip_case_trace_count": 0,
+      "observed_vip_case_trace_prefix": [],
       "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_graph_sequencer/Ve1_h1_full_checkpoint_module_dpi_graph_sequencer",
       "run_returncode": 0,
       "run_stdout_tail": [],
@@ -364,9 +928,94 @@
         "phase=array_done_pulse",
         "phase=slot_done_or_next_tile"
       ],
+      "expected_phase_signal_trace": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 4,
+          "expected": 4,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 5,
+          "expected": 5,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 6,
+          "expected": 6,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 7,
+          "expected": 7,
+          "signal": "cycle_phase_o"
+        }
+      ],
+      "expected_phase_trace": [
+        {
+          "cycle": 0,
+          "phase": "latch_selected_linear_slot",
+          "phase_marker": "phase=latch_selected_linear_slot"
+        },
+        {
+          "cycle": 1,
+          "phase": "slot_command_valid",
+          "phase_marker": "phase=slot_command_valid"
+        },
+        {
+          "cycle": 2,
+          "phase": "array_command_handshake",
+          "phase_marker": "phase=array_command_handshake"
+        },
+        {
+          "cycle": 3,
+          "phase": "latch_to_array_beat_0",
+          "phase_marker": "phase=latch_to_array_beat_0"
+        },
+        {
+          "cycle": 4,
+          "phase": "latch_to_array_beat_1",
+          "phase_marker": "phase=latch_to_array_beat_1"
+        },
+        {
+          "cycle": 5,
+          "phase": "latch_to_array_beat_2",
+          "phase_marker": "phase=latch_to_array_beat_2"
+        },
+        {
+          "cycle": 6,
+          "phase": "array_done_pulse",
+          "phase_marker": "phase=array_done_pulse"
+        },
+        {
+          "cycle": 7,
+          "phase": "slot_done_or_next_tile",
+          "phase_marker": "phase=slot_done_or_next_tile"
+        }
+      ],
       "expected_stdout_markers": [
         "module=linear_slot_engine",
         "E1_H1_FULL_MODULE_DPI_CYCLE",
+        "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL",
         "phase=latch_selected_linear_slot",
         "phase=slot_command_valid",
         "phase=array_command_handshake",
@@ -376,6 +1025,8 @@
         "phase=array_done_pulse",
         "phase=slot_done_or_next_tile"
       ],
+      "expected_vip_case_markers": [],
+      "expected_vip_case_trace": [],
       "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/linear_slot_engine.f",
       "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_linear_slot_engine_main.cpp",
       "name": "linear_slot_engine",
@@ -389,9 +1040,96 @@
         "phase=array_done_pulse",
         "phase=slot_done_or_next_tile"
       ],
+      "observed_phase_signal_trace_count": 16,
+      "observed_phase_signal_trace_prefix": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 4,
+          "expected": 4,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 5,
+          "expected": 5,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 6,
+          "expected": 6,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 7,
+          "expected": 7,
+          "signal": "cycle_phase_o"
+        }
+      ],
+      "observed_phase_trace_count": 16,
+      "observed_phase_trace_prefix": [
+        {
+          "cycle": 0,
+          "phase": "latch_selected_linear_slot",
+          "phase_marker": "phase=latch_selected_linear_slot"
+        },
+        {
+          "cycle": 1,
+          "phase": "slot_command_valid",
+          "phase_marker": "phase=slot_command_valid"
+        },
+        {
+          "cycle": 2,
+          "phase": "array_command_handshake",
+          "phase_marker": "phase=array_command_handshake"
+        },
+        {
+          "cycle": 3,
+          "phase": "latch_to_array_beat_0",
+          "phase_marker": "phase=latch_to_array_beat_0"
+        },
+        {
+          "cycle": 4,
+          "phase": "latch_to_array_beat_1",
+          "phase_marker": "phase=latch_to_array_beat_1"
+        },
+        {
+          "cycle": 5,
+          "phase": "latch_to_array_beat_2",
+          "phase_marker": "phase=latch_to_array_beat_2"
+        },
+        {
+          "cycle": 6,
+          "phase": "array_done_pulse",
+          "phase_marker": "phase=array_done_pulse"
+        },
+        {
+          "cycle": 7,
+          "phase": "slot_done_or_next_tile",
+          "phase_marker": "phase=slot_done_or_next_tile"
+        }
+      ],
       "observed_stdout_markers": [
         "module=linear_slot_engine",
         "E1_H1_FULL_MODULE_DPI_CYCLE",
+        "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL",
         "phase=latch_selected_linear_slot",
         "phase=slot_command_valid",
         "phase=array_command_handshake",
@@ -401,6 +1139,9 @@
         "phase=array_done_pulse",
         "phase=slot_done_or_next_tile"
       ],
+      "observed_vip_case_markers": [],
+      "observed_vip_case_trace_count": 0,
+      "observed_vip_case_trace_prefix": [],
       "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_linear_slot_engine/Ve1_h1_full_checkpoint_module_dpi_linear_slot_engine",
       "run_returncode": 0,
       "run_stdout_tail": [],
@@ -440,14 +1181,61 @@
         "phase=execute_selected_control_slot",
         "phase=commit_selected_control_slot"
       ],
+      "expected_phase_signal_trace": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "cycle_phase_o"
+        }
+      ],
+      "expected_phase_trace": [
+        {
+          "cycle": 0,
+          "phase": "issue_selected_control_slot",
+          "phase_marker": "phase=issue_selected_control_slot"
+        },
+        {
+          "cycle": 1,
+          "phase": "read_selected_control_metadata",
+          "phase_marker": "phase=read_selected_control_metadata"
+        },
+        {
+          "cycle": 2,
+          "phase": "execute_selected_control_slot",
+          "phase_marker": "phase=execute_selected_control_slot"
+        },
+        {
+          "cycle": 3,
+          "phase": "commit_selected_control_slot",
+          "phase_marker": "phase=commit_selected_control_slot"
+        }
+      ],
       "expected_stdout_markers": [
         "module=control_slot_engine",
         "E1_H1_FULL_MODULE_DPI_CYCLE",
+        "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL",
         "phase=issue_selected_control_slot",
         "phase=read_selected_control_metadata",
         "phase=execute_selected_control_slot",
         "phase=commit_selected_control_slot"
       ],
+      "expected_vip_case_markers": [],
+      "expected_vip_case_trace": [],
       "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/control_slot_engine.f",
       "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_control_slot_engine_main.cpp",
       "name": "control_slot_engine",
@@ -457,14 +1245,64 @@
         "phase=execute_selected_control_slot",
         "phase=commit_selected_control_slot"
       ],
+      "observed_phase_signal_trace_count": 4,
+      "observed_phase_signal_trace_prefix": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "cycle_phase_o"
+        }
+      ],
+      "observed_phase_trace_count": 4,
+      "observed_phase_trace_prefix": [
+        {
+          "cycle": 0,
+          "phase": "issue_selected_control_slot",
+          "phase_marker": "phase=issue_selected_control_slot"
+        },
+        {
+          "cycle": 1,
+          "phase": "read_selected_control_metadata",
+          "phase_marker": "phase=read_selected_control_metadata"
+        },
+        {
+          "cycle": 2,
+          "phase": "execute_selected_control_slot",
+          "phase_marker": "phase=execute_selected_control_slot"
+        },
+        {
+          "cycle": 3,
+          "phase": "commit_selected_control_slot",
+          "phase_marker": "phase=commit_selected_control_slot"
+        }
+      ],
       "observed_stdout_markers": [
         "module=control_slot_engine",
         "E1_H1_FULL_MODULE_DPI_CYCLE",
+        "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL",
         "phase=issue_selected_control_slot",
         "phase=read_selected_control_metadata",
         "phase=execute_selected_control_slot",
         "phase=commit_selected_control_slot"
       ],
+      "observed_vip_case_markers": [],
+      "observed_vip_case_trace_count": 0,
+      "observed_vip_case_trace_prefix": [],
       "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_control_slot_engine/Ve1_h1_full_checkpoint_module_dpi_control_slot_engine",
       "run_returncode": 0,
       "run_stdout_tail": [],
@@ -504,14 +1342,61 @@
         "phase=run_selected_slot_engine",
         "phase=commit_top_graph_slot"
       ],
+      "expected_phase_signal_trace": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "graph_cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "graph_cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "graph_cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "graph_cycle_phase_o"
+        }
+      ],
+      "expected_phase_trace": [
+        {
+          "cycle": 0,
+          "phase": "present_top_graph_slot",
+          "phase_marker": "phase=present_top_graph_slot"
+        },
+        {
+          "cycle": 1,
+          "phase": "start_selected_slot_engine",
+          "phase_marker": "phase=start_selected_slot_engine"
+        },
+        {
+          "cycle": 2,
+          "phase": "run_selected_slot_engine",
+          "phase_marker": "phase=run_selected_slot_engine"
+        },
+        {
+          "cycle": 3,
+          "phase": "commit_top_graph_slot",
+          "phase_marker": "phase=commit_top_graph_slot"
+        }
+      ],
       "expected_stdout_markers": [
         "module=full_checkpoint_top",
         "E1_H1_FULL_MODULE_DPI_CYCLE",
+        "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL",
         "phase=present_top_graph_slot",
         "phase=start_selected_slot_engine",
         "phase=run_selected_slot_engine",
         "phase=commit_top_graph_slot"
       ],
+      "expected_vip_case_markers": [],
+      "expected_vip_case_trace": [],
       "flist": "e1/e1-h1/generated/full_checkpoint_dpi/flists/full_checkpoint_top.f",
       "main": "e1/e1-h1/generated/full_checkpoint_dpi/e1_h1_full_checkpoint_module_dpi_full_checkpoint_top_main.cpp",
       "name": "full_checkpoint_top",
@@ -521,14 +1406,64 @@
         "phase=run_selected_slot_engine",
         "phase=commit_top_graph_slot"
       ],
+      "observed_phase_signal_trace_count": 1232,
+      "observed_phase_signal_trace_prefix": [
+        {
+          "cycle": 0,
+          "expected": 0,
+          "signal": "graph_cycle_phase_o"
+        },
+        {
+          "cycle": 1,
+          "expected": 1,
+          "signal": "graph_cycle_phase_o"
+        },
+        {
+          "cycle": 2,
+          "expected": 2,
+          "signal": "graph_cycle_phase_o"
+        },
+        {
+          "cycle": 3,
+          "expected": 3,
+          "signal": "graph_cycle_phase_o"
+        }
+      ],
+      "observed_phase_trace_count": 1232,
+      "observed_phase_trace_prefix": [
+        {
+          "cycle": 0,
+          "phase": "present_top_graph_slot",
+          "phase_marker": "phase=present_top_graph_slot"
+        },
+        {
+          "cycle": 1,
+          "phase": "start_selected_slot_engine",
+          "phase_marker": "phase=start_selected_slot_engine"
+        },
+        {
+          "cycle": 2,
+          "phase": "run_selected_slot_engine",
+          "phase_marker": "phase=run_selected_slot_engine"
+        },
+        {
+          "cycle": 3,
+          "phase": "commit_top_graph_slot",
+          "phase_marker": "phase=commit_top_graph_slot"
+        }
+      ],
       "observed_stdout_markers": [
         "module=full_checkpoint_top",
         "E1_H1_FULL_MODULE_DPI_CYCLE",
+        "E1_H1_FULL_MODULE_DPI_PHASE_SIGNAL",
         "phase=present_top_graph_slot",
         "phase=start_selected_slot_engine",
         "phase=run_selected_slot_engine",
         "phase=commit_top_graph_slot"
       ],
+      "observed_vip_case_markers": [],
+      "observed_vip_case_trace_count": 0,
+      "observed_vip_case_trace_prefix": [],
       "run_executable": "<build-root>/obj_full_checkpoint_module_dpi_full_checkpoint_top/Ve1_h1_full_checkpoint_module_dpi_full_checkpoint_top",
       "run_returncode": 0,
       "run_stdout_tail": [],

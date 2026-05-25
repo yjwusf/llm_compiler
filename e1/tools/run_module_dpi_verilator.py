@@ -105,8 +105,12 @@ def validate_recipe(
             and recipe_module.get("flist") == plan["flist"]
             and recipe_module.get("scoreboard") == plan["scoreboard"]
             and recipe_module.get("main") == plan["main"]
+            and recipe_module.get("vip_cases", []) == module.get("vip_cases", [])
             and recipe_module.get("expected_stdout_markers")
             == plan["expected_stdout_markers"]
+            and recipe_module.get("primary_phase_signal") == plan.get("primary_phase_signal")
+            and recipe_module.get("expected_phase_signal_trace", [])
+            == plan.get("expected_phase_signal_trace", [])
         )
         commands_match = commands_match and (
             recipe_module.get("build_command") == command_for_report(module, obj_dir_name)
@@ -136,6 +140,123 @@ def validate_recipe(
 def tail_lines(text: str, limit: int = 20) -> list[str]:
     lines = text.splitlines()
     return lines[-limit:]
+
+
+def expected_phase_trace(expected_phase_markers: list[str]) -> list[dict[str, Any]]:
+    return [
+        {
+            "cycle": cycle,
+            "phase": marker[len("phase=") :],
+            "phase_marker": marker,
+        }
+        for cycle, marker in enumerate(expected_phase_markers)
+    ]
+
+
+def expected_case_trace(expected_case_markers: list[str]) -> list[dict[str, Any]]:
+    return [
+        {
+            "index": index,
+            "case": marker[len("case=") :],
+            "case_marker": marker,
+        }
+        for index, marker in enumerate(expected_case_markers)
+    ]
+
+
+def observed_cycle_trace(run_stdout: str, module_name: str) -> list[dict[str, Any]]:
+    trace: list[dict[str, Any]] = []
+    for line in run_stdout.splitlines():
+        if "_DPI_CYCLE" not in line:
+            continue
+        fields: dict[str, str] = {}
+        for token in line.split():
+            if "=" not in token:
+                continue
+            key, value = token.split("=", 1)
+            fields[key] = value
+        if fields.get("module") != module_name or "cycle" not in fields or "phase" not in fields:
+            continue
+        try:
+            cycle = int(fields["cycle"])
+        except ValueError:
+            continue
+        trace.append(
+            {
+                "cycle": cycle,
+                "phase": fields["phase"],
+                "phase_marker": f"phase={fields['phase']}",
+            }
+        )
+    return trace
+
+
+def observed_case_trace(run_stdout: str, module_name: str) -> list[dict[str, Any]]:
+    trace: list[dict[str, Any]] = []
+    for line in run_stdout.splitlines():
+        if "_DPI_CASE" not in line:
+            continue
+        fields: dict[str, str] = {}
+        for token in line.split():
+            if "=" not in token:
+                continue
+            key, value = token.split("=", 1)
+            fields[key] = value
+        if fields.get("module") != module_name or "case" not in fields:
+            continue
+        trace.append(
+            {
+                "index": len(trace),
+                "case": fields["case"],
+                "case_marker": f"case={fields['case']}",
+            }
+        )
+    return trace
+
+
+def observed_phase_signal_trace(run_stdout: str, module_name: str) -> list[dict[str, Any]]:
+    trace: list[dict[str, Any]] = []
+    for line in run_stdout.splitlines():
+        if "_DPI_PHASE_SIGNAL" not in line:
+            continue
+        fields: dict[str, str] = {}
+        for token in line.split():
+            if "=" not in token:
+                continue
+            key, value = token.split("=", 1)
+            fields[key] = value
+        if (
+            fields.get("module") != module_name
+            or "signal" not in fields
+            or "cycle" not in fields
+            or "expected" not in fields
+            or "actual" not in fields
+        ):
+            continue
+        try:
+            cycle = int(fields["cycle"])
+            expected = int(fields["expected"])
+            actual = int(fields["actual"])
+        except ValueError:
+            continue
+        if actual != expected:
+            trace.append(
+                {
+                    "cycle": cycle,
+                    "signal": fields["signal"],
+                    "expected": expected,
+                    "actual": actual,
+                }
+            )
+            continue
+        trace.append(
+            {
+                "cycle": cycle,
+                "signal": fields["signal"],
+                "expected": expected,
+            }
+        )
+    return trace
 
 
 def run_plan(
@@ -223,18 +344,49 @@ def run_plan(
                 for marker in module["verilator"]["expected_stdout_markers"]
                 if marker.startswith("phase=")
             ]
+            expected_case_markers = [
+                marker
+                for marker in module["verilator"]["expected_stdout_markers"]
+                if marker.startswith("case=")
+            ]
             observed_phase_markers = [
                 marker
                 for marker in expected_phase_markers
                 if marker in run_stdout
             ]
+            observed_case_markers = [
+                marker
+                for marker in expected_case_markers
+                if marker in run_stdout
+            ]
+            expected_trace = expected_phase_trace(expected_phase_markers)
+            observed_trace = observed_cycle_trace(run_stdout, module["name"])
+            observed_trace_prefix = observed_trace[: len(expected_trace)]
+            expected_cases = expected_case_trace(expected_case_markers)
+            observed_cases = observed_case_trace(run_stdout, module["name"])
+            observed_cases_prefix = observed_cases[: len(expected_cases)]
+            expected_phase_signal = module["verilator"].get("expected_phase_signal_trace", [])
+            observed_phase_signal = observed_phase_signal_trace(run_stdout, module["name"])
+            observed_phase_signal_prefix = observed_phase_signal[: len(expected_phase_signal)]
+            phase_signal_ok = (
+                len(expected_phase_signal) == 0
+                or (
+                    observed_phase_signal_prefix == expected_phase_signal
+                    and len(observed_phase_signal) >= len(expected_phase_signal)
+                )
+            )
             module_status = (
                 "pass"
                 if build.returncode == 0
                 and run_result is not None
                 and run_result.returncode == 0
                 and observed_markers == module["verilator"]["expected_stdout_markers"]
+                and observed_case_markers == expected_case_markers
+                and observed_cases_prefix == expected_cases
                 and observed_phase_markers == expected_phase_markers
+                and observed_trace_prefix == expected_trace
+                and len(observed_trace) >= len(expected_trace)
+                and phase_signal_ok
                 else "fail"
             )
             modules.append(
@@ -255,6 +407,17 @@ def run_plan(
                     "observed_stdout_markers": observed_markers,
                     "expected_phase_markers": expected_phase_markers,
                     "observed_phase_markers": observed_phase_markers,
+                    "expected_phase_trace": expected_trace,
+                    "observed_phase_trace_prefix": observed_trace_prefix,
+                    "observed_phase_trace_count": len(observed_trace),
+                    "expected_vip_case_markers": expected_case_markers,
+                    "observed_vip_case_markers": observed_case_markers,
+                    "expected_vip_case_trace": expected_cases,
+                    "observed_vip_case_trace_prefix": observed_cases_prefix,
+                    "observed_vip_case_trace_count": len(observed_cases),
+                    "expected_phase_signal_trace": expected_phase_signal,
+                    "observed_phase_signal_trace_prefix": observed_phase_signal_prefix,
+                    "observed_phase_signal_trace_count": len(observed_phase_signal),
                     "build_stdout_tail": [] if build.returncode == 0 else tail_lines(build.stdout),
                     "run_stdout_tail": []
                     if run_result is not None and run_result.returncode == 0
@@ -292,6 +455,50 @@ def run_plan(
                 if all(
                     module["observed_phase_markers"] == module["expected_phase_markers"]
                     and len(module["expected_phase_markers"]) > 0
+                    for module in modules
+                )
+                else "fail",
+            },
+            {
+                "name": "all_expected_vip_case_markers_observed",
+                "status": "pass"
+                if all(
+                    module["observed_vip_case_markers"] == module["expected_vip_case_markers"]
+                    for module in modules
+                )
+                else "fail",
+            },
+            {
+                "name": "all_expected_vip_case_traces_observed_in_order",
+                "status": "pass"
+                if all(
+                    module["observed_vip_case_trace_prefix"] == module["expected_vip_case_trace"]
+                    and module["observed_vip_case_trace_count"] >= len(module["expected_vip_case_trace"])
+                    for module in modules
+                )
+                else "fail",
+            },
+            {
+                "name": "all_expected_phase_traces_observed_in_order",
+                "status": "pass"
+                if all(
+                    module["observed_phase_trace_prefix"] == module["expected_phase_trace"]
+                    and module["observed_phase_trace_count"] >= len(module["expected_phase_trace"])
+                    for module in modules
+                )
+                else "fail",
+            },
+            {
+                "name": "all_expected_phase_signal_traces_observed",
+                "status": "pass"
+                if all(
+                    len(module["expected_phase_signal_trace"]) == 0
+                    or (
+                        module["observed_phase_signal_trace_prefix"]
+                        == module["expected_phase_signal_trace"]
+                        and module["observed_phase_signal_trace_count"]
+                        >= len(module["expected_phase_signal_trace"])
+                    )
                     for module in modules
                 )
                 else "fail",

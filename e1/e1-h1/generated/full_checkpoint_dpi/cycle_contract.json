@@ -11,7 +11,18 @@
       "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
       "template": "tile_command_8_cycle_cpu_latch_array_template",
       "cycle_period": 8,
+      "primary_phase_signal": "cycle_phase_o",
       "phase_signals": ["cycle_phase_o"],
+      "expected_phase_signal_trace": [
+        {"cycle": 0, "signal": "cycle_phase_o", "expected": 0},
+        {"cycle": 1, "signal": "cycle_phase_o", "expected": 1},
+        {"cycle": 2, "signal": "cycle_phase_o", "expected": 2},
+        {"cycle": 3, "signal": "cycle_phase_o", "expected": 3},
+        {"cycle": 4, "signal": "cycle_phase_o", "expected": 4},
+        {"cycle": 5, "signal": "cycle_phase_o", "expected": 5},
+        {"cycle": 6, "signal": "cycle_phase_o", "expected": 6},
+        {"cycle": 7, "signal": "cycle_phase_o", "expected": 7}
+      ],
       "cycles": [
         {"cycle": 0, "phase": "setup_tile_command", "responsibility": "Select the next TinyLlama linear tile command.", "observed_signals": "cycle_phase_o, layer_o, op_index_o, input_tile_o, output_tile_o", "dpi_check": "DPI records the phase and later checks issued_commands_o."},
         {"cycle": 1, "phase": "assert_scheduler_valid", "responsibility": "Present cmd_valid_o and hold the payload stable.", "observed_signals": "cycle_phase_o, cmd_valid_o, cmd_*_o", "dpi_check": "DPI records the valid phase."},
@@ -37,7 +48,18 @@
       "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
       "template": "tile_command_8_cycle_cpu_latch_array_template",
       "cycle_period": 8,
+      "primary_phase_signal": "cycle_phase_o",
       "phase_signals": ["cycle_phase_o"],
+      "expected_phase_signal_trace": [
+        {"cycle": 0, "signal": "cycle_phase_o", "expected": 0},
+        {"cycle": 1, "signal": "cycle_phase_o", "expected": 1},
+        {"cycle": 2, "signal": "cycle_phase_o", "expected": 2},
+        {"cycle": 3, "signal": "cycle_phase_o", "expected": 3},
+        {"cycle": 4, "signal": "cycle_phase_o", "expected": 4},
+        {"cycle": 5, "signal": "cycle_phase_o", "expected": 5},
+        {"cycle": 6, "signal": "cycle_phase_o", "expected": 6},
+        {"cycle": 7, "signal": "cycle_phase_o", "expected": 7}
+      ],
       "cycles": [
         {"cycle": 0, "phase": "setup_tile_engine", "responsibility": "Start the scheduler/latch/array composition.", "observed_signals": "cycle_phase_o, scheduler_cmd_valid_o", "dpi_check": "DPI records the composed engine phase."},
         {"cycle": 1, "phase": "scheduler_valid_visible", "responsibility": "Expose the ungated scheduler command-valid.", "observed_signals": "cycle_phase_o, scheduler_cmd_valid_o", "dpi_check": "DPI records valid before array valid."},
@@ -63,7 +85,14 @@
       "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
       "template": "control_op_4_cycle_cpu_template",
       "cycle_period": 4,
+      "primary_phase_signal": "cycle_phase_o",
       "phase_signals": ["cycle_phase_o"],
+      "expected_phase_signal_trace": [
+        {"cycle": 0, "signal": "cycle_phase_o", "expected": 0},
+        {"cycle": 1, "signal": "cycle_phase_o", "expected": 1},
+        {"cycle": 2, "signal": "cycle_phase_o", "expected": 2},
+        {"cycle": 3, "signal": "cycle_phase_o", "expected": 3}
+      ],
       "cycles": [
         {"cycle": 0, "phase": "issue_control_op", "responsibility": "Present the current non-linear control op.", "observed_signals": "cycle_phase_o, control_valid_o, layer_o, layer_op_slot_o", "dpi_check": "DPI records issue."},
         {"cycle": 1, "phase": "read_control_metadata", "responsibility": "Read source/control metadata for the op.", "observed_signals": "cycle_phase_o, control_kind_o", "dpi_check": "DPI records metadata phase."},
@@ -85,7 +114,14 @@
       "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
       "template": "graph_slot_4_cycle_launch_template",
       "cycle_period": 4,
+      "primary_phase_signal": "cycle_phase_o",
       "phase_signals": ["cycle_phase_o"],
+      "expected_phase_signal_trace": [
+        {"cycle": 0, "signal": "cycle_phase_o", "expected": 0},
+        {"cycle": 1, "signal": "cycle_phase_o", "expected": 1},
+        {"cycle": 2, "signal": "cycle_phase_o", "expected": 2},
+        {"cycle": 3, "signal": "cycle_phase_o", "expected": 3}
+      ],
       "cycles": [
         {"cycle": 0, "phase": "present_graph_slot", "responsibility": "Present the ordered TinyLlama layer graph slot.", "observed_signals": "cycle_phase_o, slot_valid_o, layer_o, layer_slot_o", "dpi_check": "DPI records slot issue."},
         {"cycle": 1, "phase": "launch_selected_engine", "responsibility": "Launch either the control or linear slot engine.", "observed_signals": "cycle_phase_o, launch_control_o, launch_linear_o", "dpi_check": "DPI counts launch pulses."},
@@ -107,7 +143,18 @@
       "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
       "template": "tile_command_8_cycle_cpu_latch_array_template",
       "cycle_period": 8,
+      "primary_phase_signal": "cycle_phase_o",
       "phase_signals": ["cycle_phase_o"],
+      "expected_phase_signal_trace": [
+        {"cycle": 0, "signal": "cycle_phase_o", "expected": 0},
+        {"cycle": 1, "signal": "cycle_phase_o", "expected": 1},
+        {"cycle": 2, "signal": "cycle_phase_o", "expected": 2},
+        {"cycle": 3, "signal": "cycle_phase_o", "expected": 3},
+        {"cycle": 4, "signal": "cycle_phase_o", "expected": 4},
+        {"cycle": 5, "signal": "cycle_phase_o", "expected": 5},
+        {"cycle": 6, "signal": "cycle_phase_o", "expected": 6},
+        {"cycle": 7, "signal": "cycle_phase_o", "expected": 7}
+      ],
       "cycles": [
         {"cycle": 0, "phase": "latch_selected_linear_slot", "responsibility": "Latch graph-selected layer and linear op.", "observed_signals": "cycle_phase_o, layer_o, op_index_o", "dpi_check": "DPI records selected slot."},
         {"cycle": 1, "phase": "slot_command_valid", "responsibility": "Expose the slot-local scheduler command-valid.", "observed_signals": "cycle_phase_o, scheduler_cmd_valid_o", "dpi_check": "DPI records scheduler valid."},
@@ -133,7 +180,14 @@
       "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
       "template": "control_op_4_cycle_cpu_template",
       "cycle_period": 4,
+      "primary_phase_signal": "cycle_phase_o",
       "phase_signals": ["cycle_phase_o"],
+      "expected_phase_signal_trace": [
+        {"cycle": 0, "signal": "cycle_phase_o", "expected": 0},
+        {"cycle": 1, "signal": "cycle_phase_o", "expected": 1},
+        {"cycle": 2, "signal": "cycle_phase_o", "expected": 2},
+        {"cycle": 3, "signal": "cycle_phase_o", "expected": 3}
+      ],
       "cycles": [
         {"cycle": 0, "phase": "issue_selected_control_slot", "responsibility": "Present the selected control graph slot.", "observed_signals": "cycle_phase_o, control_valid_o, layer_o", "dpi_check": "DPI records issue."},
         {"cycle": 1, "phase": "read_selected_control_metadata", "responsibility": "Read selected control-kind metadata.", "observed_signals": "cycle_phase_o, control_kind_o", "dpi_check": "DPI records metadata phase."},
@@ -155,7 +209,14 @@
       "readme_diagram": "e1/e1-h1/docs/modules/README.md#cycle-diagram",
       "template": "top_dispatch_4_cycle_slot_engine_template",
       "cycle_period": 4,
+      "primary_phase_signal": "graph_cycle_phase_o",
       "phase_signals": ["graph_cycle_phase_o", "linear_cycle_phase_o", "control_cycle_phase_o"],
+      "expected_phase_signal_trace": [
+        {"cycle": 0, "signal": "graph_cycle_phase_o", "expected": 0},
+        {"cycle": 1, "signal": "graph_cycle_phase_o", "expected": 1},
+        {"cycle": 2, "signal": "graph_cycle_phase_o", "expected": 2},
+        {"cycle": 3, "signal": "graph_cycle_phase_o", "expected": 3}
+      ],
       "cycles": [
         {"cycle": 0, "phase": "present_top_graph_slot", "responsibility": "Present the next graph slot at the top boundary.", "observed_signals": "graph_cycle_phase_o, active_layer_o, active_slot_o", "dpi_check": "DPI records top slot issue."},
         {"cycle": 1, "phase": "start_selected_slot_engine", "responsibility": "Pulse exactly one selected slot engine.", "observed_signals": "graph_cycle_phase_o, launch_linear_o, launch_control_o", "dpi_check": "DPI counts launch pulses."},
